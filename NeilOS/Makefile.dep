@@ -1,0 +1,304 @@
+build/./kernel/boot/boot.o: kernel/boot/boot.S kernel/boot/multiboot.h \
+ kernel/boot/x86_desc.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/boot/boot.o ./kernel/boot/boot.S
+build/./kernel/boot/x86_desc.o: kernel/boot/x86_desc.S \
+ kernel/boot/x86_desc.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/boot/x86_desc.o ./kernel/boot/x86_desc.S
+build/./kernel/common/concurrency/concurrency.o: \
+ kernel/common/concurrency/concurrency.S
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/concurrency/concurrency.o ./kernel/common/concurrency/concurrency.S
+build/./kernel/memory/memory_asm.o: kernel/memory/memory_asm.S
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/memory/memory_asm.o ./kernel/memory/memory_asm.S
+build/./kernel/syscalls/interrupt_asm.o: kernel/syscalls/interrupt_asm.S \
+ kernel/boot/x86_desc.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/syscalls/interrupt_asm.o ./kernel/syscalls/interrupt_asm.S
+build/./kernel/common/concurrency/rwlock.o: \
+ kernel/common/concurrency/rwlock.c kernel/common/concurrency/rwlock.h \
+ kernel/common/types.h kernel/common/concurrency/spinlock.h \
+ kernel/common/lib.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/concurrency/rwlock.o ./kernel/common/concurrency/rwlock.c
+build/./kernel/common/concurrency/rwsem.o: \
+ kernel/common/concurrency/rwsem.c kernel/common/concurrency/rwsem.h \
+ kernel/common/types.h kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/concurrency/rwsem.o ./kernel/common/concurrency/rwsem.c
+build/./kernel/common/concurrency/semaphore.o: \
+ kernel/common/concurrency/semaphore.c \
+ kernel/common/concurrency/semaphore.h kernel/common/types.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/common/types.h kernel/program/task.h kernel/syscalls/descriptor.h \
+ kernel/common/time.h kernel/drivers/filesystem/filesystem.h \
+ kernel/memory/memory.h kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/concurrency/semaphore.o ./kernel/common/concurrency/semaphore.c
+build/./kernel/common/concurrency/spinlock.o: \
+ kernel/common/concurrency/spinlock.c \
+ kernel/common/concurrency/spinlock.h kernel/common/types.h \
+ kernel/common/lib.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/concurrency/spinlock.o ./kernel/common/concurrency/spinlock.c
+build/./kernel/common/lib.o: kernel/common/lib.c kernel/common/lib.h \
+ kernel/common/types.h kernel/memory/memory.h kernel/common/types.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/video/video.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/lib.o ./kernel/common/lib.c
+build/./kernel/common/time.o: kernel/common/time.c kernel/common/time.h \
+ kernel/common/types.h kernel/drivers/rtc/rtc.h kernel/common/types.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/lib.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/time.o ./kernel/common/time.c
+build/./kernel/common/types.o: kernel/common/types.c \
+ kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/common/types.o ./kernel/common/types.c
+build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
+ kernel/drivers/ATA/ata.h kernel/common/types.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/drivers/ATA/pio.h kernel/drivers/ATA/dma.h \
+ kernel/memory/allocation/heap.h kernel/drivers/filesystem/filesystem.h \
+ kernel/program/task.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/ATA/ata.o ./kernel/drivers/ATA/ata.c
+build/./kernel/drivers/ATA/dma.o: kernel/drivers/ATA/dma.c \
+ kernel/drivers/ATA/dma.h kernel/common/types.h kernel/drivers/ATA/ata.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/syscalls/interrupt.h kernel/drivers/i8259.h kernel/drivers/pci.h \
+ kernel/drivers/filesystem/filesystem.h kernel/drivers/ATA/pio.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/ATA/dma.o ./kernel/drivers/ATA/dma.c
+build/./kernel/drivers/ATA/pio.o: kernel/drivers/ATA/pio.c \
+ kernel/drivers/ATA/pio.h kernel/common/types.h kernel/drivers/ATA/ata.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/syscalls/interrupt.h kernel/drivers/i8259.h \
+ kernel/drivers/filesystem/filesystem.h kernel/drivers/pci.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/ATA/pio.o ./kernel/drivers/ATA/pio.c
+build/./kernel/drivers/filesystem/ext2/block.o: \
+ kernel/drivers/filesystem/ext2/block.c \
+ kernel/drivers/filesystem/ext2/block.h kernel/common/types.h \
+ kernel/drivers/filesystem/ext2/defs.h kernel/drivers/ATA/ata.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/memory/allocation/heap.h kernel/drivers/filesystem/ext2/ext2.h \
+ kernel/drivers/filesystem/ext2/inode.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/filesystem/ext2/block.o ./kernel/drivers/filesystem/ext2/block.c
+build/./kernel/drivers/filesystem/ext2/ext2.o: \
+ kernel/drivers/filesystem/ext2/ext2.c \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/common/types.h \
+ kernel/drivers/ATA/ata.h kernel/syscalls/descriptor.h \
+ kernel/common/time.h kernel/common/types.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/drivers/filesystem/path.h \
+ kernel/memory/allocation/heap.h kernel/program/task.h \
+ kernel/drivers/filesystem/filesystem.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/filesystem/ext2/ext2.o ./kernel/drivers/filesystem/ext2/ext2.c
+build/./kernel/drivers/filesystem/ext2/inode.o: \
+ kernel/drivers/filesystem/ext2/inode.c \
+ kernel/drivers/filesystem/ext2/inode.h kernel/common/types.h \
+ kernel/drivers/filesystem/ext2/defs.h kernel/drivers/ATA/ata.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/memory/allocation/heap.h kernel/drivers/filesystem/ext2/ext2.h \
+ kernel/drivers/filesystem/ext2/block.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/filesystem/ext2/inode.o ./kernel/drivers/filesystem/ext2/inode.c
+build/./kernel/drivers/filesystem/filesystem.o: \
+ kernel/drivers/filesystem/filesystem.c \
+ kernel/drivers/filesystem/filesystem.h kernel/common/types.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/lib.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/syscalls/syscall.h \
+ kernel/drivers/filesystem/filesystem.h kernel/program/task.h \
+ kernel/drivers/terminal/terminal.h kernel/drivers/filesystem/ext2/ext2.h \
+ kernel/drivers/ATA/ata.h kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/filesystem/path.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/filesystem/filesystem.o ./kernel/drivers/filesystem/filesystem.c
+build/./kernel/drivers/filesystem/path.o: \
+ kernel/drivers/filesystem/path.c kernel/drivers/filesystem/path.h \
+ kernel/common/types.h kernel/common/lib.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/filesystem/path.o ./kernel/drivers/filesystem/path.c
+build/./kernel/drivers/i8259.o: kernel/drivers/i8259.c \
+ kernel/drivers/i8259.h kernel/common/types.h kernel/common/lib.h \
+ kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/i8259.o ./kernel/drivers/i8259.c
+build/./kernel/drivers/keyboard/keyboard.o: \
+ kernel/drivers/keyboard/keyboard.c kernel/drivers/keyboard/keyboard.h \
+ kernel/common/types.h kernel/drivers/i8259.h kernel/syscalls/interrupt.h \
+ kernel/common/lib.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/keyboard/keyboard.o ./kernel/drivers/keyboard/keyboard.c
+build/./kernel/drivers/pci.o: kernel/drivers/pci.c kernel/drivers/pci.h \
+ kernel/common/types.h kernel/common/lib.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/pci.o ./kernel/drivers/pci.c
+build/./kernel/drivers/pit/pit.o: kernel/drivers/pit/pit.c \
+ kernel/drivers/pit/pit.h kernel/common/types.h kernel/drivers/i8259.h \
+ kernel/syscalls/interrupt.h kernel/common/lib.h kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/pit/pit.o ./kernel/drivers/pit/pit.c
+build/./kernel/drivers/rtc/rtc.o: kernel/drivers/rtc/rtc.c \
+ kernel/drivers/rtc/rtc.h kernel/common/types.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/common/lib.h kernel/syscalls/interrupt.h kernel/drivers/i8259.h \
+ kernel/drivers/filesystem/filesystem.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/program/task.h \
+ kernel/drivers/terminal/terminal.h kernel/drivers/filesystem/ext2/ext2.h \
+ kernel/drivers/ATA/ata.h kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/rtc/rtc.o ./kernel/drivers/rtc/rtc.c
+build/./kernel/drivers/terminal/terminal.o: \
+ kernel/drivers/terminal/terminal.c kernel/drivers/terminal/terminal.h \
+ kernel/common/types.h kernel/syscalls/descriptor.h kernel/common/time.h \
+ kernel/common/types.h kernel/drivers/keyboard/keyboard.h \
+ kernel/common/lib.h kernel/drivers/filesystem/filesystem.h \
+ kernel/program/task.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h \
+ kernel/syscalls/syscall.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/terminal/terminal.o ./kernel/drivers/terminal/terminal.c
+build/./kernel/drivers/video/video.o: kernel/drivers/video/video.c \
+ kernel/drivers/video/video.h kernel/common/types.h kernel/common/lib.h \
+ kernel/common/types.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/drivers/video/video.o ./kernel/drivers/video/video.c
+build/./kernel/kernel.o: kernel/kernel.c kernel/boot/multiboot.h \
+ kernel/common/types.h kernel/boot/x86_desc.h kernel/common/lib.h \
+ kernel/common/types.h kernel/drivers/i8259.h kernel/drivers/pci.h \
+ kernel/common/debug.h kernel/syscalls/interrupt.h \
+ kernel/drivers/keyboard/keyboard.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/rtc/rtc.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h \
+ kernel/drivers/ATA/ata.h kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h \
+ kernel/drivers/filesystem/filesystem.h \
+ kernel/drivers/terminal/terminal.h kernel/syscalls/syscall.h \
+ kernel/program/task.h kernel/drivers/filesystem/ext2/ext2.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h \
+ kernel/drivers/pit/pit.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/kernel.o ./kernel/kernel.c
+build/./kernel/memory/allocation/heap.o: kernel/memory/allocation/heap.c \
+ kernel/memory/allocation/heap.h kernel/common/types.h \
+ kernel/memory/allocation/buddy.h kernel/common/lib.h \
+ kernel/common/types.h kernel/memory/allocation/page_allocator.h \
+ kernel/memory/memory.h kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/memory/allocation/heap.o ./kernel/memory/allocation/heap.c
+build/./kernel/memory/allocation/page_allocator.o: \
+ kernel/memory/allocation/page_allocator.c \
+ kernel/memory/allocation/page_allocator.h kernel/common/types.h \
+ kernel/memory/allocation/buddy.h kernel/common/lib.h \
+ kernel/common/types.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/memory/allocation/page_allocator.o ./kernel/memory/allocation/page_allocator.c
+build/./kernel/memory/memory.o: kernel/memory/memory.c \
+ kernel/memory/memory.h kernel/common/types.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/boot/x86_desc.h \
+ kernel/common/lib.h kernel/common/types.h \
+ kernel/drivers/terminal/terminal.h kernel/syscalls/descriptor.h \
+ kernel/common/time.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/memory/memory.o ./kernel/memory/memory.c
+build/./kernel/program/loader/elf.o: kernel/program/loader/elf.c \
+ kernel/program/loader/elf.h kernel/common/types.h kernel/program/task.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/drivers/filesystem/filesystem.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/program/loader/elf.o ./kernel/program/loader/elf.c
+build/./kernel/program/signal.o: kernel/program/signal.c \
+ kernel/program/signal.h kernel/common/types.h kernel/program/task.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/common/types.h \
+ kernel/drivers/filesystem/filesystem.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/program/signal.o ./kernel/program/signal.c
+build/./kernel/program/task.o: kernel/program/task.c \
+ kernel/program/task.h kernel/common/types.h kernel/syscalls/descriptor.h \
+ kernel/common/time.h kernel/common/types.h \
+ kernel/drivers/filesystem/filesystem.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h \
+ kernel/boot/x86_desc.h kernel/syscalls/syscall.h kernel/program/task.h \
+ kernel/drivers/video/video.h kernel/drivers/i8259.h \
+ kernel/program/loader/elf.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/program/task.o ./kernel/program/task.c
+build/./kernel/syscalls/interrupt.o: kernel/syscalls/interrupt.c \
+ kernel/syscalls/interrupt.h kernel/boot/x86_desc.h kernel/common/types.h \
+ kernel/common/lib.h kernel/common/types.h kernel/drivers/i8259.h \
+ kernel/syscalls/syscall.h kernel/drivers/filesystem/filesystem.h \
+ kernel/syscalls/descriptor.h kernel/common/time.h kernel/program/task.h \
+ kernel/memory/memory.h kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/syscalls/interrupt.o ./kernel/syscalls/interrupt.c
+build/./kernel/syscalls/syscall.o: kernel/syscalls/syscall.c \
+ kernel/syscalls/syscall.h kernel/drivers/filesystem/filesystem.h \
+ kernel/common/types.h kernel/syscalls/descriptor.h kernel/common/time.h \
+ kernel/common/types.h kernel/program/task.h kernel/memory/memory.h \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/heap.h kernel/drivers/terminal/terminal.h \
+ kernel/drivers/filesystem/ext2/ext2.h kernel/drivers/ATA/ata.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h kernel/common/lib.h \
+ kernel/drivers/filesystem/ext2/defs.h \
+ kernel/drivers/filesystem/ext2/inode.h \
+ kernel/drivers/filesystem/ext2/block.h kernel/program/signal.h \
+ kernel/drivers/rtc/rtc.h
+	/Users/Neil/Downloads/ece391/cross/bin/i386-elf-gcc-7.1.0 -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -c -o build/./kernel/syscalls/syscall.o ./kernel/syscalls/syscall.c
