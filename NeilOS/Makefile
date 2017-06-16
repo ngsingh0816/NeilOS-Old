@@ -11,7 +11,7 @@ CC=gcc
 OBJDIR=build
 
 #If you have any .h files in another directory, add -I<dir> to this line
-CFLAGS+=-nostdinc -g -Ikernel
+CFLAGS+=-nostdinc -g -Ikernel -isystem kernel
 
 # This generates the list of source files
 SRC=$(shell find . -name *.S) $(shell find . -name *.c)
