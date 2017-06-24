@@ -4,8 +4,8 @@
 #include <common/types.h>
 #include <syscalls/descriptor.h>
 
-// Each block is 4096
-#define BLOCK_SIZE			4096
+// Each block is 1024
+#define BLOCK_SIZE			1024
 
 // Initialize the filesystem.
 bool filesystem_init(char* filesystem);
