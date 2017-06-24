@@ -173,12 +173,13 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 		memset(d, 0, sizeof(file_descriptor_t));
 		// Mark in use
 		d->type = STANDARD_INOUT_TYPE;
-		d->mode = mode;
+		d->mode = FILE_MODE_READ | FILE_TYPE_CHARACTER;
 		d->filename = "stdin";
 		
 		// Assign the functions
 		d->read = terminal_read;
 		d->write = terminal_write;
+		d->stat = terminal_stat;
 		d->duplicate = terminal_duplicate;
 		d->close = terminal_close;
 		
@@ -200,12 +201,13 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 		memset(d, 0, sizeof(file_descriptor_t));
 		// Mark in use
 		d->type = STANDARD_INOUT_TYPE;
-		d->mode = mode;
+		d->mode = FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
 		d->filename = "stdout";
 		
 		// Assign the functions
 		d->read = terminal_read;
 		d->write = terminal_write;
+		d->stat = terminal_stat;
 		d->duplicate = terminal_duplicate;
 		d->close = terminal_close;
 		
@@ -265,6 +267,14 @@ uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes) {
 	
 	// Return the number of bytes written
 	return nbytes;
+}
+
+// Get info
+uint32_t terminal_stat(int32_t fd, sys_stat_type* data) {
+	data->dev_id = 1;
+	data->size = 0;
+	data->mode = descriptors[fd]->mode;
+	return 0;
 }
 
 // Duplicate the file handle

@@ -34,6 +34,25 @@
 #define ELF_FLAGS_WRITABLE			2
 #define ELF_FLAGS_READABLE			4
 
+#define ELF_SECTION_NULL			0
+#define ELF_SECTION_PROGRAM			1		// text
+#define ELF_SECTION_SYMBOL_TABLE	2
+#define ELF_SECTION_STRING_TABLE	3
+#define ELF_SECTION_RELOCATIONA		4		// relocation with addens
+#define ELF_SECTION_HASH			5		// symbol hash map
+#define ELF_SECTION_DYNAMIC			6
+#define ELF_SECTION_NOTE			7
+#define ELF_SECTION_NOBITS			8		// bss
+#define ELF_SECTION_RELOCATION		9		// relocation no addens
+#define ELF_SECTION_SHLIB			10
+#define ELF_SECTION_DYNSYM			11		// dynamic symbol linker table
+#define ELF_SECTION_INIT_ARRAY		14		// constructor table
+#define ELF_SECTION_FINI_ARRAY		15		// destructor table
+#define ELF_SECTION_PREINIT_ARRAY	16		// pre constructor table
+#define ELF_SECTION_GROUP			17
+#define ELF_SECTION_SYMTAB			18		// extended section indices
+#define ELF_SECTION_NUM				19		// number of defined types
+
 typedef struct {
 	uint32_t magic_number;		// 0x464c457f
 	uint8_t bit;				// 1 = 32bit, 2 = 64bit
@@ -66,6 +85,19 @@ typedef struct {
 	uint32_t flags;				// executable, writable, readable
 	uint32_t _unused2;
 } elf_program_header_t;
+
+typedef struct {
+	uint32_t name;				// offset in shstrtab section that defines name
+	uint32_t type;				// type of section
+	uint32_t flags;
+	uint32_t addr;				// virtual address
+	uint32_t offset;			// offset in image
+	uint32_t size;
+	uint32_t link;				// link to another section
+	uint32_t info;				// extra info
+	uint32_t addralign;			// alignment
+	uint32_t entry_size;
+} elf_section_header_t;
 
 // Load an elf into memory
 bool elf_load_into_memory(char* filename, pcb_t* pcb) {
@@ -136,7 +168,10 @@ bool elf_load_into_memory(char* filename, pcb_t* pcb) {
 			vm_unmap_page((uint32_t)page);
 			
 			map->prev = last;
-			last->next = map;
+			if (last)
+				last->next = map;
+			else
+				pcb->memory_map = map;
 		}
 		
 		// Load the program segment into memory

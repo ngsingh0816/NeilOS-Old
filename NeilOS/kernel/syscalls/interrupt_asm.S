@@ -3,9 +3,7 @@
 
 #define ASM     1
 
-#define USER_STACK_POINTER		0x8080000
-
-#define NUM_SYSCALLS			24
+#define NUM_SYSCALLS			27
 
 #include <boot/x86_desc.h>
 
@@ -156,7 +154,10 @@ return_to_user:
 
 	pushl %ecx
 	// - 8 because the argv and argc have been pushed to the stack
-	pushl $(USER_STACK_POINTER-8)
+	// set ecx = pcb->stack_address
+	movl 8(%eax), %ecx
+	addl $-8, %ecx
+	pushl %ecx
 
 	// Enable interrupts upon returning
 	pushfl
@@ -262,7 +263,7 @@ interrupt:
 		// Say that the current task is in a syscall
 		pushl %eax
 		call get_current_pcb
-		movb $1, 8(%eax)
+		movb $1, 9(%eax)
 		popl %eax
 
 		// Push the arguments
@@ -283,10 +284,10 @@ interrupt:
 
 		// Say that the current task is out of the syscall
 		call get_current_pcb
-		movb $0, 8(%eax)
+		movb $0, 9(%eax)
 
 		// If we are supposed to terminate the task, do it
-		cmpb $1, 9(%eax)
+		cmpb $1, 10(%eax)
 		je terminate_syscall_task
 
 		// Segment registers
@@ -399,6 +400,9 @@ int12:
 	movl $12, %eax
 	jmp interrupt
 int13:
+	// Get eip
+	movl 4(%esp), %edx
+
 	// GPF
 	popl %ebx
 

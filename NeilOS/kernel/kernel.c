@@ -28,6 +28,8 @@
  * Virtual Memory Manager (bitmap for 4mb pages)
  * Redo syscalls to be more linux / Create own (basic) programs
  * Elf file format
+ * Newlib (static)
+ * C++ User support
  */
 
 /* Done (but could be improved):
@@ -46,14 +48,22 @@
 /* TODO (bugs)
  */
 
+/* Things to test
+ * Execve
+	* Memory maps, file descriptors
+ */
+
 /* TODO:
- * Newlib (static) / Redo and create more programs
+ * Make stderr as file descriptor 2
+ * Put correct environ in newlib
+ * Add nonblocking mode to files
  * (Named) Pipes
+ * Message Queues
  * Sockets?
  * (Kernal?) Threads (pthread?)
- * Shared User Libraries (dynamic newlib)
+	* Potential multitasking issues: file locks
+ * Shared User Libraries (dynamic newlib, stdc++)
  * Page files on disk?
- * C++ User support
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
@@ -61,6 +71,7 @@
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
  * Grahpics (QEMU VBE) Driver?
  * GUI (Compositing Window Manager)
+	* Interacts through message queues
  * Improved Scheduler
  * SMP?
  * OpenGL (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?

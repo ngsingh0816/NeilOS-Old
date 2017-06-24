@@ -9,9 +9,8 @@
 #include <drivers/filesystem/ext2/ext2.h>
 #include <program/signal.h>
 
-#define USER_EXECUTABLE_ADDRESS		0x8048000
 #define USER_KERNEL_STACK_SIZE		(1024 * 8)			// 8 KB
-#define USER_STACK_POINTER			0x8080000
+#define USER_STACK_SIZE				(1024 * 16)			// 16 KB
 #define USER_ARGV_LOC				0x8000000
 #define USER_ADDRESS				0x8000000
 
@@ -52,13 +51,15 @@ typedef struct memory_list {
 // Structure to hold information per process
 // This contains all the info that a task needs to operated correctly.
 typedef struct pcb {
-	// The esp to return to when resume a task (must be first parameter)
+	// The esp to return to when resume a task (must be first parameter, 0)
 	uint32_t saved_esp;
-	// Where to start execution from (must be second)
+	// Where to start execution from (must be second, 4)
 	uint32_t entry;
-	// Currently in a syscall (third)
+	// Stack address (third, 8)
+	uint32_t stack_address;
+	// Currently in a syscall (fourth, 9)
 	bool in_syscall;
-	// If this is set, the task will terminate next time it is loaded (fourth)
+	// If this is set, the task will terminate next time it is loaded (fifth, 10)
 	bool should_terminate;
 	
 	// Each entry in the list holds the physical address of the
@@ -72,7 +73,7 @@ typedef struct pcb {
 	// Parent and child process
 	struct pcb* parent;
 	// Note: an entry with pcb == NULL means the child has finished
-	// but the result has not been waited for by wapid (i.e. in
+	// but the result has not been waited for by waitpid (i.e. in
 	// zombie state).
 	task_list_t* children;
 	
@@ -104,6 +105,9 @@ pcb_t* pcb_from_pid(uint32_t pid);
 // Sets the kernel stack in the TSS
 void set_kernel_stack(uint32_t address);
 
+// Add a memory block to a memory list
+bool add_memory_block(memory_list_t* list, memory_list_t* prev, uint32_t vaddr);
+
 // Duplicate current task (fork)
 pcb_t* duplicate_current_task();
 
@@ -118,6 +122,9 @@ pcb_t* unload_current_task();
 
 // Terminate the task and free its memory
 void terminate_task(uint32_t ret);
+
+// Maps a task's page directory into memory
+void map_task_into_memory(pcb_t* pcb);
 
 // Maps memory so that this task is loaded
 void set_current_task(pcb_t* pcb);

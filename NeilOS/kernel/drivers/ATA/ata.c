@@ -175,12 +175,13 @@ file_descriptor_t* ata_open(const char* filename, uint32_t mode) {
 		return NULL;
 	}
 	d->type = DISK_FILE_TYPE;
-	d->mode = mode;
+	d->mode = mode | FILE_TYPE_BLOCK;
 	
 	// Set the function calls
 	d->read = ata_read;
 	d->write = ata_write;
 	d->llseek = ata_llseek;
+	d->stat = ata_stat;
 	d->duplicate = ata_duplicate;
 	d->close = ata_close;
 	
@@ -208,6 +209,12 @@ uint32_t ata_write(int32_t fd, const void* buf, uint32_t nbytes) {
 // Seek to a disk's position
 uint64_t ata_llseek(int32_t fd, uint64_t offset, int whence) {
 	return ata_partition_llseek(descriptors[fd]->info, offset, whence);
+}
+
+// Get info
+uint32_t ata_stat(int32_t fd, sys_stat_type* data) {
+	// TODO: fill this in maybe
+	return 0;
 }
 
 // Duplicate the file handle

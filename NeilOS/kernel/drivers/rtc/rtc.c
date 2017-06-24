@@ -134,11 +134,12 @@ file_descriptor_t* rtc_open(const char* filename, uint32_t mode) {
 	*(rtc_info_t*)d->info =
 		(rtc_info_t){ .waiting = false, .target_freq = MIN_FREQUENCY, .counter = 0 };
 	d->type = RTC_FILE_TYPE;
-	d->mode = mode;
+	d->mode = mode | FILE_TYPE_CHARACTER;
 	
 	// Set the function calls
 	d->read = rtc_read;
 	d->write = rtc_write;
+	d->stat = rtc_stat;
 	d->duplicate = rtc_duplicate;
 	d->close = rtc_close;
 	
@@ -237,6 +238,12 @@ uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
 	}
 	info->waiting = false;
 	
+	return 0;
+}
+
+// Get info
+uint32_t rtc_stat(int32_t fd, sys_stat_type* data) {
+	// TODO: fill this out
 	return 0;
 }
 

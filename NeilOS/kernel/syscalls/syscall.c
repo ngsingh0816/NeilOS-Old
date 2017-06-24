@@ -24,12 +24,12 @@ syscall_device_t syscall_devices[] = {
 
 extern void return_to_user(pcb_t* pcb, pcb_t* parent);
 
-void* syscalls[] = { fork, execve, getpid, waitpid, exit,
-					open, read, write, llseek, truncate, stat, close,
+void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
+					open, read, write, llseek, truncate, stat, close, isatty,
 					mkdir, link, unlink,
 					brk, sbrk,
 					dup, dup2,
-					times,
+					times, gettimeofday,
 					kill, signal, sigsetmask, siggetmask,
 };
 
@@ -92,6 +92,7 @@ uint32_t waitpid(uint32_t pid) {
 				if (!child->pcb)
 					return child->return_value;
 			}
+			child = child->next;
 		}
 		// If the pid does not exist, return error
 		if (!found)
@@ -104,9 +105,33 @@ uint32_t waitpid(uint32_t pid) {
 	return -1;
 }
 
+// Wait for any child to finish
+uint32_t wait(uint32_t pid) {
+	pcb_t* pcb = get_current_pcb();
+	if (!pcb->children)
+		return -1;
+	
+	// Wait until the child has finished
+	while (!signal_pending(pcb)) {
+		task_list_t* child = pcb->children;
+		while (child) {
+			// Child is a zombie if child->pcb == NULL
+			if (!child->pcb)
+				return child->return_value;
+			child = child->next;
+		}
+		
+		schedule();
+	}
+	
+	// Signal was caught
+	return -1;
+}
+
 // Exit a program with a specific status
 uint32_t exit(int status) {
 	pcb_t* pcb = get_current_pcb();
+	
 	// Close all open file handles
 	int z;
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
@@ -245,12 +270,10 @@ uint32_t stat(int32_t fd, sys_stat_type* data) {
 		return -1;
 	
 	// If we are trying to use an invalid descriptor, return failure
-	if (!descriptors[fd] || !(descriptors[fd]->type == FILE_FILE_TYPE ||
-							  descriptors[fd]->type == DIRECTORY_FILE_TYPE))
+	if (!descriptors[fd] || !descriptors[fd]->stat)
 		return -1;
 	
-	*data = fstat(descriptors[fd]);
-	return 0;
+	return descriptors[fd]->stat(fd, data);
 }
 
 // Close a file descriptor
@@ -274,6 +297,19 @@ uint32_t close(int32_t fd) {
 	descriptors = pcb->descriptors;
 	
 	return ret;
+}
+
+// Is the file descriptor a terminal?
+uint32_t isatty(int32_t fd) {
+	// Check if this descriptor is within the bounds
+	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0)
+		return 0;
+	
+	// If we are trying to close an invalid descriptor, return failure
+	if (!descriptors[fd])
+		return 0;
+	
+	return (descriptors[fd]->type == STANDARD_INOUT_TYPE);
 }
 
 // Filesystem syscalls
@@ -311,9 +347,9 @@ uint32_t unlink(const char* filename) {
 // Memory operations
 
 // Set the program break to a specific address
-uint32_t brk(uint32_t addr) {
+void* brk(uint32_t addr) {
 	if (addr < USER_ADDRESS + FOUR_MB_SIZE)
-		return -1;
+		return NULL;
 	
 	addr -= USER_ADDRESS;
 	pcb_t* pcb = get_current_pcb();
@@ -337,21 +373,18 @@ uint32_t brk(uint32_t addr) {
 			t->next = kmalloc(sizeof(memory_list_t));
 			if (!t->next) {
 				brk(pcb->brk);
-				return -1;
+				return NULL;
 			}
-			memset(t->next, 0, sizeof(memory_list_t));
-			t->next->prev = t;
 			
-			void* page = page_get_four_mb(1, VIRTUAL_MEMORY_USER);
-			if (!page) {
+			if (!add_memory_block(t->next, t, t->vaddr + FOUR_MB_SIZE)) {
 				kfree(t->next);
 				t->next = NULL;
 				brk(pcb->brk);
-				return -1;
+				return NULL;
 			}
 			
-			t->paddr = (uint32_t)vm_virtual_to_physical((uint32_t)page);
-			vm_unmap_page((uint32_t)page);
+			// Map this new page into memory
+			vm_map_page(t->next->vaddr, t->next->paddr, USER_PAGE_DIRECTORY_ENTRY);
 			
 			t = t->next;
 			num_pages++;
@@ -376,11 +409,11 @@ uint32_t brk(uint32_t addr) {
 	
 	// Return the new break
 	pcb->brk = addr + USER_ADDRESS;
-	return pcb->brk;
+	return (void*)pcb->brk;
 }
 
 // Offset the current program break by a specific ammount
-uint32_t sbrk(int32_t offset) {
+void* sbrk(int32_t offset) {
 	return brk(get_current_pcb()->brk + offset);
 }
 
@@ -449,6 +482,12 @@ uint32_t times(sys_time_type* data) {
 	return 0;
 }
 
+// Returns the time of day in seconds
+uint32_t gettimeofday() {
+	date_t date = get_current_date();
+	return date.second + date.minute * 60 + date.hour * 60 * 60;
+}
+
 // Signals
 
 // Send a signal to a process
@@ -509,9 +548,7 @@ int32_t queue_task(const char* cmd, const char** argv, const char** envp, pcb_t*
 	// If we couldn't load the task, let the caller know
 	if (!pcb)
 		return -1;
-	
-	init_descriptors(pcb);
-	
+		
 	// Pass along this value
 	if (ret)
 		*ret = pcb;

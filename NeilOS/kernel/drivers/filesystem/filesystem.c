@@ -159,45 +159,12 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->truncate = filesystem_truncate;
 		desc->type = FILE_FILE_TYPE;
 	}
-	desc->mode = mode;
+	desc->mode = mode | FILE_TYPE_REGULAR;
+	desc->stat = filesystem_stat;
 	desc->duplicate = filesystem_duplicate;
 	desc->close = filesystem_close;
 	
 	return true;
-}
-
-// Get file info
-sys_stat_type fstat(file_descriptor_t* desc) {
-	sys_stat_type ret;
-	memset(&ret, 0, sizeof(ret));
-	
-	ext_inode_info_t* info = NULL;
-	if (desc->type == FILE_FILE_TYPE) {
-		info = &(((file_info_t*)desc->info)->inode.info);
-		ret.inode = ((file_info_t*)desc->info)->inode.inode;
-	}
-	else if (desc->type == DIRECTORY_FILE_TYPE ){
-		info = &(((directory_info_t*)desc->info)->inode.info);
-		ret.inode = ((directory_info_t*)desc->info)->inode.inode;
-	}
-	if (!info)
-		return ret;
-	
-	ret.dev_id = 0;
-	ret.mode = desc->mode | (desc->type << 16);
-	ret.num_links = info->link_count;
-	ret.size = uint64_make(info->size_high, info->size);
-	ret.block_size = ext2_get_block_size();
-	if (uint64_equal(ret.size, uint64_make(0, 0)))
-		ret.num_512_blocks = 0;
-	else
-		ret.num_512_blocks = uint64_shr(uint64_sub(ret.size, uint64_make(0, 1)), 9).low + 1;
-	
-	ret.atime.val = info->atime;
-	ret.ctime.val = info->ctime;
-	ret.mtime.val = info->mtime;
-	
-	return ret;
 }
 
 // Read a file
@@ -547,6 +514,40 @@ uint32_t filesystem_write_directory(int32_t fd, const void* buf, uint32_t length
 // Seek to an offset in the directory (the index of the directory entry)
 uint64_t filesystem_llseek_directory(int32_t fd, uint64_t offset, int whence) {
 	return fseek_directory(descriptors[fd], offset, whence);
+}
+
+// Get file info
+uint32_t filesystem_stat(int32_t fd, sys_stat_type* ret) {
+	file_descriptor_t* desc = descriptors[fd];
+	memset(ret, 0, sizeof(sys_stat_type));
+	
+	ext_inode_info_t* info = NULL;
+	if (desc->type == FILE_FILE_TYPE) {
+		info = &(((file_info_t*)desc->info)->inode.info);
+		ret->inode = ((file_info_t*)desc->info)->inode.inode;
+	}
+	else if (desc->type == DIRECTORY_FILE_TYPE ){
+		info = &(((directory_info_t*)desc->info)->inode.info);
+		ret->inode = ((directory_info_t*)desc->info)->inode.inode;
+	}
+	if (!info)
+		return -1;
+	
+	ret->dev_id = 0;
+	ret->mode = desc->mode | (desc->type << 16);
+	ret->num_links = info->link_count;
+	ret->size = info->size;
+	ret->block_size = ext2_get_block_size();
+	if (ret->size == 0)
+		ret->num_512_blocks = 0;
+	else
+		ret->num_512_blocks = (ret->size >> 9) + 1;
+	
+	ret->atime.val = info->atime;
+	ret->ctime.val = info->ctime;
+	ret->mtime.val = info->mtime;
+	
+	return 0;
 }
 
 // Duplicate the file handle

@@ -24,10 +24,12 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 // Interrupt 0
 void divide_error(uint32_t code, uint32_t eip) {
 	signal_send(get_current_pcb(), SIGFPE);
-	schedule();
 	
 #if DEBUG
 	blue_screen("Divide by 0 error");
+#else
+	printf("Divide by 0.\n");
+	schedule();
 #endif
 }
 
@@ -58,10 +60,12 @@ void bound_range_exception(uint32_t code, uint32_t eip) {
 // Interrupt 6
 void invalid_opcode(uint32_t code, uint32_t eip) {
 	signal_send(get_current_pcb(), SIGILL);
-	schedule();
 	
 #if DEBUG
 	blue_screen("Invalid opcode");
+#else
+	printf("Invalid opcode error.\n");
+	schedule();
 #endif
 }
 
@@ -118,10 +122,12 @@ void segment_not_present(uint32_t code, uint32_t eip) {
 // Interrupt 12
 void stack_segment_fault(uint32_t code, uint32_t eip) {
 	signal_send(get_current_pcb(), SIGSTKFLT);
-	schedule();
 	
 #if DEBUG
 	blue_screen("Stack segment fault");
+#else
+	printf("Stack segfault.\n");
+	schedule();
 #endif
 }
 
@@ -132,29 +138,33 @@ void general_protection(uint32_t code, uint32_t eip) {
 	terminate_task(256);
 #endif
 	
-	blue_screen("General protection fault - 0x%x", code);
+	blue_screen("General protection fault - 0x%x (eip: 0x%x)", code, eip);
 }
 
 // Interrupt 14
 void page_fault(uint32_t code, uint32_t eip) {
 	signal_send(get_current_pcb(), SIGSEGV);
-	schedule();
 	
 #if DEBUG
 	uint32_t address = 0;
 	asm volatile ("movl %%cr2, %0"
 				  : "=a"(address));
 	blue_screen("Page fault - 0x%x at address 0x%x (eip: 0x%x)", code, address, eip);
+#else
+	printf("Segfault.\n");
+	schedule();
 #endif
 }
 
 // Interrupt 16
 void floating_point_error(uint32_t code, uint32_t eip) {
 	signal_send(get_current_pcb(), SIGFPE);
-	schedule();
 	
 #if DEBUG
 	blue_screen("Floating point error");
+#else
+	printf("Floating point error.\n");
+	schedule();
 #endif
 }
 
@@ -181,10 +191,12 @@ void machine_check(uint32_t code, uint32_t eip) {
 // Interrupt 19
 void smid_floating_point_exception(uint32_t code, uint32_t eip) {
 	signal_send(get_current_pcb(), SIGFPE);
-	schedule();
 	
 #if DEBUG
 	blue_screen("SMID floating point exception");
+#else
+	printf("Floating point error.\n");
+	schedule();
 #endif
 }
 

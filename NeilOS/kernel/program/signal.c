@@ -72,7 +72,7 @@ bool signal_is_pending(pcb_t* pcb, uint32_t signum) {
 
 bool signal_pending(pcb_t* pcb) {
 	// Check if there are any unblocked signals
-	return !(pcb->signal_pending == 0 || pcb->signal_pending == pcb->signal_mask);
+	return pcb->signal_pending != 0 && pcb->signal_pending != pcb->signal_mask;
 }
 
 // Signal handlers

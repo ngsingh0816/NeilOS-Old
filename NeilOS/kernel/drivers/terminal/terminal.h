@@ -26,6 +26,9 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes);
 // Writes a string to the terminal
 uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes);
 
+// Get info
+uint32_t terminal_stat(int32_t fd, sys_stat_type* data);
+
 // Duplicate the file handle
 file_descriptor_t* terminal_duplicate(file_descriptor_t* f);
 

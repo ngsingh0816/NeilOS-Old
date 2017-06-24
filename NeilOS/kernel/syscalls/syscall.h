@@ -28,6 +28,9 @@ uint32_t getpid();
 // Wait for a child to change state (returns the status that the child returned with)
 uint32_t waitpid(uint32_t pid);
 
+// Wait for any child to finish
+uint32_t wait(uint32_t pid);
+
 // Exit a program with a specific status
 uint32_t exit(int status);
 
@@ -56,6 +59,9 @@ uint32_t stat(int32_t fd, sys_stat_type* data);
 // Close a file descriptor
 uint32_t close(int32_t fd);
 
+// Is the file descriptor a terminal?
+uint32_t isatty(int32_t fd);
+
 // Filesystem syscalls
 
 // Make a directory
@@ -70,10 +76,10 @@ uint32_t unlink(const char* filename);
 // Memory operations
 
 // Set the program break to a specific address
-uint32_t brk(uint32_t addr);
+void* brk(uint32_t addr);
 
 // Offset the current program break by a specific ammount
-uint32_t sbrk(int32_t offset);
+void* sbrk(int32_t offset);
 
 // File descriptors
 
@@ -86,6 +92,9 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd);
 // Time
 // Get the timing information for a process
 uint32_t times(sys_time_type* data);
+
+// Returns the time of day in seconds
+uint32_t gettimeofday();
 
 // Signals
 

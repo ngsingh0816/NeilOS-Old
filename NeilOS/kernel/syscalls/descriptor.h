@@ -22,38 +22,23 @@
 #define FILE_MODE_READ				0x001
 #define FILE_MODE_WRITE				0x002
 #define FILE_MODE_READ_WRITE		(FILE_MODE_READ | FILE_MODE_WRITE)
-#define FILE_MODE_APPEND			0x004
-#define FILE_MODE_CREATE			0x008
-#define FILE_MODE_DELETE_ON_CLOSE	0x010
+#define FILE_MODE_APPEND			0x008
+#define FILE_MODE_CREATE			0x200
+#define FILE_MODE_DELETE_ON_CLOSE	0x100
+
+// Types of device (goes in mode)
+#define		FILE_TYPE_DIRECTORY		0040000
+#define		FILE_TYPE_CHARACTER		0020000
+#define		FILE_TYPE_BLOCK			0060000
+#define		FILE_TYPE_REGULAR		0100000
+#define		FILE_TYPE_SYMBOLIC		0120000
+#define		FILE_TYPE_SOCKET		0140000
+#define		FILE_TYPE_PIPE			0010000
 
 // For llseek
 #define SEEK_SET		0
 #define SEEK_CUR		1
 #define SEEK_END		2
-
-// File descriptor
-typedef struct file_descriptor {
-	char* filename;
-	int32_t type;				// TODO: get rid of this
-	uint32_t mode;				// Access modes
-	uint8_t ref_count;			// Number of references to this descriptor
-	
-	// File dependent data
-	void* info;
-	
-	// Pointers for the syscalls
-	uint32_t (*read)(int32_t fd, void* buf, uint32_t nbytes);
-	uint32_t (*write)(int32_t fd, const void* buf, uint32_t nbytes);
-	uint64_t (*llseek)(int32_t fd, uint64_t offset, int whence);
-	uint64_t (*truncate)(int32_t fd, uint64_t nsize);
-	struct file_descriptor* (*duplicate)(struct file_descriptor* f);
-	uint32_t (*close)(struct file_descriptor* f);	// Open allocates a file descriptor, but the syscall close frees it
-} file_descriptor_t;
-
-// Avaiable descriptors
-#define NUMBER_OF_DESCRIPTORS	64
-// Current task's descriptors
-extern file_descriptor_t** descriptors;
 
 typedef struct {
 	// From pusha
@@ -70,9 +55,9 @@ typedef struct {
 typedef struct {
 	uint32_t dev_id;
 	uint32_t inode;
-	uint16_t mode;
+	uint32_t mode;
 	uint16_t num_links;
-	uint64_t size;
+	uint32_t size;
 	uint32_t block_size;
 	uint32_t num_512_blocks;
 	
@@ -87,5 +72,30 @@ typedef struct {
 	time_t child_user_time;
 	time_t child_process_time;
 } sys_time_type;
+
+// File descriptor
+typedef struct file_descriptor {
+	char* filename;
+	int32_t type;				// TODO: get rid of this
+	uint32_t mode;				// Access modes
+	uint8_t ref_count;			// Number of references to this descriptor
+	
+	// File dependent data
+	void* info;
+	
+	// Pointers for the syscalls
+	uint32_t (*read)(int32_t fd, void* buf, uint32_t nbytes);
+	uint32_t (*write)(int32_t fd, const void* buf, uint32_t nbytes);
+	uint64_t (*llseek)(int32_t fd, uint64_t offset, int whence);
+	uint64_t (*truncate)(int32_t fd, uint64_t nsize);
+	uint32_t (*stat)(int32_t fd, sys_stat_type* data);
+	struct file_descriptor* (*duplicate)(struct file_descriptor* f);
+	uint32_t (*close)(struct file_descriptor* f);	// Open allocates a file descriptor, but the syscall close frees it
+} file_descriptor_t;
+
+// Avaiable descriptors
+#define NUMBER_OF_DESCRIPTORS	64
+// Current task's descriptors
+extern file_descriptor_t** descriptors;
 
 #endif

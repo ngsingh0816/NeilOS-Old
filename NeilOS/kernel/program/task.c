@@ -248,7 +248,7 @@ bool add_child_task(pcb_t* parent, uint32_t pid, pcb_t* pcb) {
 }
 
 // Copy a task into memory
-bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename, uint32_t argc) {
+bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename) {
 	bool flags = set_multitasking_enabled(false);
 	map_task_into_memory(pcb);
 	
@@ -258,11 +258,6 @@ bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename, uint32_t a
 			map_task_into_memory(parent);
 		return false;
 	}
-	
-	// Copy over the argv and argc
-	uint32_t* esp = (uint32_t*)(USER_STACK_POINTER - 8);
-	esp[1] = (uint32_t)pcb->argv;
-	esp[0] = argc;
 	
 	if (parent)
 		map_task_into_memory(parent);
@@ -348,10 +343,12 @@ pcb_t* duplicate_current_task() {
 			pcb_error(pcb, task);
 			return NULL;
 		}
+		
 		memset(*t, 0, sizeof(memory_list_t));
 		
 		void* page = page_get_four_mb(1, VIRTUAL_MEMORY_USER);
 		if (!page) {
+			kfree(*t);
 			set_multitasking_enabled(flags);
 			pcb_error(pcb, task);
 			return NULL;
@@ -370,6 +367,61 @@ pcb_t* duplicate_current_task() {
 	set_multitasking_enabled(flags);
 	
 	return pcb;
+}
+
+bool add_memory_block(memory_list_t* list, memory_list_t* prev, uint32_t vaddr) {
+	list->next = NULL;
+	list->vaddr = (uint32_t)page_get_four_mb(1, VIRTUAL_MEMORY_USER);
+	if (!list->vaddr)
+		return false;
+	
+	list->paddr = (uint32_t)vm_virtual_to_physical(list->vaddr);
+	vm_unmap_page(list->vaddr);
+	list->vaddr = vaddr;
+	list->prev = prev;
+	if (prev)
+		prev->next = list;
+	
+	return true;
+}
+
+bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
+	// Find the last memory mapped region and set the stack to that
+	memory_list_t* t = pcb->memory_map;
+	memory_list_t* prev = NULL;
+	while (t) {
+		if (t->vaddr > pcb->stack_address)
+			pcb->stack_address = t->vaddr;
+		prev = t;
+		t = t->next;
+	}
+	// Map another block in for the stack
+	memory_list_t* stack_block = (memory_list_t*)kmalloc(sizeof(memory_list_t));
+	if (!stack_block) {
+		kfree(stack_block);
+		return false;
+	}
+	pcb->stack_address += FOUR_MB_SIZE;
+	bool flags = set_multitasking_enabled(false);
+	if (!add_memory_block(stack_block, prev, pcb->stack_address)) {
+		set_multitasking_enabled(flags);
+		return false;
+	}
+	set_multitasking_enabled(flags);
+	
+	vm_map_page(stack_block->vaddr, stack_block->paddr, USER_PAGE_DIRECTORY_ENTRY);
+	
+	// The stack grows downward
+	pcb->stack_address += USER_STACK_SIZE;
+	// The heap grows upwards
+	pcb->brk = pcb->stack_address;
+	
+	// Copy over the argv and argc
+	uint32_t* esp = (uint32_t*)(pcb->stack_address - sizeof(uint32_t) * 2);
+	esp[1] = (uint32_t)pcb->argv;
+	esp[0] = argc;
+	
+	return true;
 }
 
 // Load a task into memory and initialize its pcb
@@ -400,11 +452,11 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		set_multitasking_enabled(flags);
 		return NULL;
 	}
-	memset(pcb->memory_map, 0, sizeof(memory_list_t));
-	void* page = page_get_four_mb(1, VIRTUAL_MEMORY_USER);
-	pcb->memory_map->paddr = (uint32_t)vm_virtual_to_physical((uint32_t)page);
-	pcb->memory_map->vaddr = USER_ADDRESS;
-	vm_unmap_page((uint32_t)page);
+	if (!add_memory_block(pcb->memory_map, NULL, USER_ADDRESS)) {
+		pcb_error(pcb, task);
+		set_multitasking_enabled(flags);
+		return NULL;
+	}
 	set_multitasking_enabled(flags);
 	
 	uint32_t argc = 0;
@@ -413,19 +465,15 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		return NULL;
 	}
 	
-	if (!load_task_into_memory(pcb, parent, filename, argc)) {
+	if (!load_task_into_memory(pcb, parent, filename)) {
 		pcb_error(pcb, task);
 		return NULL;
 	}
 	
-	// Find the last memory mapped region and set the program break to the end of that
-	memory_list_t* t = pcb->memory_map;
-	while (t) {
-		if (t->vaddr > pcb->brk)
-			pcb->brk = t->vaddr;
-		t = t->next;
+	if (!setup_stack_and_heap(pcb, argc)) {
+		pcb_error(pcb, task);
+		return NULL;
 	}
-	pcb->brk += FOUR_MB_SIZE;
 	
 	// Allow it to be used
 	task->pcb = pcb;
@@ -441,25 +489,15 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	
 	pcb->state = UNLOADED;
 	
-	// Close all file descriptors
-	pcb_free_descriptors(pcb);
-	
 	uint32_t argc = 0;
 	if (!load_argv_and_envp(pcb, argv, envp, &argc))
 		return NULL;
 	
-	if (!load_task_into_memory(pcb, pcb->parent, filename, argc))
+	if (!load_task_into_memory(pcb, pcb->parent, filename))
 		return NULL;
 	
-	// Find the last memory mapped region and set the program break to the end of that
-	memory_list_t* t = pcb->memory_map;
-	pcb->brk = 0;
-	while (t) {
-		if (t->vaddr > pcb->brk)
-			pcb->brk = t->vaddr;
-		t = t->next;
-	}
-	pcb->brk += FOUR_MB_SIZE;
+	if (!setup_stack_and_heap(pcb, argc))
+		return NULL;
 	
 	// Relink
 	pcb->task->pcb = pcb;

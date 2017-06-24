@@ -7,4 +7,4 @@
 #  Copyright © 2017 Neil Singh. All rights reserved.
 
 cd NeilOS
-make CC=/Users/Neil/Documents/Projects/NeilOS/cross/bin/i386-elf-gcc-7.1.0
+make CC=/Users/Neil/Documents/Projects/NeilOS/cross/bin/i386-neilos-gcc

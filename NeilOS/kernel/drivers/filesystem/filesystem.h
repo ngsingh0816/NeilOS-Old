@@ -13,9 +13,6 @@ bool filesystem_init(char* filesystem);
 // For internal use
 bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc);
 
-// Get file info
-sys_stat_type fstat(file_descriptor_t* desc);
-
 // Read, write, seek
 uint32_t fread(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file);
 uint32_t fwrite(const void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file);
@@ -39,6 +36,7 @@ file_descriptor_t* filesystem_open(const char* filename, uint32_t mode);
 uint32_t filesystem_read_file(int32_t fd, void* buf, uint32_t length);
 uint32_t filesystem_write_file(int32_t fd, const void* buf, uint32_t length);
 uint64_t filesystem_llseek_file(int32_t fd, uint64_t offset, int whence);
+uint32_t filesystem_stat(int32_t fd, sys_stat_type* data);
 uint64_t filesystem_truncate(int32_t fd, uint64_t nsize);
 
 uint32_t filesystem_read_directory(int32_t fd, void* buf, uint32_t length);
