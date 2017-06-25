@@ -4,10 +4,10 @@
 #include <common/lib.h>
 #include <memory/memory.h>
 #include <drivers/terminal/terminal.h>
-#include <syscalls/syscall.h>
 #include <drivers/video/video.h>
 #include <drivers/i8259.h>
 #include <program/loader/elf.h>
+#include <syscalls/impl/sysproc.h>
 
 #define PIT_IRQ						0
 

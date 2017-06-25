@@ -1,7 +1,6 @@
 #include "filesystem.h"
 #include <common/lib.h>
 #include <memory/memory.h>
-#include <syscalls/syscall.h>
 #include <drivers/ATA/ata.h>
 #include "ext2/ext2.h"
 #include "path.h"
@@ -376,7 +375,7 @@ uint64_t ftruncate(file_descriptor_t* f, uint64_t size) {
 
 // Truncate a file descriptor
 uint64_t filesystem_truncate(int32_t fd, uint64_t nsize) {
-	return ftruncate(get_current_pcb()->descriptors[fd], nsize);
+	return ftruncate(descriptors[fd], nsize);
 }
 
 // Make a directory

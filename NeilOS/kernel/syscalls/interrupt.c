@@ -2,7 +2,6 @@
 #include <boot/x86_desc.h>
 #include <common/lib.h>
 #include <drivers/i8259.h>
-#include "syscall.h"
 
 // External defintions for the assembly interrupt functions
 extern int* intx80;
@@ -15,6 +14,110 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 };
 
+/* More system Calls
+ * Needed for Dash:
+	_execve - done
+	_exit - done
+	abort
+	chdir
+	close - done
+	creat
+	dup - done
+	dup2 - done
+	fcntl
+	fork - done
+	fstat - done
+	getcwd
+	getdents
+	getegid
+	geteuid
+	getgid
+	getgroups
+	getpgrp
+	getpid - done
+	getppid
+	getuid
+	lseek - done
+	lstat
+	mmap
+	munmap
+	open - done
+	pipe
+	pread
+	pwrite
+	read - done
+	setegid
+	seteuid
+	setgid
+	setpgid
+	setuid
+	stat - done
+	tcgetpgrp
+	tcsetpgrp
+	umask
+	wait - done?
+	wait3
+	wait4
+	waitpid - done
+	write - done
+	kill - done
+	killpg
+	sigaction - done
+	sigaddset
+	sigdelset
+	sigemptyset
+	sigfillset
+	sigismember
+	signal - done
+	sigprocmask
+	sigsuspend
+	brk - done
+	sbrk - done
+	syslog
+	clock_gettime
+	clock_nanosleep
+	clock_settime
+	gettimeofday - done
+	nanosleep
+	timer_create
+	timer_delete
+	timer_settime
+ * For binutils:
+	lstat
+	chmod
+	access
+	umask
+	fcntl
+	utime
+	chown
+	rmdir
+	sysconf
+	getwd
+ * For GCC (need binutils ones as well):
+	mkdir - done
+	pipe
+	dup2 - done
+	alarm
+	execvp
+	closedir
+	opendir
+	readdir
+	chdir
+	execv
+ * For vi:
+	need terimos.h
+ * For coreutils:
+	need mount
+ */
+
+void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
+	open, read, write, llseek, truncate, stat, close, isatty,
+	mkdir, link, unlink,
+	brk, sbrk,
+	dup, dup2,
+	times, gettimeofday,
+	kill, signal, sigsetmask, siggetmask,
+};
 
 
 //Various interrupts

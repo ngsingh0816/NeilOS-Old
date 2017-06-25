@@ -4,7 +4,6 @@
 
 #include <drivers/filesystem/filesystem.h>
 #include <program/task.h>
-#include <syscalls/syscall.h>
 #include <memory/memory.h>
 
 #define SCREEN_WIDTH				80

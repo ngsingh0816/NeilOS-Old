@@ -15,7 +15,6 @@
 #include <drivers/ATA/ata.h>
 #include <drivers/filesystem/filesystem.h>
 #include <drivers/terminal/terminal.h>
-#include <syscalls/syscall.h>
 #include <drivers/pit/pit.h>
 #include <program/task.h>
 
@@ -41,8 +40,8 @@
 	that aren't CPU intensive will call schedule() and sleep so they will not use up
 	their whole alloted time), and compare it to their alloted time. If they use all of it,
 	give them more time next quantum (to a limit), otherwise give them less.
- * More system calls - sleep (nanosleep)
  * Signals - make the signal execute in user space, not kernel space
+ * Make ext2 faster (cache things so there are less 4 byte reads)
  */
 
 /* TODO (bugs)
@@ -51,6 +50,7 @@
 /* Things to test
  * Execve
 	* Memory maps, file descriptors
+ * truncate / llseek actually gets passed correct data
  */
 
 /* TODO:
@@ -58,9 +58,12 @@
  * Put correct environ in newlib
  * Add nonblocking mode to files
  * (Named) Pipes
- * Message Queues
+ * Message Queues?
+ * mmap?
+ * More system calls - sleep (nanosleep)
+	* Listed in syscalls.c
  * Sockets?
- * (Kernal?) Threads (pthread?)
+ * (Kernel?) Threads (pthread?)
 	* Potential multitasking issues: file locks
  * Shared User Libraries (dynamic newlib, stdc++)
  * Page files on disk?
@@ -74,6 +77,7 @@
 	* Interacts through message queues
  * Improved Scheduler
  * SMP?
+ * Module support?
  * OpenGL (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?
  * USB Driver?
  * NFS Driver?
