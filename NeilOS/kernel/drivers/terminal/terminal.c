@@ -258,7 +258,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 		printf("%c", buffer[i]);
 
 	pcb_t* pcb = get_current_pcb();
-	while (!enter_pressed) {
+	while (!enter_pressed && !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
 		if (pcb && signal_pending(pcb)) {
 			return -1;
 		}

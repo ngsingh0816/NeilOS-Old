@@ -54,7 +54,6 @@
  */
 
 /* TODO:
- * Add nonblocking mode to files
  * (Named) Pipes
  * Message Queues?
  * mmap?

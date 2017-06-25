@@ -231,10 +231,12 @@ uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
 	info->waiting = true;
 	info->counter = 0;
 	pcb_t* pcb = get_current_pcb();
-	while (info->counter < (MAX_FREQUENCY / info->target_freq)) {
-		if (pcb && signal_pending(pcb))
-			return -1;
-		// TODO: maybe not busy wait here?
+	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
+		while (info->counter < (MAX_FREQUENCY / info->target_freq)) {
+			if (pcb && signal_pending(pcb))
+				return -1;
+			// TODO: maybe not busy wait here?
+		}
 	}
 	info->waiting = false;
 	

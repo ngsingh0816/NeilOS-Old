@@ -25,6 +25,7 @@
 #define FILE_MODE_APPEND			0x008
 #define FILE_MODE_CREATE			0x200
 #define FILE_MODE_DELETE_ON_CLOSE	0x100
+#define FILE_MODE_NONBLOCKING		0x4000
 
 // Types of device (goes in mode)
 #define		FILE_TYPE_DIRECTORY		0040000
