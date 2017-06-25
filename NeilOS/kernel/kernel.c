@@ -267,6 +267,7 @@ entry (unsigned long magic, unsigned long addr)
 	memset(descriptors, 0, sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
 	descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);
 	descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
+	descriptors[STDERR] = terminal_open("stderr", FILE_MODE_WRITE);
 	
 	char input[128];
 	for (;;) {

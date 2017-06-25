@@ -23,6 +23,8 @@ void init_descriptors(pcb_t* pcb) {
 	pcb->descriptors[STDIN]->ref_count = 1;
 	pcb->descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
 	pcb->descriptors[STDOUT]->ref_count = 1;
+	pcb->descriptors[STDERR] = terminal_open("stderr", FILE_MODE_WRITE);
+	pcb->descriptors[STDERR]->ref_count = 1;
 	
 	descriptors = pcb->descriptors;
 }

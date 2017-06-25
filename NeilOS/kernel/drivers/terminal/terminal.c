@@ -149,6 +149,9 @@ void terminal_init() {
 	
 	// Reset other things
 	enter_pressed = false;
+	
+	// Register keyboard events
+	register_keychange(handle_keys);
 }
 
 // Initialize the terminal
@@ -191,9 +194,6 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 			return descriptors[STDOUT];
 		}
 		
-		// Register keyboard events
-		register_keychange(handle_keys);
-		
 		file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
 		if (!d)
 			return NULL;
@@ -202,6 +202,30 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 		d->type = STANDARD_INOUT_TYPE;
 		d->mode = FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
 		d->filename = "stdout";
+		
+		// Assign the functions
+		d->read = terminal_read;
+		d->write = terminal_write;
+		d->stat = terminal_stat;
+		d->duplicate = terminal_duplicate;
+		d->close = terminal_close;
+		
+		return d;
+	} else if (strncmp(filename, "stderr", strlen(filename)) == 0) {
+		// Don't allow this to be opened more than once
+		if (descriptors && descriptors[STDERR]) {
+			descriptors[STDERR]->ref_count++;
+			return descriptors[STDERR];
+		}
+		
+		file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
+		if (!d)
+			return NULL;
+		memset(d, 0, sizeof(file_descriptor_t));
+		// Mark in use
+		d->type = STANDARD_INOUT_TYPE;
+		d->mode = FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
+		d->filename = "stderr";
 		
 		// Assign the functions
 		d->read = terminal_read;
@@ -278,15 +302,12 @@ uint32_t terminal_stat(int32_t fd, sys_stat_type* data) {
 
 // Duplicate the file handle
 file_descriptor_t* terminal_duplicate(file_descriptor_t* f) {
-	/*file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
+	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
 	if (!d)
 		return NULL;
 	memcpy(d, f, sizeof(file_descriptor_t));
 	
-	return d;*/
-	
-	f->ref_count++;
-	return f;
+	return d;
 }
 
 // Close the terminal. This operation is not supported

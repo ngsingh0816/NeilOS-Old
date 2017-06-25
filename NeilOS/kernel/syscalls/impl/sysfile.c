@@ -24,6 +24,7 @@ file_descriptor_t** descriptors = NULL;
 syscall_device_t syscall_devices[] = {
 	{ "stdin", terminal_open },
 	{ "stdout", terminal_open },
+	{ "stderr", terminal_open },
 	{ "rtc", rtc_open },
 	{ "disk0", ata_open },
 	{ "disk0s1", ata_open },

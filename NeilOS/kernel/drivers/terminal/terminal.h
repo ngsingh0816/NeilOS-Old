@@ -7,6 +7,7 @@
 // File descriptors
 #define STDIN		0
 #define STDOUT		1
+#define STDERR		2
 
 // Maximum read size
 #define MAX_TERMINAL_BUFFER_LENGTH	128
