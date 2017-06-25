@@ -5,8 +5,8 @@
 #include <boot/multiboot.h>
 #include <boot/x86_desc.h>
 #include <common/lib.h>
-#include <drivers/i8259.h>
-#include <drivers/pci.h>
+#include <drivers/pic/i8259.h>
+#include <drivers/pci/pci.h>
 #include <common/debug.h>
 #include <syscalls/interrupt.h>
 #include <drivers/keyboard/keyboard.h>

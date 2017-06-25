@@ -1,7 +1,7 @@
 #include "rtc.h"
 #include <common/lib.h>
 #include <syscalls/interrupt.h>
-#include <drivers/i8259.h>
+#include <drivers/pic/i8259.h>
 #include <drivers/filesystem/filesystem.h>
 #include <memory/memory.h>
 #include <common/types.h>

@@ -5,7 +5,7 @@
 #include <memory/memory.h>
 #include <drivers/terminal/terminal.h>
 #include <drivers/video/video.h>
-#include <drivers/i8259.h>
+#include <drivers/pic/i8259.h>
 #include <program/loader/elf.h>
 #include <syscalls/impl/sysproc.h>
 

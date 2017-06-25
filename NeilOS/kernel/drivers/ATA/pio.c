@@ -1,11 +1,11 @@
 #include "pio.h"
 #include "ata.h"
 #include <syscalls/interrupt.h>
-#include <drivers/i8259.h>
+#include <drivers/pic/i8259.h>
 #include <common/lib.h>
 #include <common/concurrency/semaphore.h>
 #include <drivers/filesystem/filesystem.h>
-#include <drivers/pci.h>
+#include <drivers/pci/pci.h>
 
 #define PIO_IRQ					0x0E
 

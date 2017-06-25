@@ -8,9 +8,6 @@
 
 #define ATA_COMMAND_SET_EXT_SUPPORTED		(1 << 26)
 
-#define NUMBER_OF_SHIFT_BITS_IN_SECTOR		9
-#define NUMBER_OF_SHIFT_BITS_IN_BLOCK		12
-
 #define MBR_PARTITION_TABLE_START			0x01BE
 #define PARTITION_INVALID_SYSTEM_ID			0x00
 
@@ -89,13 +86,14 @@ bool ata_init() {
 			}
 			
 			// Check for 48-bit LBA
-			uint32_t command_sets = *((uint32_t*)&buffer[ATA_IDENTIFY_COMMAND_SETS]);
+			uint32_t command_sets = 0;
+			memcpy(&command_sets, &buffer[ATA_IDENTIFY_COMMAND_SETS], sizeof(uint32_t));
 			if (command_sets & ATA_COMMAND_SET_EXT_SUPPORTED) {
-				ata_drives[drive_num].num_sectors = *((uint32_t*)&buffer[ATA_IDENTIFY_MAX_LBA_EXT]);
+				memcpy(&ata_drives[drive_num].num_sectors, &buffer[ATA_IDENTIFY_MAX_LBA_EXT], sizeof(uint32_t));
 				ata_drives[drive_num].ext = true;
 			}
 			else {
-				ata_drives[drive_num].num_sectors = *((uint32_t*)&buffer[ATA_IDENTIFY_MAX_LBA]);
+				memcpy(&ata_drives[drive_num].num_sectors, &buffer[ATA_IDENTIFY_MAX_LBA], sizeof(uint32_t));
 				ata_drives[drive_num].ext = false;
 			}
 			

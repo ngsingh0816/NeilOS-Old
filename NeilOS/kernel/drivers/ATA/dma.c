@@ -9,9 +9,9 @@
 #include "dma.h"
 #include "ata.h"
 #include <syscalls/interrupt.h>
-#include <drivers/i8259.h>
+#include <drivers/pic/i8259.h>
 #include <common/concurrency/semaphore.h>
-#include <drivers/pci.h>
+#include <drivers/pci/pci.h>
 #include <drivers/filesystem/filesystem.h>
 #include "pio.h"
 

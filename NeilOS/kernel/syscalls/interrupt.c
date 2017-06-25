@@ -1,7 +1,7 @@
 #include "interrupt.h"
 #include <boot/x86_desc.h>
 #include <common/lib.h>
-#include <drivers/i8259.h>
+#include <drivers/pic/i8259.h>
 
 // External defintions for the assembly interrupt functions
 extern int* intx80;

@@ -1,5 +1,5 @@
 #include "keyboard.h"
-#include <drivers/i8259.h>
+#include <drivers/pic/i8259.h>
 #include <syscalls/interrupt.h>
 #include <common/lib.h>
 
