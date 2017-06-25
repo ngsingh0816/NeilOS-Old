@@ -416,8 +416,9 @@ bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
 	// The heap grows upwards
 	pcb->brk = pcb->stack_address;
 	
-	// Copy over the argv and argc
-	uint32_t* esp = (uint32_t*)(pcb->stack_address - sizeof(uint32_t) * 2);
+	// Copy over the argv, argc, envp
+	uint32_t* esp = (uint32_t*)(pcb->stack_address - sizeof(uint32_t) * 3);
+	esp[2] = (uint32_t)pcb->envp;
 	esp[1] = (uint32_t)pcb->argv;
 	esp[0] = argc;
 	

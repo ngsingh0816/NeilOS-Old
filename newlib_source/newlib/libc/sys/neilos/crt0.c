@@ -9,6 +9,8 @@
 extern void main();
 extern void _init();
 
+extern char** environ;
+
 extern void (*__preinit_array_start []) (void) __attribute__((weak));
 extern void (*__preinit_array_end []) (void) __attribute__((weak));
 extern void (*__init_array_start []) (void) __attribute__((weak));
@@ -26,14 +28,21 @@ void _init_arrays() {
 		__init_array_start[z]();
 }
 
+void _load_environment(int argc, char** argv, char** envp) {
+	environ = envp;
+}
+
 asm(".globl _start\n"
 	"_start: \n"
 	// Initialize globals
 	"call _init_arrays\n"
+	
+	// Get the correct environment variables
+	"call _load_environment\n"
 
-	// argv, argc implicity pushed by kernel
+	// argc, argv, envp implicity pushed by kernel
 	"call main\n"
-	"addl $8, %esp\n"
+	"addl $12, %esp\n"
 	"pushl $0\n"
 	"pushl $0\n"
 	"pushl %eax\n"

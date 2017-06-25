@@ -54,8 +54,6 @@
  */
 
 /* TODO:
- * Make stderr as file descriptor 2
- * Put correct environ in newlib
  * Add nonblocking mode to files
  * (Named) Pipes
  * Message Queues?

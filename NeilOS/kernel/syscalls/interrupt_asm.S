@@ -153,10 +153,10 @@ return_to_user:
 	movl 4(%eax), %ebx
 
 	pushl %ecx
-	// - 8 because the argv and argc have been pushed to the stack
+	// - 12 because the argc, argv, and evp have been pushed to the stack
 	// set ecx = pcb->stack_address
 	movl 8(%eax), %ecx
-	addl $-8, %ecx
+	addl $-12, %ecx
 	pushl %ecx
 
 	// Enable interrupts upon returning
