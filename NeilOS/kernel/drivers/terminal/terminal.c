@@ -83,7 +83,14 @@ void handle_control(uint8_t keycode) {
 			printf("%c", buffer[i]);
 	} else if (keycode == 'c') {
 		// Kill the current running program
-		signal_send(get_current_pcb(), SIGINT);
+		task_list_t* t = tasks;
+		task_list_t* prev = tasks;
+		while (t) {
+			prev = t;
+			t = t->next;
+		}
+		if (prev && prev->pcb)
+			signal_send(prev->pcb, SIGINT);
 	}
 }
 
@@ -258,12 +265,10 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 		printf("%c", buffer[i]);
 
 	pcb_t* pcb = get_current_pcb();
-	while (!enter_pressed && !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
-		if (pcb && signal_pending(pcb)) {
-			return -1;
-		}
+	while (!enter_pressed && !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+		   !(pcb && pcb->should_terminate))
 		schedule();
-	}
+	
 	// Copy buffer over now that enter is pressed
 	uint32_t min = (bytes < pos) ? bytes : pos;
 	memcpy(buf, buffer, min);

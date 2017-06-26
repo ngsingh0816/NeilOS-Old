@@ -115,7 +115,7 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 	if (queue_task(filename, argv, envp, &pcb) != 0)
 		return -1;
 	
-	return run(pcb);
+	return run_with_fake_parent(pcb, NULL);
 }
 
 // Get the pid of the current process
@@ -128,15 +128,23 @@ uint32_t waitpid(uint32_t pid) {
 	pcb_t* pcb = get_current_pcb();
 	
 	// Wait until the child has finished
-	while (!signal_pending(pcb)) {
+	while (!pcb->should_terminate) {
 		bool found = false;
 		task_list_t* child = pcb->children;
 		while (child) {
 			if (child->pid == pid) {
 				found = true;
 				// Child is a zombie if child->pcb == NULL
-				if (!child->pcb)
-					return child->return_value;
+				if (!child->pcb) {
+					// Remove child
+					uint32_t ret = child->return_value;
+					if (child->prev)
+						child->prev->next = child->next;
+					if (child == pcb->children)
+						pcb->children = child->next;
+					kfree(child);
+					return ret;
+				}
 			}
 			child = child->next;
 		}
@@ -147,7 +155,7 @@ uint32_t waitpid(uint32_t pid) {
 		schedule();
 	}
 	
-	// Signal was caught
+	// Should terminate
 	return -1;
 }
 

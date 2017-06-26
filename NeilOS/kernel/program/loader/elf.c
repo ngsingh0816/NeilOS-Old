@@ -166,6 +166,7 @@ bool elf_load_into_memory(char* filename, pcb_t* pcb) {
 			map->vaddr = pos;
 			map->paddr = (uint32_t)vm_virtual_to_physical((uint32_t)page);
 			vm_unmap_page((uint32_t)page);
+			vm_map_page(map->vaddr, map->paddr, USER_PAGE_DIRECTORY_ENTRY);
 			
 			map->prev = last;
 			if (last)

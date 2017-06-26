@@ -33,7 +33,6 @@
 
 /* Done (but could be improved):
  * Hard Drive Driver (has VMWare DMA bug)
-	* Have variable ATA block size (so we can set it to the EXT2 block size) for optimization purposes
  * Rework syscall open - need to dynamically parse devices
  * Scheduler (round robin probably not the best) - could do something basic
 	where you measure the time from one context switch to another (because processes
@@ -54,11 +53,12 @@
  */
 
 /* TODO:
+ * Cache pcb like we do for descriptors
  * (Named) Pipes
  * Message Queues?
- * mmap?
- * More system calls - sleep (nanosleep)
+ * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
+	* Make fork() copy on write
  * Sockets?
  * (Kernel?) Threads (pthread?)
 	* Potential multitasking issues: file locks

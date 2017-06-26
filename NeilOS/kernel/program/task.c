@@ -324,6 +324,8 @@ pcb_t* duplicate_current_task() {
 	pcb->state = SUSPENDED;
 	// Clear the current pending signals
 	pcb->signal_pending = 0;
+	pcb->in_syscall = false;
+	pcb->should_terminate = false;
 	task->pcb = pcb;
 	
 	add_child_task(current, task->pid, pcb);
@@ -346,7 +348,7 @@ pcb_t* duplicate_current_task() {
 		
 		memset(*t, 0, sizeof(memory_list_t));
 		
-		void* page = page_get_four_mb(1, VIRTUAL_MEMORY_USER);
+		void* page = page_get_four_mb(1, VIRTUAL_MEMORY_KERNEL);
 		if (!page) {
 			kfree(*t);
 			set_multitasking_enabled(flags);
@@ -445,28 +447,13 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		}
 	}
 	
-	// Create the tasks's memory map
-	bool flags = set_multitasking_enabled(false);
-	pcb->memory_map = kmalloc(sizeof(memory_list_t));
-	if (!pcb->memory_map) {
+	if (!load_task_into_memory(pcb, parent, filename)) {
 		pcb_error(pcb, task);
-		set_multitasking_enabled(flags);
 		return NULL;
 	}
-	if (!add_memory_block(pcb->memory_map, NULL, USER_ADDRESS)) {
-		pcb_error(pcb, task);
-		set_multitasking_enabled(flags);
-		return NULL;
-	}
-	set_multitasking_enabled(flags);
 	
 	uint32_t argc = 0;
 	if (!load_argv_and_envp(pcb, argv, envp, &argc)) {
-		pcb_error(pcb, task);
-		return NULL;
-	}
-	
-	if (!load_task_into_memory(pcb, parent, filename)) {
 		pcb_error(pcb, task);
 		return NULL;
 	}
@@ -482,28 +469,157 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	return pcb;
 }
 
+void copy_task_arguments_free(char* kfile, char** kargv, char** kenvp) {
+	if (kfile)
+		kfree(kfile);
+	
+	char** argv_ptr = (char**)kargv;
+	if (argv_ptr) {
+		while (*argv_ptr) {
+			kfree(*argv_ptr);
+			argv_ptr++;
+		}
+	}
+	if (kargv)
+		kfree(kargv);
+	
+	char** envp_ptr = (char**)kenvp;
+	if (envp_ptr) {
+		while (*envp_ptr) {
+			kfree(*envp_ptr);
+			envp_ptr++;
+		}
+	}
+	if (kenvp)
+		kfree(kenvp);
+}
+
+// Helper to copy data over to kernel
+bool copy_task_arguments(char* filename, const char** argv, const char** envp,
+						 char** file_out, char*** argv_out, char*** envp_out) {
+	char* kfile = NULL;
+	char** kargv = NULL;
+	char** kenvp = NULL;
+	
+	// Filename
+	uint32_t filename_len = strlen(filename);
+	kfile = (char*)kmalloc(filename_len + 1);
+	if (!kfile) {
+		copy_task_arguments_free(kfile, kargv, kenvp);
+		return false;
+	}
+	memcpy(kfile, filename, filename_len + 1);
+	
+	// Argv
+	uint32_t argc = 0;
+	char** argv_ptr = (char**)argv;
+	if (argv) {
+		while (*argv_ptr) {
+			argc++;
+			argv_ptr++;
+		}
+	}
+	kargv = (char**)kmalloc((argc + 1) * sizeof(char*));
+	if (!kargv) {
+		copy_task_arguments_free(kfile, kargv, kenvp);
+		return false;
+	}
+	memset(kargv, 0, sizeof(char*) * (argc + 1));
+	for (uint32_t z = 0; z < argc; z++) {
+		uint32_t len = strlen(argv[z]);
+		kargv[z] = (char*)kmalloc(len + 1);
+		if (!kargv[z]) {
+			copy_task_arguments_free(kfile, kargv, kenvp);
+			return false;
+		}
+		memcpy(kargv[z], argv[z], len + 1);
+	}
+	
+	// Envp
+	uint32_t envc = 0;
+	char** envp_ptr = (char**)envp;
+	if (envp) {
+		while (*envp_ptr) {
+			envc++;
+			envp_ptr++;
+		}
+	}
+	kenvp = (char**)kmalloc((envc + 1) * sizeof(char*));
+	if (!kenvp) {
+		copy_task_arguments_free(kfile, kargv, kenvp);
+		return false;
+	}
+	memset(kenvp, 0, sizeof(char*) * (envc + 1));
+	for (uint32_t z = 0; z < envc; z++) {
+		uint32_t len = strlen(envp[z]);
+		kenvp[z] = (char*)kmalloc(len + 1);
+		if (!kenvp[z]) {
+			copy_task_arguments_free(kfile, kargv, kenvp);
+			return false;
+		}
+		memcpy(kenvp[z], envp[z], len + 1);
+	}
+	
+	// Assign
+	*file_out = kfile;
+	*argv_out = kargv;
+	*envp_out = kenvp;
+	
+	return true;
+}
+
 // Load a task into memory, replacing the current task
 pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
-	pcb_t* pcb = get_current_pcb();
-	// Unlink
-	pcb->task->pcb = NULL;
+	pcb_t* current = get_current_pcb();
 	
-	pcb->state = UNLOADED;
+	// Save the task arguments as they get lost when we map out the memory
+	char* kfile = NULL;
+	char** kargv = NULL, **kenvp = NULL;
+	if (!copy_task_arguments(filename, argv, envp, &kfile, &kargv, &kenvp))
+		return NULL;
+	
+	pcb_t pcb = *current;
+	bool flags = set_multitasking_enabled(false);
+	
+	pcb.memory_map = NULL;
+	pcb.stack_address = 0;
+	
+	if (!load_task_into_memory(&pcb, current, kfile)) {
+		set_multitasking_enabled(flags);
+		copy_task_arguments_free(kfile, kargv, kenvp);
+		return NULL;
+	}
 	
 	uint32_t argc = 0;
-	if (!load_argv_and_envp(pcb, argv, envp, &argc))
+	if (!load_argv_and_envp(&pcb, (const char**)kargv, (const char**)kenvp, &argc)) {
+		set_multitasking_enabled(flags);
+		copy_task_arguments_free(kfile, kargv, kenvp);
 		return NULL;
+	}
 	
-	if (!load_task_into_memory(pcb, pcb->parent, filename))
+	copy_task_arguments_free(kfile, kargv, kenvp);
+	
+	if (!setup_stack_and_heap(&pcb, argc)) {
+		set_multitasking_enabled(flags);
 		return NULL;
+	}
 	
-	if (!setup_stack_and_heap(pcb, argc))
-		return NULL;
+	// Free the task memory allocated by this task
+	set_current_task(current);
+	memory_list_t* t = current->memory_map;
+	while (t) {
+		page_free((void*)t->vaddr);
+		memory_list_t* temp = t->next;
+		kfree(t);
+		t = temp;
+	}
 	
-	// Relink
-	pcb->task->pcb = pcb;
+	*current = pcb;
+	set_current_task(current);
 	
-	return pcb;
+	set_multitasking_enabled(flags);
+	
+	return current;
 }
 
 // Find the next runnable task

@@ -175,6 +175,7 @@ save_return: .long 0
 return_from_user:
 	// Critical section
 	cli
+
 	popl %eax
 	movl %eax, save_return
 	popl %esp
@@ -263,7 +264,7 @@ interrupt:
 		// Say that the current task is in a syscall
 		pushl %eax
 		call get_current_pcb
-		movb $1, 9(%eax)
+		movb $1, 12(%eax)
 		popl %eax
 
 		// Push the arguments
@@ -284,10 +285,10 @@ interrupt:
 
 		// Say that the current task is out of the syscall
 		call get_current_pcb
-		movb $0, 9(%eax)
+		movb $0, 12(%eax)
 
 		// If we are supposed to terminate the task, do it
-		cmpb $1, 10(%eax)
+		cmpb $1, 13(%eax)
 		je terminate_syscall_task
 
 		// Segment registers

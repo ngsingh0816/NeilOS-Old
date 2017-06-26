@@ -57,9 +57,9 @@ typedef struct pcb {
 	uint32_t entry;
 	// Stack address (third, 8)
 	uint32_t stack_address;
-	// Currently in a syscall (fourth, 9)
+	// Currently in a syscall (fourth, 12)
 	bool in_syscall;
-	// If this is set, the task will terminate next time it is loaded (fifth, 10)
+	// If this is set, the task will terminate next time it is loaded (fifth, 13)
 	bool should_terminate;
 	
 	// Each entry in the list holds the physical address of the
