@@ -28,17 +28,17 @@ uint32_t signal(uint32_t signum, sighandler_t handler) {
 	if (signum > NUMBER_OF_SIGNALS || signum == 0)
 		return -1;
 	
-	signal_set_handler(get_current_pcb(), signum, handler);
+	signal_set_handler(current_pcb, signum, handler);
 	return 0;
 }
 
 // Mask signals
 uint32_t sigsetmask(uint32_t signum, bool masked) {
-	signal_set_masked(get_current_pcb(), signum, masked);
+	signal_set_masked(current_pcb, signum, masked);
 	return 0;
 }
 
 // Unmask signals
 uint32_t siggetmask(uint32_t signum) {
-	return signal_is_masked(get_current_pcb(), signum);
+	return signal_is_masked(current_pcb, signum);
 }

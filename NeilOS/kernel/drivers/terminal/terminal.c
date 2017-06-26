@@ -264,7 +264,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 	for (i = 0; i < pos; i++)
 		printf("%c", buffer[i]);
 
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	while (!enter_pressed && !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
 		   !(pcb && pcb->should_terminate))
 		schedule();

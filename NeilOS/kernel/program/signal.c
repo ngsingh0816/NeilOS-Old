@@ -18,7 +18,7 @@ void signal_ignore(pcb_t* pcb) {
 
 // Terminate the task
 void signal_terminate(pcb_t* pcb) {
-	if (pcb == get_current_pcb())
+	if (pcb == current_pcb)
 		terminate_task(-1);
 	else
 		pcb->should_terminate = true;

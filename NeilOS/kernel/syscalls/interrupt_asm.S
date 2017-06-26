@@ -263,7 +263,7 @@ interrupt:
 
 		// Say that the current task is in a syscall
 		pushl %eax
-		call get_current_pcb
+		movl current_pcb, %eax
 		movb $1, 12(%eax)
 		popl %eax
 
@@ -284,7 +284,7 @@ interrupt:
 		popl %edx
 
 		// Say that the current task is out of the syscall
-		call get_current_pcb
+		movl current_pcb, %eax
 		movb $0, 12(%eax)
 
 		// If we are supposed to terminate the task, do it

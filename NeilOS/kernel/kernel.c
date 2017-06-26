@@ -259,7 +259,7 @@ entry (unsigned long magic, unsigned long addr)
 	// Basic file command prompt
 	const char* shell_argv[] = { "shell", NULL };
 	queue_task_load("shell", shell_argv, NULL, NULL);
-
+	
 	descriptors = (file_descriptor_t**)kmalloc(sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
 	memset(descriptors, 0, sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
 	descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);

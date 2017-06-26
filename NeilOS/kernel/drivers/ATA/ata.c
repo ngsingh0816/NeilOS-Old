@@ -303,7 +303,7 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 	if (bytes == 0)
 		return 0;
 	
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	
 	// Calculate the correct address
 	uint64_t addr = uint64_add(d->partition_offset, d->seek_offset);

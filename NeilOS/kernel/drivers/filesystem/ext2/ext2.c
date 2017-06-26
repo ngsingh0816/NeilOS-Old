@@ -251,7 +251,7 @@ uint32_t ext2_read_data(ext_inode_t* inode, uint64_t offset, void* buffer, uint3
 	if (inode->inode == EXT2_INODE_INVALID)
 		return -1;
 	
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	
 	// Calculate the starting and ending blocks
 	uint32_t block_size = 1 << (EXT2_BASE_BLOCK_SIZE_BITS + superblock.log_block_size);

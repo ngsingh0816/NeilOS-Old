@@ -97,7 +97,7 @@ uint32_t fork() {
 		return -1;
 	
 	// Pusha (with eax set to 0 so the child returns 0)
-	context.esp = context.esp - (uint32_t)get_current_pcb() + (uint32_t)pcb;
+	context.esp = context.esp - (uint32_t)current_pcb + (uint32_t)pcb;
 	pcb->saved_esp = context.esp - sizeof(context_state_t);
 	context.eax = 0;
 	memcpy((void*)pcb->saved_esp, &context, sizeof(context_state_t));
@@ -120,12 +120,12 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 
 // Get the pid of the current process
 uint32_t getpid() {
-	return get_current_pcb()->task->pid;
+	return current_pcb->task->pid;
 }
 
 // Wait for a child to change state (returns the status that the child returned with)
 uint32_t waitpid(uint32_t pid) {
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	
 	// Wait until the child has finished
 	while (!pcb->should_terminate) {
@@ -161,7 +161,7 @@ uint32_t waitpid(uint32_t pid) {
 
 // Wait for any child to finish
 uint32_t wait(uint32_t pid) {
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	if (!pcb->children)
 		return -1;
 	
@@ -184,7 +184,7 @@ uint32_t wait(uint32_t pid) {
 
 // Exit a program with a specific status
 uint32_t exit(int status) {
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	
 	// Close all open file handles
 	int z;

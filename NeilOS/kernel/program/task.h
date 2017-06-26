@@ -93,8 +93,8 @@ typedef struct pcb {
 	sighandler_t signal_handlers[NUMBER_OF_SIGNALS];
 } pcb_t;
 
-// Gets the pcb for the currently running task
-pcb_t* get_current_pcb();
+// The current pcb
+extern pcb_t* current_pcb;
 
 // Gets the childmost pcb for the active terminal
 pcb_t* get_pcb_for_terminal(uint32_t terminal);

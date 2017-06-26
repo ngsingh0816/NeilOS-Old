@@ -79,7 +79,7 @@ void rtc_handler(int irq) {
 			// If something has just finished "read" switch to it
 			if (info->waiting && (info->counter >= (MAX_FREQUENCY / info->target_freq))) {
 				// Auto enables interrupts
-				context_switch(get_current_pcb(), pcb);
+				context_switch(current_pcb, pcb);
 				return;
 			}
 		}
@@ -230,7 +230,7 @@ uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
 	// Wait for an interrupt to occur
 	info->waiting = true;
 	info->counter = 0;
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
 		while (info->counter < (MAX_FREQUENCY / info->target_freq)) {
 			if (pcb && signal_pending(pcb))

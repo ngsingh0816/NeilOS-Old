@@ -107,7 +107,8 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
  * For vi:
 	need terimos.h
  * For coreutils:
-	need mount
+	need mount stuff (mntent.h which provides _PATH_MNTTAB and _PATH_MOUNTED, as well as getmntent(FILE *fp))
+	sockets
  */
 
 void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
@@ -126,7 +127,7 @@ void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
 
 // Interrupt 0
 void divide_error(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGFPE);
+	signal_send(current_pcb, SIGFPE);
 	
 #if DEBUG
 	blue_screen("Divide by 0 error");
@@ -142,7 +143,7 @@ void NMI_interrupt(uint32_t code, uint32_t eip) {
 
 // Interrupt 3
 void breakpoint(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGTRAP);
+	signal_send(current_pcb, SIGTRAP);
 	schedule();
 }
 
@@ -162,7 +163,7 @@ void bound_range_exception(uint32_t code, uint32_t eip) {
 
 // Interrupt 6
 void invalid_opcode(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGILL);
+	signal_send(current_pcb, SIGILL);
 	
 #if DEBUG
 	blue_screen("Invalid opcode");
@@ -224,7 +225,7 @@ void segment_not_present(uint32_t code, uint32_t eip) {
 
 // Interrupt 12
 void stack_segment_fault(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGSTKFLT);
+	signal_send(current_pcb, SIGSTKFLT);
 	
 #if DEBUG
 	blue_screen("Stack segment fault");
@@ -246,7 +247,7 @@ void general_protection(uint32_t code, uint32_t eip) {
 
 // Interrupt 14
 void page_fault(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGSEGV);
+	signal_send(current_pcb, SIGSEGV);
 	
 #if DEBUG
 	uint32_t address = 0;
@@ -261,7 +262,7 @@ void page_fault(uint32_t code, uint32_t eip) {
 
 // Interrupt 16
 void floating_point_error(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGFPE);
+	signal_send(current_pcb, SIGFPE);
 	
 #if DEBUG
 	blue_screen("Floating point error");
@@ -293,7 +294,7 @@ void machine_check(uint32_t code, uint32_t eip) {
 
 // Interrupt 19
 void smid_floating_point_exception(uint32_t code, uint32_t eip) {
-	signal_send(get_current_pcb(), SIGFPE);
+	signal_send(current_pcb, SIGFPE);
 	
 #if DEBUG
 	blue_screen("SMID floating point exception");

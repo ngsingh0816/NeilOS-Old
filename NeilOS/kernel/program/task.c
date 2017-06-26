@@ -14,6 +14,9 @@
 // Start with no tasks
 task_list_t* tasks = NULL;
 
+// Current pcb
+pcb_t* current_pcb = NULL;
+
 extern void context_switch_asm(pcb_t* from, pcb_t* to);
 
 // Get the pcb for a specific pid
@@ -64,41 +67,6 @@ task_list_t* vend_pid() {
 	new_task->pcb = NULL;
 	tail->next = new_task;
 	return new_task;
-}
-
-// Returns the current process control block for the current task
-pcb_t* get_current_pcb() {
-	/*// Get the esp
-	uint32_t esp;
-	asm volatile ("movl %%esp, %0\n"
-				  : "=a"(esp));
-	
-	// Find the pcb from all the tasks
-	task_list_t* t = NULL;
-	for (t = tasks; t != NULL; t = t->next) {
-		if (esp >= (uint32_t)t->pcb && esp < (uint32_t)t->pcb + USER_KERNEL_STACK_SIZE)
-			return t->pcb;
-	}
-	
-	// Should never happen (unless in kernel so we could just return any task)
-	if (tasks)
-		return tasks->pcb;
-	else
-		return NULL;*/
-	
-	// Find the pcb from all the tasks
-	task_list_t* t;
-	for (t = tasks; t != NULL; t = t->next) {
-		if (!t->pcb)
-			continue;
-		if (t->pcb->state == RUNNING)
-			return t->pcb;
-	}
-	
-	// Should never happen
-	//if (tasks)
-	//	return tasks->pcb;
-	return NULL;
 }
 
 // Set the kernel stack for the next task to be switched to
@@ -308,7 +276,7 @@ void pcb_error(pcb_t* pcb, task_list_t* task) {
 
 // Duplicate current task
 pcb_t* duplicate_current_task() {
-	pcb_t* current = get_current_pcb();
+	pcb_t* current = current_pcb;
 	
 	// Get a pid and task
 	task_list_t* task = vend_pid();
@@ -431,7 +399,7 @@ bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
 pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	// Initialize the pcb
 	task_list_t* task = vend_pid();
-	pcb_t* parent = get_current_pcb();//(task->pid == INITIAL_TASK_PID) ? NULL : get_current_pcb();
+	pcb_t* parent = current_pcb;//(task->pid == INITIAL_TASK_PID) ? NULL : current_pcb;
 	
 	// Reserve a kernel stack and have the pcb be at the top of it
 	pcb_t* pcb = (pcb_t*)kmalloc(USER_KERNEL_STACK_SIZE);
@@ -570,7 +538,7 @@ bool copy_task_arguments(char* filename, const char** argv, const char** envp,
 
 // Load a task into memory, replacing the current task
 pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
-	pcb_t* current = get_current_pcb();
+	pcb_t* current = current_pcb;
 	
 	// Save the task arguments as they get lost when we map out the memory
 	char* kfile = NULL;
@@ -654,13 +622,7 @@ pcb_t* get_next_runnable_task(task_list_t* hint) {
 // Kill a task and return execution to its parent (enables interrupts)
 void terminate_task(uint32_t ret) {
 #if TERMINATE_TASK
-	pcb_t* current = get_current_pcb();
-	
-	// Don't allow us to kill the first task
-	if (!current->parent) {
-		run(current);
-		return;
-	}
+	pcb_t* current = current_pcb;
 	
 	// We can't terminate a task in a syscall, so allow the syscall to finish
 	if (current->in_syscall) {
@@ -684,6 +646,7 @@ void terminate_task(uint32_t ret) {
 	
 	// Unload the task and get its parent
 	current->state = UNLOADED;
+	current_pcb = NULL;
 	pcb_t* parent = current->parent;
 	
 	// Mark this task as a zombie
@@ -714,6 +677,8 @@ void terminate_task(uint32_t ret) {
 	task_list_t* child = current->children;
 	while (child) {
 		task_list_t* prev = child;
+		if (child->pcb)
+			child->pcb->parent = NULL;	// TODO: maybe this should be the parent's parent?
 		child = child->next;
 		
 		kfree(prev);
@@ -764,6 +729,7 @@ void set_current_task(pcb_t* pcb) {
 	map_task_into_memory(pcb);
 	set_kernel_stack((uint32_t)pcb + USER_KERNEL_STACK_SIZE);
 	
+	current_pcb = pcb;
 	descriptors = pcb->descriptors;
 }
 
@@ -793,7 +759,7 @@ void schedule() {
 	// This whole function is a critical section
 	cli();
 	
-	pcb_t* current = get_current_pcb();
+	pcb_t* current = current_pcb;
 	if (!current) {
 		sti();
 		return;

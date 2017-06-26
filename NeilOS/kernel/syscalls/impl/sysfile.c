@@ -71,7 +71,7 @@ uint32_t open(const char* filename, uint32_t mode) {
 	if (current_fd == -1)
 		return -1;
 	
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	pcb->descriptors[current_fd] = open_handle(filename, mode);
 	if (!pcb->descriptors[current_fd])
 		return -1;
@@ -166,7 +166,7 @@ uint32_t close(int32_t fd) {
 		ret = descriptors[fd]->close((void*)descriptors[fd]);
 		kfree(descriptors[fd]);
 	}
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	pcb->descriptors[fd] = NULL;
 	
 	descriptors = pcb->descriptors;
@@ -216,7 +216,7 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd) {
 		return -1;
 	
 	bool flags = set_multitasking_enabled(false);
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	// Close the file handle if opened
 	if (pcb->descriptors[new_fd]) {
 		pcb->descriptors[new_fd]->close(pcb->descriptors[new_fd]);

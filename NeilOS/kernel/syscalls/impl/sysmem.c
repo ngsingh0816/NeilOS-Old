@@ -15,7 +15,7 @@ void* brk(uint32_t addr) {
 		return NULL;
 	
 	addr -= USER_ADDRESS;
-	pcb_t* pcb = get_current_pcb();
+	pcb_t* pcb = current_pcb;
 	uint32_t needed_pages = addr / FOUR_MB_SIZE + 1;
 	
 	// Get number of current pages
@@ -77,5 +77,5 @@ void* brk(uint32_t addr) {
 
 // Offset the current program break by a specific ammount
 void* sbrk(int32_t offset) {
-	return brk(get_current_pcb()->brk + offset);
+	return brk(current_pcb->brk + offset);
 }
