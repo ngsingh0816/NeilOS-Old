@@ -37,5 +37,4 @@ uint32_t wait(uint32_t pid);
 // Exit a program with a specific status
 uint32_t exit(int status);
 
-
 #endif /* SYSPROC_H */

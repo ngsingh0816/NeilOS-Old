@@ -109,10 +109,12 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
  * For coreutils:
 	need mount stuff (mntent.h which provides _PATH_MNTTAB and _PATH_MOUNTED, as well as getmntent(FILE *fp))
 	sockets
+ * More
+	sched_yield
  */
 
 void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
-	open, read, write, llseek, truncate, stat, close, isatty,
+	open, read, write, llseek, truncate, stat, close, isatty, pipe,
 	mkdir, link, unlink,
 	brk, sbrk,
 	dup, dup2,

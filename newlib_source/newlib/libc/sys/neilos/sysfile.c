@@ -43,6 +43,7 @@ extern unsigned int sys_close(int fd);
 extern unsigned int sys_isatty(int fd);
 extern unsigned int sys_dup(unsigned int fd);
 extern unsigned int sys_dup2(unsigned int fd, unsigned int new_fd);
+extern unsigned int sys_pipe(int pipefd[2]);
 
 int open(const char *name, int flags, ...) {
 	return sys_open(name, flags);
@@ -116,4 +117,8 @@ int dup(int fd) {
 
 int dup2(int fd, int new_fd) {
 	return sys_dup2(fd, new_fd);
+}
+
+int pipe(int pipefd[2]) {
+	return sys_pipe(pipefd);
 }

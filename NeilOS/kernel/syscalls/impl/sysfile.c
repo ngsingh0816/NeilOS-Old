@@ -13,6 +13,7 @@
 #include <drivers/filesystem/filesystem.h>
 #include <drivers/ATA/ata.h>
 #include <drivers/rtc/rtc.h>
+#include <drivers/pipe/pipe.h>
 
 // Device for syscall's purposes
 typedef struct syscall_device {
@@ -188,7 +189,7 @@ uint32_t isatty(int32_t fd) {
 }
 
 // Duplicate a file descriptor
-uint32_t dup(uint32_t fd) {
+uint32_t dup(int32_t fd) {
 	// Find and open descriptor
 	uint32_t current_fd = -1;
 	int z;								// Looping over descriptors
@@ -207,7 +208,7 @@ uint32_t dup(uint32_t fd) {
 }
 
 // Duplicate a file descriptor into the specific file descriptor
-uint32_t dup2(uint32_t fd, uint32_t new_fd) {
+uint32_t dup2(int32_t fd, int32_t new_fd) {
 	// Check if this descriptor is within the bounds
 	if (fd >= NUMBER_OF_DESCRIPTORS || new_fd >= NUMBER_OF_DESCRIPTORS)
 		return -1;
@@ -232,4 +233,52 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd) {
 	set_multitasking_enabled(flags);
 	
 	return new_fd;
+}
+
+// Create a pipe
+uint32_t pipe(int32_t pipefd[2]) {
+	// Find and open descriptor
+	uint32_t current_fd[2] = { -1, -1 };
+	int z, i = 0;								// Looping over descriptors
+	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
+		if (!descriptors[z]) {
+			current_fd[i++] = z;
+			if (i == 2)
+				break;
+		}
+	}
+	
+	// We have no more descriptors available so we can't open anything
+	if (current_fd[0] == -1 || current_fd[1] == -1)
+		return -1;
+	
+	pcb_t* pcb = current_pcb;
+	
+	// Open the input pipe
+	file_descriptor_t* input = pipe_open(NULL, FILE_MODE_READ);
+	if (!input)
+		return -1;
+	
+	// Open the output pipe
+	file_descriptor_t* output = pipe_open(NULL, FILE_MODE_WRITE);
+	if (!output) {
+		pipe_close(input);
+		return -1;
+	}
+	
+	// Connect the pipes
+	if (!pipe_connect(input, output)) {
+		pipe_close(input);
+		pipe_close(output);
+		return -1;
+	}
+	
+	// Assign
+	pcb->descriptors[current_fd[0]] = input;
+	pcb->descriptors[current_fd[1]] = output;
+	pipefd[0] = current_fd[0];
+	pipefd[1] = current_fd[1];
+	descriptors = pcb->descriptors;
+	
+	return 0;
 }

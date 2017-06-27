@@ -53,7 +53,7 @@
  */
 
 /* TODO:
- * Cache pcb like we do for descriptors
+ * SSE memcpy / memmove?
  * (Named) Pipes
  * Message Queues?
  * More system calls - sleep (nanosleep), mmap

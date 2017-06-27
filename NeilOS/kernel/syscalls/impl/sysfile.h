@@ -39,9 +39,12 @@ uint32_t close(int32_t fd);
 uint32_t isatty(int32_t fd);
 
 // Duplicate a file descriptor
-uint32_t dup(uint32_t fd);
+uint32_t dup(int32_t fd);
 
 // Duplicate a file descriptor into the specific file descriptor
-uint32_t dup2(uint32_t fd, uint32_t new_fd);
+uint32_t dup2(int32_t fd, int32_t new_fd);
+
+// Create a pipe
+uint32_t pipe(int32_t pipefd[2]);
 
 #endif /* SYSFILE_H */
