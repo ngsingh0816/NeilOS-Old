@@ -106,7 +106,7 @@ bool elf_load_into_memory(char* filename, pcb_t* pcb) {
 	// Check it is valid
 	if (!fopen(filename, FILE_MODE_READ, &file))
 		return false;
-	if (file.type != FILE_FILE_TYPE) {
+	if (!(file.mode & FILE_TYPE_REGULAR)) {
 		fclose(&file);
 		return false;
 	}

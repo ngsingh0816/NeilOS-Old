@@ -51,8 +51,7 @@ file_descriptor_t* pipe_open(const char* filename, uint32_t mode) {
 	f->stat = pipe_stat;
 	f->close = pipe_close;
 	f->duplicate = pipe_duplicate;
-	f->mode = mode;
-	f->type = FILE_TYPE_PIPE;
+	f->mode = mode | FILE_TYPE_PIPE;
 	f->ref_count = 1;
 	
 	return f;
@@ -81,7 +80,7 @@ uint32_t pipe_read(int32_t fd, void* buf, uint32_t bytes) {
 		return -1;
 	
 	// Block until there is data
-	while (info->pos == 0) {
+	while (info->pos == 0 && !current_pcb->should_terminate) {
 		schedule();
 	}
 	
@@ -112,7 +111,7 @@ uint32_t pipe_write(int32_t fd, const void* buf, uint32_t bytes) {
 		return -1;
 
 	// Block until the pipe isn't full
-	while (info->pos == PIPE_MAX_BUFFER_SIZE) {
+	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate) {
 		schedule();
 	}
 	

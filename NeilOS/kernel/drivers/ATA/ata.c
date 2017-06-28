@@ -172,7 +172,6 @@ file_descriptor_t* ata_open(const char* filename, uint32_t mode) {
 		kfree(d->info);
 		return NULL;
 	}
-	d->type = DISK_FILE_TYPE;
 	d->mode = mode | FILE_TYPE_BLOCK;
 	
 	// Set the function calls

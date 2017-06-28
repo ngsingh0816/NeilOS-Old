@@ -166,12 +166,20 @@ uint32_t wait(uint32_t pid) {
 		return -1;
 	
 	// Wait until the child has finished
-	while (!signal_pending(pcb)) {
+	while (!pcb->should_terminate) {
 		task_list_t* child = pcb->children;
 		while (child) {
 			// Child is a zombie if child->pcb == NULL
-			if (!child->pcb)
-				return child->return_value;
+			if (!child->pcb) {
+				// Remove child
+				uint32_t ret = child->return_value;
+				if (child->prev)
+					child->prev->next = child->next;
+				if (child == pcb->children)
+					pcb->children = child->next;
+				kfree(child);
+				return ret;
+			}
 			child = child->next;
 		}
 		

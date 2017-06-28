@@ -45,8 +45,8 @@ extern unsigned int sys_dup(unsigned int fd);
 extern unsigned int sys_dup2(unsigned int fd, unsigned int new_fd);
 extern unsigned int sys_pipe(int pipefd[2]);
 
-int open(const char *name, int flags, ...) {
-	return sys_open(name, flags);
+int open(const char *name, int mode, ...) {
+	return sys_open(name, mode + 1);
 }
 
 int read(int file, char *ptr, int len) {
@@ -121,4 +121,14 @@ int dup2(int fd, int new_fd) {
 
 int pipe(int pipefd[2]) {
 	return sys_pipe(pipefd);
+}
+
+int mkfifo(const char* filename, unsigned int mode) {
+	// Read = 0x1
+	int fd = sys_open(filename, 0x1 | _IFIFO | _FCREAT | _FNONBLOCK);
+	if (fd == -1)
+		return -1;
+	
+	close(fd);
+	return 0;
 }

@@ -35,7 +35,7 @@ ext_inode_t ext2_open(const char* path);
 
 // Create an inode at a particular path (creates a new file no matter what,
 // so only call this when the file doesn't exist)
-ext_inode_t ext2_create(ext_inode_t* parent, const char* name, bool directory);
+ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode);
 
 // Delete an inode at a particular path
 bool ext2_delete(ext_inode_t* parent, const char* name);
@@ -65,5 +65,7 @@ uint64_t ext2_truncate_inode(ext_inode_t* inode, uint64_t size);
 // or uint64_t(-1) if none exists) and places the name of the entry into the buffer
 uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer, uint32_t length, uint32_t* length_out);
 
+// Helpers
+ext_inode_t ext2_get_parent_inode(const char* filename);
 
 #endif

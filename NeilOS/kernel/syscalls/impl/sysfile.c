@@ -14,6 +14,7 @@
 #include <drivers/ATA/ata.h>
 #include <drivers/rtc/rtc.h>
 #include <drivers/pipe/pipe.h>
+#include <drivers/pipe/fifo.h>
 
 // Device for syscall's purposes
 typedef struct syscall_device {
@@ -33,6 +34,22 @@ syscall_device_t syscall_devices[] = {
 
 file_descriptor_t* open_handle(const char* filename, uint32_t mode) {
 	file_descriptor_t* f = NULL;
+	
+	// Fifo
+	if ((mode & FILE_TYPE_PIPE) && (mode & FILE_MODE_CREATE)) {
+		f = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
+		if (!f)
+			return NULL;
+		
+		if (!fopen(filename, mode, f)) {
+			kfree(f);
+			return NULL;
+		}
+		
+		f->ref_count = 1;
+		return f;
+	}
+	
 	// Loop through the devices
 	int z;
 	for (z = 0; z < sizeof(syscall_devices) / sizeof(syscall_device_t); z++) {

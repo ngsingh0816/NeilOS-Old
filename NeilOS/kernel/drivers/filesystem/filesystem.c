@@ -2,6 +2,7 @@
 #include <common/lib.h>
 #include <memory/memory.h>
 #include <drivers/ATA/ata.h>
+#include <drivers/pipe/fifo.h>
 #include "ext2/ext2.h"
 #include "path.h"
 
@@ -53,28 +54,6 @@ bool filesystem_init(char* filesystem) {
 	return false;
 }
 
-// Helper function to get parent inode of a path
-ext_inode_t get_parent_inode(const char* filename) {
-	ext_inode_t inode;
-	memset(&inode, 0, sizeof(ext_inode_t));
-	inode.inode = EXT2_INODE_INVALID;
-	
-	// Find the parent path
-	uint32_t parent_len = 0;
-	const char* parent_path = path_get_parent(filename, &parent_len);
-	char* pp = kmalloc(parent_len + 1);
-	if (!pp)
-		return inode;
-	memcpy(pp, parent_path, parent_len);
-	pp[parent_len] = 0;
-	
-	// Find the parent inode
-	inode = ext2_open(pp);
-	kfree(pp);
-	
-	return inode;
-}
-
 // Helper function to get the last path component of a path (must be freed!)
 char* get_last_path_component(const char* filename) {
 	// Get the name
@@ -100,7 +79,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		// Try to create it if it doesn't exist
 		if (mode & FILE_MODE_CREATE) {
 			// Get the parent
-			ext_inode_t parent = get_parent_inode(filename);
+			ext_inode_t parent = ext2_get_parent_inode(filename);
 			if (parent.inode == EXT2_INODE_INVALID)
 				return false;
 			// Get the name
@@ -109,12 +88,20 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 				return false;
 			
 			// Create it
-			inode = ext2_create(&parent, name, false);
+			inode = ext2_create(&parent, name, mode & ~FILE_TYPE_DIRECTORY);
 			kfree(name);
 			if (inode.inode == EXT2_INODE_INVALID)
 				return false;
 		} else
 			return false;
+	}
+	if ((inode.info.mode & EXT2_INODE_MODE_FIFO) && !(mode & FILE_MODE_DELETE_ON_CLOSE)) {
+		file_descriptor_t* fifo = fifo_open(filename, mode);
+		if (!fifo)
+			return false;
+		memcpy(desc, fifo, sizeof(file_descriptor_t));
+		kfree(fifo);
+		return true;
 	}
 	
 	// Copy the filename
@@ -124,6 +111,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		return false;
 	strcpy(desc->filename, filename);
 	
+	desc->mode = mode & ~(FILE_MODE_CREATE);
 	if (ext2_inode_is_directory(&inode)) {
 		// Set up a directory
 		desc->info = (directory_info_t*)kmalloc(sizeof(directory_info_t));
@@ -140,7 +128,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->write = filesystem_write_directory;
 		desc->llseek = filesystem_llseek_directory;
 		desc->truncate = NULL;
-		desc->type = DIRECTORY_FILE_TYPE;
+		desc->mode |= FILE_TYPE_DIRECTORY;
 	} else {
 		// Set up a file
 		desc->info = (file_info_t*)kmalloc(sizeof(file_info_t));
@@ -156,9 +144,17 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->write = filesystem_write_file;
 		desc->llseek = filesystem_llseek_file;
 		desc->truncate = filesystem_truncate;
-		desc->type = FILE_FILE_TYPE;
+		if (inode.info.mode  & EXT2_INODE_MODE_FIFO)
+			desc->mode |= FILE_TYPE_PIPE;
+		else
+			desc->mode |= FILE_TYPE_REGULAR;
+		
+		// Delete the file contents if needed
+		if ((desc->mode & FILE_MODE_WRITE) &&
+			!(desc->mode & FILE_MODE_READ)) {
+			ftruncate(desc, uint64_make(0, 0));
+		}
 	}
-	desc->mode = mode | FILE_TYPE_REGULAR;
 	desc->stat = filesystem_stat;
 	desc->duplicate = filesystem_duplicate;
 	desc->close = filesystem_close;
@@ -228,9 +224,9 @@ uint32_t fread(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* f
 	if (!(file->mode & FILE_MODE_READ))
 		return -1;
 	
-	if (file->type == FILE_FILE_TYPE)
+	if (file->mode & FILE_TYPE_REGULAR)
 		return fread_file(buffer, size, count, file);
-	else if (file->type == DIRECTORY_FILE_TYPE)
+	else if (file->mode & FILE_TYPE_DIRECTORY)
 		return fread_directory(buffer, size, count, file);
 	
 	return -1;
@@ -262,12 +258,12 @@ uint32_t fwrite(const void* buffer, uint32_t size, uint32_t count, file_descript
 	if (!(file->mode & FILE_MODE_WRITE))
 		return -1;
 	
-	if (file->type & FILE_MODE_APPEND)
+	if (file->mode & FILE_MODE_APPEND)
 		fseek(file, uint64_make(0, 0), SEEK_END);
 	
-	if (file->type == FILE_FILE_TYPE)
+	if (file->mode & FILE_TYPE_REGULAR)
 		return fwrite_file(buffer, size, count, file);
-	else if (file->type == DIRECTORY_FILE_TYPE)
+	else if (file->mode & FILE_TYPE_DIRECTORY)
 		return fwrite_directory(buffer, size, count, file);
 	
 	return -1;
@@ -355,9 +351,9 @@ uint64_t fseek_directory(file_descriptor_t* f, uint64_t offset, int whence) {
 
 // Seek a file object
 uint64_t fseek(file_descriptor_t* file, uint64_t offset, int whence) {
-	if (file->type == FILE_FILE_TYPE)
+	if (file->mode & FILE_TYPE_REGULAR)
 		return fseek_file(file, offset, whence);
-	else if (file->type == DIRECTORY_FILE_TYPE)
+	else if (file->mode & FILE_TYPE_DIRECTORY)
 		return fseek_directory(file, offset, whence);
 	
 	return uint64_make(-1, -1);
@@ -365,7 +361,7 @@ uint64_t fseek(file_descriptor_t* file, uint64_t offset, int whence) {
 
 // Truncate a file to a specific size
 uint64_t ftruncate(file_descriptor_t* f, uint64_t size) {
-	if (f->type != FILE_FILE_TYPE)
+	if (f->mode & FILE_TYPE_REGULAR)
 		return uint64_make(-1, -1);
 	
 	file_info_t* file = (file_info_t*)f->info;
@@ -385,7 +381,7 @@ bool fmkdir(const char* filename) {
 		return false;
 	
 	// Get the parent
-	ext_inode_t parent = get_parent_inode(filename);
+	ext_inode_t parent = ext2_get_parent_inode(filename);
 	if (parent.inode == EXT2_INODE_INVALID)
 		return false;
 	
@@ -395,7 +391,7 @@ bool fmkdir(const char* filename) {
 		return false;
 	
 	// Create the directory
-	ext_inode_t inode = ext2_create(&parent, name, true);
+	ext_inode_t inode = ext2_create(&parent, name, FILE_TYPE_DIRECTORY);
 	kfree(name);
 	
 	return (inode.inode != EXT2_INODE_INVALID);
@@ -404,13 +400,13 @@ bool fmkdir(const char* filename) {
 // Hard link a file or directory
 bool flink(file_descriptor_t* file, const char* link_name) {
 	ext_inode_t* inode = NULL;
-	if (file->type == FILE_FILE_TYPE)
+	if (file->mode & FILE_TYPE_REGULAR)
 		inode = &((file_info_t*)file->info)->inode;
 	else
 		inode = &((directory_info_t*)file->info)->inode;
 	
 	// Get the parent
-	ext_inode_t parent = get_parent_inode(link_name);
+	ext_inode_t parent = ext2_get_parent_inode(link_name);
 	if (parent.inode == EXT2_INODE_INVALID)
 		return false;
 	
@@ -429,7 +425,7 @@ bool flink(file_descriptor_t* file, const char* link_name) {
 
 // Helper to delete a file
 bool fdelete(file_descriptor_t* file) {
-	if (file->type & DIRECTORY_FILE_TYPE) {
+	if (file->mode & FILE_TYPE_DIRECTORY) {
 		// Check that the directory is empty
 		uint32_t num_entries = fseek_directory(file, uint64_make(0, 0), SEEK_END).low;
 		if (num_entries > 2)		// . and .. are fine
@@ -437,7 +433,7 @@ bool fdelete(file_descriptor_t* file) {
 	}
 	
 	// Get the parent directory
-	ext_inode_t parent = get_parent_inode(file->filename);
+	ext_inode_t parent = ext2_get_parent_inode(file->filename);
 	if (parent.inode == EXT2_INODE_INVALID)
 		return false;
 	
@@ -521,11 +517,11 @@ uint32_t filesystem_stat(int32_t fd, sys_stat_type* ret) {
 	memset(ret, 0, sizeof(sys_stat_type));
 	
 	ext_inode_info_t* info = NULL;
-	if (desc->type == FILE_FILE_TYPE) {
+	if (desc->mode & FILE_TYPE_REGULAR) {
 		info = &(((file_info_t*)desc->info)->inode.info);
 		ret->inode = ((file_info_t*)desc->info)->inode.inode;
 	}
-	else if (desc->type == DIRECTORY_FILE_TYPE ){
+	else if (desc->mode & FILE_TYPE_DIRECTORY) {
 		info = &(((directory_info_t*)desc->info)->inode.info);
 		ret->inode = ((directory_info_t*)desc->info)->inode.inode;
 	}
@@ -533,7 +529,7 @@ uint32_t filesystem_stat(int32_t fd, sys_stat_type* ret) {
 		return -1;
 	
 	ret->dev_id = 0;
-	ret->mode = desc->mode | (desc->type << 16);
+	ret->mode = desc->mode;
 	ret->num_links = info->link_count;
 	ret->size = info->size;
 	ret->block_size = ext2_get_block_size();
@@ -564,7 +560,7 @@ file_descriptor_t* filesystem_duplicate(file_descriptor_t* f) {
 	}
 	memcpy(d->filename, f->filename, len + 1);
 	
-	if (f->type == FILE_FILE_TYPE) {
+	if (f->mode & FILE_TYPE_REGULAR) {
 		d->info = kmalloc(sizeof(file_info_t));
 		if (!d->info) {
 			kfree(d->filename);

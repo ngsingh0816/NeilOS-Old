@@ -53,17 +53,19 @@
  */
 
 /* TODO:
+ * A dup mapping may get duplicated twice on a fork
  * SSE memcpy / memmove?
  * (Named) Pipes
  * Message Queues?
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Make fork() copy on write
- * Sockets?
+	* Sockets stub
  * (Kernel?) Threads (pthread?)
-	* Potential multitasking issues: file locks
+	* Potential multitasking issues:
+		* file locks
+		* reading in one thread while closing in another
  * Shared User Libraries (dynamic newlib, stdc++)
- * Page files on disk?
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
@@ -73,6 +75,8 @@
  * GUI (Compositing Window Manager)
 	* Interacts through message queues
  * Improved Scheduler
+ * Sockets?
+ * Page files on disk?
  * SMP?
  * Module support?
  * OpenGL (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?

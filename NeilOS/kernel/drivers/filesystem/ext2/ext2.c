@@ -125,7 +125,8 @@ ext_inode_t ext2_open(const char* path) {
 
 // Create an inode at a particular path (creates a new file no matter what,
 // so only call this when the file doesn't exist)
-ext_inode_t ext2_create(ext_inode_t* parent, const char* name, bool directory) {
+ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode) {
+	bool directory = (mode & FILE_TYPE_DIRECTORY) == 1;
 	// Allocate a new inode
 	uint32_t node = ext2_allocate_inode(directory);
 	if (node == EXT2_INODE_INVALID)
@@ -134,8 +135,10 @@ ext_inode_t ext2_create(ext_inode_t* parent, const char* name, bool directory) {
 	ext_inode_t ret;
 	memset(&ret, 0, sizeof(ext_inode_t));
 	ret.inode = node;
-	if (directory)
+	if (mode & FILE_TYPE_DIRECTORY)
 		ret.info.mode |= EXT2_INODE_MODE_DIR;
+	else if (mode & FILE_TYPE_PIPE)
+		ret.info.mode |= EXT2_INODE_MODE_FIFO;
 	else
 		ret.info.mode |= EXT2_INODE_MODE_REG;
 	ret.info.mode |= EXT2_INODE_MODE_ATTR_ALL;
@@ -514,4 +517,26 @@ uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer, 
 		return uint64_make(0, 0);
 	
 	return offset;
+}
+
+// Helper function to get parent inode of a path
+ext_inode_t ext2_get_parent_inode(const char* filename) {
+	ext_inode_t inode;
+	memset(&inode, 0, sizeof(ext_inode_t));
+	inode.inode = EXT2_INODE_INVALID;
+	
+	// Find the parent path
+	uint32_t parent_len = 0;
+	const char* parent_path = path_get_parent(filename, &parent_len);
+	char* pp = kmalloc(parent_len + 1);
+	if (!pp)
+		return inode;
+	memcpy(pp, parent_path, parent_len);
+	pp[parent_len] = 0;
+	
+	// Find the parent inode
+	inode = ext2_open(pp);
+	kfree(pp);
+	
+	return inode;
 }
