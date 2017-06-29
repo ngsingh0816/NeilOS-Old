@@ -24,10 +24,10 @@ uint32_t read(int32_t fd, void* buf, uint32_t nbytes);
 uint32_t write(int32_t fd, const void* buf, uint32_t nbytes);
 
 // Seek to an offset
-uint32_t llseek(int32_t fd, uint64_t offset, int whence);
+uint32_t llseek(int32_t fd, uint32_t offset_high, uint32_t offset_low, int whence);
 
 // Change the size of a file
-uint32_t truncate(int32_t fd, uint64_t length);
+uint32_t truncate(int32_t fd, uint32_t length_high, uint32_t length_low);
 
 // Get information about a file descriptor
 uint32_t stat(int32_t fd, sys_stat_type* data);

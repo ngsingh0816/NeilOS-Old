@@ -15,11 +15,6 @@
 #include <string.h>
 
 typedef struct {
-	unsigned int high;
-	unsigned int low;
-} __sys_uint64_t;
-
-typedef struct {
 	uint32_t dev_id;
 	uint32_t inode;
 	uint32_t mode;
@@ -36,8 +31,8 @@ typedef struct {
 extern unsigned int sys_open(const char* filename, unsigned int mode);
 extern unsigned int sys_read(int fd, void* buf, unsigned int nbytes);
 extern unsigned int sys_write(int fd, const void* buf, unsigned int nbytes);
-extern unsigned int sys_llseek(int fd, __sys_uint64_t offset, int whence);
-extern unsigned int sys_truncate(int fd, __sys_uint64_t length);
+extern unsigned int sys_llseek(int fd, uint32_t offset_high, uint32_t offset_low, int whence);
+extern unsigned int sys_truncate(int fd, uint32_t length_high, uint32_t length_low);
 extern unsigned int sys_stat(int fd, __sys_stat_type* data);
 extern unsigned int sys_close(int fd);
 extern unsigned int sys_isatty(int fd);
@@ -58,15 +53,11 @@ int write(int file, char *ptr, int len) {
 }
 
 int lseek(int file, int ptr, int dir) {
-	__sys_uint64_t offset;
-	offset.low = ptr;
-	return sys_llseek(file, offset, dir);
+	return sys_llseek(file, 0, ptr, dir);
 }
 
 int truncate(int fd, unsigned int length) {
-	__sys_uint64_t len;
-	len.low = length;
-	return sys_truncate(fd, len);
+	return sys_truncate(fd, 0, length);
 }
 
 int stat(const char *file, struct stat *st) {

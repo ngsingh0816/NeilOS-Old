@@ -29,6 +29,8 @@
  * Elf file format
  * Newlib (static)
  * C++ User support
+ * Pipes
+ * Named Pipes (FIFOs)
  */
 
 /* Done (but could be improved):
@@ -47,16 +49,9 @@
  */
 
 /* Things to test
- * Execve
-	* Memory maps, file descriptors
- * truncate / llseek actually gets passed correct data
  */
 
 /* TODO:
- * A dup mapping may get duplicated twice on a fork
- * SSE memcpy / memmove?
- * (Named) Pipes
- * Message Queues?
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Make fork() copy on write
@@ -64,8 +59,8 @@
  * (Kernel?) Threads (pthread?)
 	* Potential multitasking issues:
 		* file locks
-		* reading in one thread while closing in another
- * Shared User Libraries (dynamic newlib, stdc++)
+		* reading in one thread while closing in another (file descriptor lock)
+ * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
@@ -76,6 +71,7 @@
 	* Interacts through message queues
  * Improved Scheduler
  * Sockets?
+ * Message Queues?
  * Page files on disk?
  * SMP?
  * Module support?

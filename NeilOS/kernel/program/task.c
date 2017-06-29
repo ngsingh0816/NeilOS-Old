@@ -242,6 +242,23 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 	uint32_t z;
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
 		if (in->descriptors[z]) {
+			// Check if this is has already been duplicated
+			if (in->descriptors[z]->ref_count > 1) {
+				// Check if we've already seen it
+				uint32_t i;
+				bool found = false;
+				for (i = 0; i < z; i++) {
+					if (in->descriptors[i] == in->descriptors[z]) {
+						found = true;
+						break;
+					}
+				}
+				if (found) {
+					out->descriptors[z] = out->descriptors[i];
+					continue;
+				}
+			}
+			// Otherwise, duplicate it
 			out->descriptors[z] = (file_descriptor_t*)in->descriptors[z]->duplicate((void*)in->descriptors[z]);
 			if (!out->descriptors[z])
 				return false;

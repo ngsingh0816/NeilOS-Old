@@ -127,7 +127,7 @@ uint32_t write(int32_t fd, const void* buf, uint32_t nbytes) {
 }
 
 // Seek to an offset
-uint32_t llseek(int32_t fd, uint64_t offset, int whence) {
+uint32_t llseek(int32_t fd, uint32_t offset_high, uint32_t offset_low, int whence) {
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0 || !(whence >= SEEK_SET && whence <= SEEK_END))
 		return -1;
@@ -138,11 +138,13 @@ uint32_t llseek(int32_t fd, uint64_t offset, int whence) {
 	
 	// Call to the driver specific call
 	// TODO: for now only return the lower 32 bits
-	return descriptors[fd]->llseek(fd, offset, whence).low;
+	return descriptors[fd]->llseek(fd, uint64_make(offset_high, offset_low), whence).low;
+	
+	return 0;
 }
 
 // Change the size of a file
-uint32_t truncate(int32_t fd, uint64_t length) {
+uint32_t truncate(int32_t fd, uint32_t length_high, uint32_t length_low) {
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0)
 		return -1;
@@ -153,7 +155,7 @@ uint32_t truncate(int32_t fd, uint64_t length) {
 	
 	// Call to the driver specific call
 	// TODO: for now just return the lower 32 bits
-	return descriptors[fd]->truncate(fd, length).low;
+	return descriptors[fd]->truncate(fd, uint64_make(length_high, length_low)).low;
 }
 
 // Get information about a file descriptor
