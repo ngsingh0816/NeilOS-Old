@@ -13,16 +13,23 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 
+extern unsigned int sys_errno();
+
 extern unsigned int sys_times(struct tms* buf);
 extern unsigned int sys_gettimeofday();
 
 clock_t times(struct tms *buf) {
-	return sys_times(buf);
+	int ret = sys_times(buf);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int gettimeofday(struct timeval* p, void* z) {
-	if (!p)
+	if (!p) {
+		errno = EINVAL;
 		return -1;
+	}
 	
 	p->tv_sec = sys_gettimeofday();
 	

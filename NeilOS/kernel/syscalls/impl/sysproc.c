@@ -9,6 +9,7 @@
 #include "sysproc.h"
 #include <common/types.h>
 #include <program/task.h>
+#include <common/log.h>
 
 // Returns to a user space program
 extern void return_to_user(pcb_t* pcb, pcb_t* parent);
@@ -89,6 +90,8 @@ int32_t run_with_fake_parent(pcb_t* pcb, pcb_t* parent) {
 
 // Duplicate a program and memory space
 uint32_t fork() {
+	LOG_DEBUG_INFO();
+
 	context_state_t context;
 	get_context(&context);
 	
@@ -110,6 +113,8 @@ uint32_t fork() {
 
 // Load a new program into the current memory space
 uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
+	LOG_DEBUG_INFO_STR("(%s, 0x%x, 0x%x)", filename, argv, envp);
+
 	// Load the task
 	pcb_t* pcb = NULL;
 	if (queue_task(filename, argv, envp, &pcb) != 0)
@@ -120,11 +125,15 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 
 // Get the pid of the current process
 uint32_t getpid() {
+	LOG_DEBUG_INFO();
+
 	return current_pcb->task->pid;
 }
 
 // Wait for a child to change state (returns the status that the child returned with)
 uint32_t waitpid(uint32_t pid) {
+	LOG_DEBUG_INFO_STR("(%d)", pid);
+
 	pcb_t* pcb = current_pcb;
 	
 	// Wait until the child has finished
@@ -161,6 +170,8 @@ uint32_t waitpid(uint32_t pid) {
 
 // Wait for any child to finish
 uint32_t wait(uint32_t pid) {
+	LOG_DEBUG_INFO_STR("(%d)", pid);
+
 	pcb_t* pcb = current_pcb;
 	if (!pcb->children)
 		return -1;
@@ -192,6 +203,8 @@ uint32_t wait(uint32_t pid) {
 
 // Exit a program with a specific status
 uint32_t exit(int status) {
+	LOG_DEBUG_INFO_STR("(%d)", status);
+
 	pcb_t* pcb = current_pcb;
 	
 	// Close all open file handles
@@ -213,4 +226,15 @@ uint32_t exit(int status) {
 	terminate_task(status);
 	
 	return status;
+}
+
+// Get the current working directory
+uint32_t getwd(char* buf) {
+	LOG_DEBUG_INFO_STR("(0x%x)", buf);
+
+	// TODO: implement working directories
+	if (!buf)
+		return -1;
+	memcpy(buf, "", strlen("") + 1);
+	return 0;
 }

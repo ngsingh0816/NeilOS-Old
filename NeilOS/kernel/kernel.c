@@ -31,6 +31,7 @@
  * C++ User support
  * Pipes
  * Named Pipes (FIFOs)
+ * Logging
  */
 
 /* Done (but could be improved):
@@ -52,6 +53,8 @@
  */
 
 /* TODO:
+ * Sigaction
+ * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Make fork() copy on write
@@ -60,7 +63,6 @@
 	* Potential multitasking issues:
 		* file locks
 		* reading in one thread while closing in another (file descriptor lock)
- * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)

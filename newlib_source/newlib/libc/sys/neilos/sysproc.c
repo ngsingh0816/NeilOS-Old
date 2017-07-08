@@ -10,6 +10,9 @@
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/errno.h>
+#include <stdlib.h>
+
+extern unsigned int sys_errno();
 
 extern unsigned int sys_fork();
 extern unsigned int sys_execve(char* filename, char** argv, char** envp);
@@ -17,25 +20,41 @@ extern unsigned int sys_getpid();
 extern unsigned int sys_waitpid(unsigned int pid);
 extern unsigned int sys_wait();
 extern unsigned int sys_exit(int status);
+extern unsigned int sys_getwd(char* buf);
 
 int fork() {
-	return sys_fork();
+	int ret = sys_fork();
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int execve(char *name, char **argv, char **env) {
-	return sys_execve(name, argv, env);
+	int ret = sys_execve(name, argv, env);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int getpid() {
-	return sys_getpid();
+	int ret = sys_getpid();
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int waitpid(unsigned int pid) {
-	return sys_waitpid(pid);
+	int ret = sys_waitpid(pid);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int wait(int *status) {
-	return sys_wait();
+	int ret = sys_wait();
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 extern void (*__fini_array_start []) (void) __attribute__((weak));
@@ -53,3 +72,30 @@ void _exit() {
 	
 	sys_exit(0);
 }
+
+char* getwd(char* buf) {
+	if (!buf)
+		return NULL;
+	
+	if (sys_getwd(buf) == -1) {
+		errno = sys_errno();
+		return NULL;
+	}
+	return buf;
+}
+
+/*char* getcwd(char* buf, size_t size) {
+	if (!buf || size == 0) {
+		buf = malloc(4096);	// PATH_MAX on linux
+		if (!buf)
+			return NULL;
+	}
+	
+	if (sys_getwd(buf) == -1) {
+		errno = sys_errno();
+		return NULL;
+	}
+	return buf;
+}*/
+
+

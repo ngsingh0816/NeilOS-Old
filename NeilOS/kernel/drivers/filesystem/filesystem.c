@@ -255,7 +255,7 @@ uint32_t fwrite_directory(const void* buffer, uint32_t size, uint32_t count, fil
 
 // Write to a file object
 uint32_t fwrite(const void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file) {
-	if (!(file->mode & FILE_MODE_WRITE))
+	if (!(file->mode & FILE_MODE_WRITE) && !(file->mode & FILE_MODE_APPEND))
 		return -1;
 	
 	if (file->mode & FILE_MODE_APPEND)
@@ -283,8 +283,12 @@ uint64_t fseek_file(file_descriptor_t* f, uint64_t offset, int whence) {
 		file->offset = file_size;
 	
 	// Check we still have a valid range
-	if (uint64_greater(file->offset, file_size))
-		file->offset = file_size;
+	if (uint64_greater(file->offset, file_size)) {
+		if (f->mode & FILE_MODE_WRITE)
+			file->offset = ext2_truncate_inode(&file->inode, file->offset);
+		else
+			file->offset = file_size;
+	}
 	
 	return file->offset;
 }
@@ -361,7 +365,7 @@ uint64_t fseek(file_descriptor_t* file, uint64_t offset, int whence) {
 
 // Truncate a file to a specific size
 uint64_t ftruncate(file_descriptor_t* f, uint64_t size) {
-	if (f->mode & FILE_TYPE_REGULAR)
+	if (!(f->mode & FILE_TYPE_REGULAR))
 		return uint64_make(-1, -1);
 	
 	file_info_t* file = (file_info_t*)f->info;
@@ -464,6 +468,22 @@ bool fclose(file_descriptor_t* file) {
 	kfree(file->filename);
 	kfree(file->info);
 	return ret;
+}
+
+// Set times
+void fsettime(file_descriptor_t* file, uint32_t atime, uint32_t mtime) {
+	ext_inode_t inode;
+	if (file->mode & FILE_TYPE_DIRECTORY)
+		inode = ((directory_info_t*)file->info)->inode;
+	else
+		inode = ((file_info_t*)file->info)->inode;
+
+	// Update the times of this inode
+	inode.info.atime = atime;
+	inode.info.mtime = mtime;
+	
+	// Write this inode data
+	ext2_set_inode_info(inode.inode, &inode.info);
 }
 
 // Open a file or directory
@@ -583,5 +603,5 @@ file_descriptor_t* filesystem_duplicate(file_descriptor_t* f) {
 
 // Close a file handle
 uint32_t filesystem_close(file_descriptor_t* fd) {
-	return fclose(fd) ? -1 : 0;
+	return fclose(fd) ? 0 : -1;
 }

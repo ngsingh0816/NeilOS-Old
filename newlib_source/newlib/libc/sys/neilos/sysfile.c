@@ -28,6 +28,8 @@ typedef struct {
 	time_t ctime;
 } __sys_stat_type;
 
+extern unsigned int sys_errno();
+
 extern unsigned int sys_open(const char* filename, unsigned int mode);
 extern unsigned int sys_read(int fd, void* buf, unsigned int nbytes);
 extern unsigned int sys_write(int fd, const void* buf, unsigned int nbytes);
@@ -39,33 +41,58 @@ extern unsigned int sys_isatty(int fd);
 extern unsigned int sys_dup(unsigned int fd);
 extern unsigned int sys_dup2(unsigned int fd, unsigned int new_fd);
 extern unsigned int sys_pipe(int pipefd[2]);
+extern unsigned int sys_fcntl(int fd, int cmd, ...);
 
-int open(const char *name, int mode, ...) {
-	return sys_open(name, mode + 1);
+int open(const char* name, int mode, ...) {
+	int ret = sys_open(name, mode + 1);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
-int read(int file, char *ptr, int len) {
-	return sys_read(file, ptr, len);
+int read(int file, char* ptr, int len) {
+	int ret = sys_read(file, ptr, len);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
-int write(int file, char *ptr, int len) {
-	return sys_write(file, ptr, len);
+int write(int file, char* ptr, int len) {
+	int ret = sys_write(file, ptr, len);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int lseek(int file, int ptr, int dir) {
-	return sys_llseek(file, 0, ptr, dir);
+	int ret = sys_llseek(file, 0, ptr, dir);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int truncate(int fd, unsigned int length) {
-	return sys_truncate(fd, 0, length);
+	int ret = sys_truncate(fd, 0, length);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
-int stat(const char *file, struct stat *st) {
-	int fd = sys_open(file, O_RDONLY);
-	if (fd == -1)
+int stat(const char* file, struct stat* st) {
+	int fd = sys_open(file, O_RDONLY + 1);
+	if (fd == -1) {
+		errno = sys_errno();
 		return -1;
+	}
 	int ret = fstat(fd, st);
-	sys_close(fd);
+	if (ret == -1)
+		errno = sys_errno();
+	
+	if (sys_close(fd) != 0) {
+		errno = sys_errno();
+		return -1;
+	}
+	
 	return ret;
 }
 
@@ -75,6 +102,10 @@ int fstat(int file, struct stat *st) {
 	
 	__sys_stat_type data;
 	int ret = sys_stat(file, &data);
+	if (ret == -1) {
+		ret = sys_errno();
+		return ret;
+	}
 	
 	memset(st, 0, sizeof(struct stat));
 	st->st_dev = data.dev_id;
@@ -94,32 +125,64 @@ int fstat(int file, struct stat *st) {
 	return ret;
 }
 
+int lstat(const char* file, struct stat* st) {
+	// Symbolic links aren't supported
+	return stat(file, st);
+}
+
 int close(int file) {
-	return sys_close(file);
+	int ret = sys_close(file);
+	if (ret != 0)
+		errno = sys_errno();
+	return ret;
 }
 
 int isatty(int file) {
-	return sys_isatty(file);
+	int ret = sys_isatty(file);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int dup(int fd) {
-	return sys_dup(fd);
+	int dup = sys_dup(fd);
+	if (dup == -1)
+		errno = sys_errno();
+	return dup;
 }
 
 int dup2(int fd, int new_fd) {
-	return sys_dup2(fd, new_fd);
+	int ret = sys_dup2(fd, new_fd);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int pipe(int pipefd[2]) {
-	return sys_pipe(pipefd);
+	int ret = sys_pipe(pipefd);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
 }
 
 int mkfifo(const char* filename, unsigned int mode) {
 	// Read = 0x1
 	int fd = sys_open(filename, 0x1 | _IFIFO | _FCREAT | _FNONBLOCK);
-	if (fd == -1)
+	if (fd == -1) {
+		errno = sys_errno();
 		return -1;
+	}
 	
-	close(fd);
+	if (close(fd) != 0) {
+		errno = sys_errno();
+		return -1;
+	}
+	
 	return 0;
+}
+
+int fcntl(int fd, int cmd, ...) {
+	int ret = sys_fcntl(fd, cmd);
+	errno = sys_errno();
+	return ret;
 }

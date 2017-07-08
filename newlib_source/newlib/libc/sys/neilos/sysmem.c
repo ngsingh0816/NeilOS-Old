@@ -11,13 +11,21 @@
 #include <sys/fcntl.h>
 #include <sys/errno.h>
 
-extern void*		sys_brk(void* addr);
+extern unsigned int sys_errno();
+
+extern unsigned int	sys_brk(void* addr);
 extern void*		sys_sbrk(int offset);
 
-caddr_t brk(void* b) {
-	return sys_brk(b);
+unsigned int brk(void* b) {
+	int ret = sys_brk(b);
+	if (ret != 0)
+		errno = sys_errno();
+	return ret;
 }
 
 caddr_t sbrk(int incr) {
-	return sys_sbrk(incr);
+	void* ret = sys_sbrk(incr);
+	if (ret == (void*)-1)
+		errno = sys_errno();
+	return ret;
 }

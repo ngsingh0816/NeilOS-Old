@@ -27,6 +27,8 @@ bool flink(file_descriptor_t* file, const char* link_name);
 // Close
 bool fclose(file_descriptor_t* file);
 
+// Times
+void fsettime(file_descriptor_t* file, uint32_t atime, uint32_t mtime);
 
 // Syscalls
 file_descriptor_t* filesystem_open(const char* filename, uint32_t mode);

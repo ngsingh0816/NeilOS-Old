@@ -28,6 +28,8 @@ typedef struct {
 
 // Returns the current date (GMT)
 date_t get_current_date();
+// Returns a string of the current date
+int sget_current_date(char* str);
 
 // Returns the current UNIX time
 time_t get_current_time();

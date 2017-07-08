@@ -8,9 +8,12 @@
 
 #include "systime.h"
 #include <common/time.h>
+#include <common/log.h>
 
 // Get the timing information for a process
 uint32_t times(sys_time_type* data) {
+	LOG_DEBUG_INFO_STR("(0x%x)", data);
+
 	if (!data)
 		return -1;
 	
@@ -25,6 +28,8 @@ uint32_t times(sys_time_type* data) {
 
 // Returns the time of day in seconds
 uint32_t gettimeofday() {
+	LOG_DEBUG_INFO();
+
 	date_t date = get_current_date();
 	return date.second + date.minute * 60 + date.hour * 60 * 60;
 }

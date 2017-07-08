@@ -111,6 +111,14 @@ date_t get_current_date() {
 	return ret[0];
 }
 
+const char* months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+int sget_current_date(char* str) {
+	date_t date = get_current_date();
+	return sprintf(str, "%s %d, %d %d:%d:%d", months[date.month - 1], date.day, date.year,
+			date.hour, date.month, date.second);
+}
+
 #define SECONDS_PER_MIN				60
 #define SECONDS_PER_HOUR			3600
 #define SECONDS_PER_DAY				86400

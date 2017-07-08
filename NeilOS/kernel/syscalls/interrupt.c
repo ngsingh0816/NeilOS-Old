@@ -14,6 +14,8 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 };
 
+unsigned int errno = 0;
+
 /* More system Calls
  * Needed for Dash:
 	_execve - done
@@ -24,10 +26,10 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	creat
 	dup - done
 	dup2 - done
-	fcntl
+	fcntl - done
 	fork - done
 	fstat - done
-	getcwd
+	getcwd - done?
 	getdents
 	getegid
 	geteuid
@@ -38,11 +40,11 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	getppid
 	getuid
 	lseek - done
-	lstat
+	lstat - done
 	mmap
 	munmap
 	open - done
-	pipe
+	pipe - dine
 	pread
 	pwrite
 	read - done
@@ -54,7 +56,7 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	stat - done
 	tcgetpgrp
 	tcsetpgrp
-	umask
+	umask - done
 	wait - done?
 	wait3
 	wait4
@@ -82,20 +84,9 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	timer_create
 	timer_delete
 	timer_settime
- * For binutils:
-	lstat
-	chmod
-	access
-	umask
-	fcntl
-	utime
-	chown
-	rmdir
-	sysconf
-	getwd
  * For GCC (need binutils ones as well):
 	mkdir - done
-	pipe
+	pipe - done
 	dup2 - done
 	alarm
 	execvp
@@ -114,12 +105,15 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
  */
 
 void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
-	open, read, write, llseek, truncate, stat, close, isatty, pipe,
-	mkdir, link, unlink,
+	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl,
+	mkdir, link, unlink, utime,
 	brk, sbrk,
 	dup, dup2,
 	times, gettimeofday,
 	kill, signal, sigsetmask, siggetmask,
+	sysconf,
+	getwd,
+	sys_errno,
 };
 
 
@@ -132,7 +126,7 @@ void divide_error(uint32_t code, uint32_t eip) {
 	signal_send(current_pcb, SIGFPE);
 	
 #if DEBUG
-	blue_screen("Divide by 0 error");
+	blue_screen("Divide by 0 error (eip - 0x%x)", eip);
 #else
 	printf("Divide by 0.\n");
 	schedule();

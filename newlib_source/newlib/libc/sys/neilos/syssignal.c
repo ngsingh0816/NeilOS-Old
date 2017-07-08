@@ -11,23 +11,37 @@
 #include <sys/fcntl.h>
 #include <sys/errno.h>
 
+extern unsigned int sys_errno();
+
 extern unsigned int sys_kill(int pid, unsigned int sig);
 extern unsigned int sys_signal(unsigned int signum, void (*handler)());
 extern unsigned int sys_sigsetmask(unsigned int signum, unsigned char masked);
 extern unsigned int sys_siggetmask(unsigned int signum);
 
 int kill(int pid, int sig) {
-	return sys_kill(pid, sig);
+	int ret = sys_kill(pid, sig);
+	if (ret == -1)
+		errno = sys_errno();
+	return -1;
 }
 
 int signal(int sig, void (*handler)()) {
-	sys_signal(sig, handler);
+	int ret = sys_signal(sig, handler);
+	if (ret == -1)
+		errno = sys_errno();
+	return -1;
 }
 
 int sigsetmask(unsigned int signum, unsigned char masked) {
-	return sys_sigsetmask(signum, masked);
+	int ret = sys_sigsetmask(signum, masked);
+	if (ret == -1)
+		errno = sys_errno();
+	return -1;
 }
 
 int siggetmask(unsigned int signum) {
-	return sys_siggetmask(signum);
+	int ret = sys_siggetmask(signum);
+	if (ret == -1)
+		errno = sys_errno();
+	return -1;
 }

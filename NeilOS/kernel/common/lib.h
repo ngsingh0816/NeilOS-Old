@@ -8,6 +8,7 @@
 #include "types.h"
 
 void backspace();
+int32_t sprintf(char* str, const int8_t* format, ...);
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
 int32_t puts(int8_t *s);

@@ -47,4 +47,7 @@ uint32_t dup2(int32_t fd, int32_t new_fd);
 // Create a pipe
 uint32_t pipe(int32_t pipefd[2]);
 
+// Extensions
+int fcntl(int32_t fd, int32_t cmd, ...);
+
 #endif /* SYSFILE_H */

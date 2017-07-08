@@ -15,6 +15,7 @@
 #include <drivers/rtc/rtc.h>
 #include <drivers/pipe/pipe.h>
 #include <drivers/pipe/fifo.h>
+#include <common/log.h>
 
 // Device for syscall's purposes
 typedef struct syscall_device {
@@ -75,6 +76,8 @@ file_descriptor_t* open_handle(const char* filename, uint32_t mode) {
 
 // Open a file descriptor
 uint32_t open(const char* filename, uint32_t mode) {
+	LOG_DEBUG_INFO_STR("(%s, %d)", filename, mode);
+	
 	// Find and open descriptor
 	uint32_t current_fd = -1;
 	int z;								// Looping over descriptors
@@ -100,6 +103,8 @@ uint32_t open(const char* filename, uint32_t mode) {
 
 // Read from a file descriptor
 uint32_t read(int32_t fd, void* buf, uint32_t nbytes) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, %d)", fd, buf, nbytes);
+	
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0 || nbytes == 0 || !buf)
 		return -1;
@@ -114,6 +119,8 @@ uint32_t read(int32_t fd, void* buf, uint32_t nbytes) {
 
 // Write to a file descriptor
 uint32_t write(int32_t fd, const void* buf, uint32_t nbytes) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, %d)", fd, buf, nbytes);
+
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0 || nbytes == 0 || !buf)
 		return -1;
@@ -128,6 +135,8 @@ uint32_t write(int32_t fd, const void* buf, uint32_t nbytes) {
 
 // Seek to an offset
 uint32_t llseek(int32_t fd, uint32_t offset_high, uint32_t offset_low, int whence) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x, %d)", fd, offset_high, offset_low, whence);
+
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0 || !(whence >= SEEK_SET && whence <= SEEK_END))
 		return -1;
@@ -145,6 +154,8 @@ uint32_t llseek(int32_t fd, uint32_t offset_high, uint32_t offset_low, int whenc
 
 // Change the size of a file
 uint32_t truncate(int32_t fd, uint32_t length_high, uint32_t length_low) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x, %d)", fd, length_high, length_low);
+
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0)
 		return -1;
@@ -160,6 +171,8 @@ uint32_t truncate(int32_t fd, uint32_t length_high, uint32_t length_low) {
 
 // Get information about a file descriptor
 uint32_t stat(int32_t fd, sys_stat_type* data) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x)", fd, data);
+
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0 || !data)
 		return -1;
@@ -173,6 +186,8 @@ uint32_t stat(int32_t fd, sys_stat_type* data) {
 
 // Close a file descriptor
 uint32_t close(int32_t fd) {
+	LOG_DEBUG_INFO_STR("(%d)", fd);
+
 	// Check if this descriptor is within the bounds
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0)
 		return -1;
@@ -196,6 +211,8 @@ uint32_t close(int32_t fd) {
 
 // Is the file descriptor a terminal?
 uint32_t isatty(int32_t fd) {
+	LOG_DEBUG_INFO_STR("(%d)", fd);
+
 	// Check if this descriptor is within the bounds
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0)
 		return 0;
@@ -209,6 +226,8 @@ uint32_t isatty(int32_t fd) {
 
 // Duplicate a file descriptor
 uint32_t dup(int32_t fd) {
+	LOG_DEBUG_INFO_STR("(%d)", fd);
+
 	// Find and open descriptor
 	uint32_t current_fd = -1;
 	int z;								// Looping over descriptors
@@ -228,6 +247,8 @@ uint32_t dup(int32_t fd) {
 
 // Duplicate a file descriptor into the specific file descriptor
 uint32_t dup2(int32_t fd, int32_t new_fd) {
+	LOG_DEBUG_INFO_STR("(%d, %d)", fd, new_fd);
+
 	// Check if this descriptor is within the bounds
 	if (fd >= NUMBER_OF_DESCRIPTORS || new_fd >= NUMBER_OF_DESCRIPTORS)
 		return -1;
@@ -256,6 +277,11 @@ uint32_t dup2(int32_t fd, int32_t new_fd) {
 
 // Create a pipe
 uint32_t pipe(int32_t pipefd[2]) {
+	LOG_DEBUG_INFO_STR("(%d, %d)", pipefd[0], pipefd[1]);
+	
+	if (!pipefd)
+		return -1;
+
 	// Find and open descriptor
 	uint32_t current_fd[2] = { -1, -1 };
 	int z, i = 0;								// Looping over descriptors
@@ -299,5 +325,38 @@ uint32_t pipe(int32_t pipefd[2]) {
 	pipefd[1] = current_fd[1];
 	descriptors = pcb->descriptors;
 	
+	return 0;
+}
+
+#define	F_DUPFD		0		/* duplicate file descriptor */
+#define	F_GETFD		1		/* get file descriptor flags */
+#define	F_SETFD		2		/* set file descriptor flags */
+#define	F_GETFL		3		/* get file status flags */
+#define	F_SETFL		4		/* set file status flags */
+#define	F_GETOWN	5		/* get SIGIO/SIGURG proc/pgrp */
+#define F_SETOWN	6		/* set SIGIO/SIGURG proc/pgrp */
+#define	F_GETLK		7		/* get record locking information */
+#define	F_SETLK		8		/* set record locking information */
+#define	F_SETLKW	9		/* F_SETLK; wait if blocked */
+
+// Extensions
+int fcntl(int32_t fd, int32_t cmd, ...) {
+	LOG_DEBUG_INFO_STR("(%d, %d)", fd, cmd);
+
+	uint32_t* esp = ((uint32_t*)&cmd) + 1;
+	switch (cmd) {
+		case F_DUPFD:
+			return dup(*esp);
+		case F_GETFD:
+			// TODO: implement CLOSE_ON_EXEC
+			return 0;
+		case F_SETFD:
+			// TODO: implement CLOSE_ON_EXEC
+			return 0;
+		default:
+			printf("Unimplemented fcntl %d", cmd);
+			for (;;) {}
+			return -1;
+	}
 	return 0;
 }

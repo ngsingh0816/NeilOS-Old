@@ -11,5 +11,5 @@ rm NeilOS.img
 cp orig_large.img NeilOS.img
 hdiutil attach ./NeilOS.img
 cp -f ./bootimg /Volumes/NeilOS/
-rsync -au ./filesystem/. /Volumes/NeilOS/
+rsync -au ../sysroot/. /Volumes/NeilOS/
 hdiutil detach /Volumes/NeilOS

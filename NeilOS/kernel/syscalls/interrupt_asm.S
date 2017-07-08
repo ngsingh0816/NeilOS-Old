@@ -3,7 +3,7 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			28
+#define NUM_SYSCALLS			33
 
 #include <boot/x86_desc.h>
 
@@ -268,6 +268,7 @@ interrupt:
 		popl %eax
 
 		// Push the arguments
+		pushl %esi
 		pushl %edx
 		pushl %ecx
 		pushl %ebx
@@ -282,6 +283,7 @@ interrupt:
 		popl %ebx
 		popl %ecx
 		popl %edx
+		popl %esi
 
 		// Say that the current task is out of the syscall
 		movl current_pcb, %eax
@@ -342,6 +344,9 @@ done_interrupt:
 
 // Interrupt handlers (call through to a common function)
 int0:
+	// Get eip
+	movl (%esp), %edx
+
 	pushl %eax
 	movl $0, %eax
 	jmp interrupt

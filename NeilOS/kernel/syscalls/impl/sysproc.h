@@ -37,4 +37,7 @@ uint32_t wait(uint32_t pid);
 // Exit a program with a specific status
 uint32_t exit(int status);
 
+// Get the current working directory
+uint32_t getwd(char* buf);
+
 #endif /* SYSPROC_H */

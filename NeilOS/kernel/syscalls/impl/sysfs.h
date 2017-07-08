@@ -20,4 +20,7 @@ uint32_t link(const char* filename, const char* new_name);
 // Unlink a file (note: deletes the file if it is the last remaining link)
 uint32_t unlink(const char* filename);
 
+// Update a file's access and modification time
+uint32_t utime(const char* filename, uint32_t* times);
+
 #endif /* SYSFS_H */
