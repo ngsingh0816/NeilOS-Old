@@ -150,8 +150,8 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 			desc->mode |= FILE_TYPE_REGULAR;
 		
 		// Delete the file contents if needed
-		if ((desc->mode & FILE_MODE_WRITE) &&
-			!(desc->mode & FILE_MODE_READ)) {
+		if ((desc->mode & FILE_MODE_TRUNCATE) &&
+			((desc->mode & FILE_MODE_WRITE) || (desc->mode & FILE_MODE_APPEND))) {
 			ftruncate(desc, uint64_make(0, 0));
 		}
 	}

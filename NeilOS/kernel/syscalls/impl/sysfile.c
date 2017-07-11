@@ -354,8 +354,9 @@ int fcntl(int32_t fd, int32_t cmd, ...) {
 			// TODO: implement CLOSE_ON_EXEC
 			return 0;
 		default:
-			printf("Unimplemented fcntl %d", cmd);
-			for (;;) {}
+#if DEBUG
+			blue_screen("Unimplemented fctnl %d", cmd);
+#endif
 			return -1;
 	}
 	return 0;

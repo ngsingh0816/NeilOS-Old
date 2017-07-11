@@ -88,9 +88,11 @@ typedef struct pcb {
 	task_state state;
 	
 	// Signal things
-	sigmask_t signal_pending;
-	sigmask_t signal_mask;
-	sighandler_t signal_handlers[NUMBER_OF_SIGNALS];
+	sigset_t signal_pending;
+	sigset_t signal_mask;
+	sigset_t signal_save_mask[NUMBER_OF_SIGNALS];
+	sigaction_t signal_handlers[NUMBER_OF_SIGNALS];
+	volatile bool signal_waiting;
 } pcb_t;
 
 // The current pcb

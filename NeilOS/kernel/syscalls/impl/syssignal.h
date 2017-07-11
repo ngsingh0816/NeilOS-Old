@@ -15,13 +15,21 @@
 // Send a signal to a process
 uint32_t kill(uint32_t pid, uint32_t signum);
 
+typedef unsigned long sigset_t;
+
 // Set the signal handler for a certain signal
-uint32_t signal(uint32_t signum, sighandler_t handler);
+uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact);
 
 // Mask signals
 uint32_t sigsetmask(uint32_t signum, bool masked);
 
 // Unmask signals
 uint32_t siggetmask(uint32_t signum);
+
+// Set signal masks
+uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset);
+
+// Suspend execution until signal
+uint32_t sigsuspend(const sigset_t* mask);
 
 #endif /* SYSSIGNAL_H */

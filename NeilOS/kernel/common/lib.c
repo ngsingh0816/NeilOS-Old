@@ -799,18 +799,18 @@ void*
 memcpy(void* dest, const void* src, uint32_t n)
 {
 	asm volatile("                  \n\
-			.memcpy_top:            \n\
+			._memcpy_top:            \n\
 			testl   %%ecx, %%ecx    \n\
-			jz      .memcpy_done    \n\
+			jz      ._memcpy_done    \n\
 			testl   $0x3, %%edi     \n\
-			jz      .memcpy_aligned \n\
+			jz      ._memcpy_aligned \n\
 			movb    (%%esi), %%al   \n\
 			movb    %%al, (%%edi)   \n\
 			addl    $1, %%edi       \n\
 			addl    $1, %%esi       \n\
 			subl    $1, %%ecx       \n\
-			jmp     .memcpy_top     \n\
-			.memcpy_aligned:        \n\
+			jmp     ._memcpy_top     \n\
+			._memcpy_aligned:        \n\
 			movw    %%ds, %%dx      \n\
 			movw    %%dx, %%es      \n\
 			movl    %%ecx, %%edx    \n\
@@ -818,16 +818,16 @@ memcpy(void* dest, const void* src, uint32_t n)
 			andl    $0x3, %%edx     \n\
 			cld                     \n\
 			rep     movsl           \n\
-			.memcpy_bottom:         \n\
+			._memcpy_bottom:         \n\
 			testl   %%edx, %%edx    \n\
-			jz      .memcpy_done    \n\
+			jz      ._memcpy_done    \n\
 			movb    (%%esi), %%al   \n\
 			movb    %%al, (%%edi)   \n\
 			addl    $1, %%edi       \n\
 			addl    $1, %%esi       \n\
 			subl    $1, %%edx       \n\
-			jmp     .memcpy_bottom  \n\
-			.memcpy_done:           \n\
+			jmp     ._memcpy_bottom  \n\
+			._memcpy_done:           \n\
 			"
 			:
 			: "S"(src), "D"(dest), "c"(n)
@@ -835,6 +835,9 @@ memcpy(void* dest, const void* src, uint32_t n)
 			);
 
 	return dest;
+	/*for (int z = 0; z < n; z++)
+		((uint8_t*)dest)[z] = ((uint8_t*)src)[z];
+	return dest;*/
 }
 
 /*

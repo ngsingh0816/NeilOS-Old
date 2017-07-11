@@ -54,10 +54,10 @@
 
 /* TODO:
  * Sigaction
+ * Make fork() copy on write
  * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
-	* Make fork() copy on write
 	* Sockets stub
  * (Kernel?) Threads (pthread?)
 	* Potential multitasking issues:

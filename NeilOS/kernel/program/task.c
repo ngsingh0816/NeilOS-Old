@@ -677,8 +677,10 @@ void terminate_task(uint32_t ret) {
 			}
 			child = child->next;
 		}
+		
 		// Send the child finish signal
-		signal_send(parent, SIGCHILD);
+		if (!(parent->signal_handlers[SIGCHILD].flags & SA_NOCLDSTOP))
+			signal_send(parent, SIGCHILD);
 	}
 	
 	// Unlink the task from the task list

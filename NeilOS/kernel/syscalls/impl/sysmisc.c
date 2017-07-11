@@ -186,8 +186,9 @@ uint32_t sysconf(int name) {
 		case _SC_PAGESIZE: return FOUR_MB_SIZE;
 		case _SC_VERSION: return 200801;
 		default: {
-			printf("Unimplemented sysconf variable %d\n", name);
-			for (;;) {}
+#if DEBUG
+			blue_screen("Unimplemented sysconf variable %d.", name);
+#endif
 			return -1;
 		}
 	}

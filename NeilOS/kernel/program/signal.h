@@ -13,7 +13,7 @@
 
 struct pcb;
 
-#define NUMBER_OF_SIGNALS	20
+#define NUMBER_OF_SIGNALS	21
 
 // Signal numbers
 #define SIGHUP		1		// Hangup
@@ -37,8 +37,19 @@ struct pcb;
 #define SIGSTOP		19		// Stop executing
 #define SIGTSTP		20		// Terminal stop signal
 
-typedef uint32_t sigmask_t;
+#define SA_NOCLDSTOP 0x1   /* Do not generate SIGCHLD when children stop */
+#define SA_SIGINFO   0x2   /* Invoke the signal catching function with */
+/*   three arguments instead of one. */
+#define SA_ONSTACK   0x4   /* Signal delivery will be on a separate stack. */
+
+typedef unsigned long sigset_t;
 typedef void (*sighandler_t)();
+
+typedef struct {
+	sighandler_t handler;
+	sigset_t mask;
+	unsigned int flags;
+} sigaction_t;
 
 // Pending signals
 void signal_set_pending(struct pcb* pcb, uint32_t signum, bool pending);
@@ -47,12 +58,18 @@ bool signal_is_pending(struct pcb* pcb, uint32_t signum);
 bool signal_pending(struct pcb* pcb);
 
 // Signal handlers
-void signal_set_handler(struct pcb* pcb, uint32_t signum, sighandler_t handler);
-sighandler_t signal_get_handler(struct pcb* pcb, uint32_t signum);
+void signal_set_handler(struct pcb* pcb, uint32_t signum, sigaction_t handler);
+sigaction_t signal_get_handler(struct pcb* pcb, uint32_t signum);
 
 // Mask (block) signals
 void signal_set_masked(struct pcb* pcb, uint32_t signum, bool masked);
 bool signal_is_masked(struct pcb* pcb, uint32_t signum);
+void signal_set_mask(struct pcb* pcb, sigset_t mask);
+void signal_block(struct pcb* pcb, sigset_t mask);
+void signal_unblock(struct pcb* pcb, sigset_t mask);
+
+// Wait for a signal
+void signal_wait(struct pcb* pcb, const sigset_t* mask);
 
 // Send a signal
 void signal_send(struct pcb* pcb, uint32_t signum);

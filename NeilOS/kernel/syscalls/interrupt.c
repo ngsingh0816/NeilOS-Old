@@ -7,6 +7,7 @@
 extern int* intx80;
 extern int* idt_vectors[NUMBER_OF_INTERRUPTS];
 extern int* idt_vectors_user[NUMBER_OF_USER_INTERRUPTS];
+extern void load_lidt();
 
 // Array of functions for specific pic IRQ's
 void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
@@ -44,7 +45,7 @@ unsigned int errno = 0;
 	mmap
 	munmap
 	open - done
-	pipe - dine
+	pipe - done
 	pread
 	pwrite
 	read - done
@@ -63,16 +64,16 @@ unsigned int errno = 0;
 	waitpid - done
 	write - done
 	kill - done
-	killpg
+	killpg - done
 	sigaction - done
-	sigaddset
-	sigdelset
-	sigemptyset
-	sigfillset
-	sigismember
+	sigaddset - done
+	sigdelset - done
+	sigemptyset - done
+	sigfillset - done
+	sigismember - done
 	signal - done
-	sigprocmask
-	sigsuspend
+	sigprocmask - done
+	sigsuspend - done
 	brk - done
 	sbrk - done
 	syslog
@@ -110,7 +111,7 @@ void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
 	brk, sbrk,
 	dup, dup2,
 	times, gettimeofday,
-	kill, signal, sigsetmask, siggetmask,
+	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend,
 	sysconf,
 	getwd,
 	sys_errno,
@@ -361,6 +362,7 @@ void load_idt() {
 	// Avoids error in xcode
 #ifndef __APPLE__
 	// Load the IDT
-	lidt((int)&idt_desc_ptr);
+	load_lidt();
+	//lidt((int)&idt_desc_ptr);
 #endif
 }

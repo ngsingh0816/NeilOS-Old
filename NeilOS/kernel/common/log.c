@@ -22,8 +22,7 @@ void log(int8_t* format, ...) {
 			fmkdir("var/log");
 			if (!fopen("var/log/syslog", FILE_MODE_CREATE | FILE_MODE_APPEND, &log_file)) {
 	#if DEBUG
-				printf("Logging error.\n");
-				for (;;) {}
+				blue_screen("Logging error.");
 	#endif
 				return;
 			}

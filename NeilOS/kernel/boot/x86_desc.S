@@ -11,6 +11,7 @@
 .globl  tss, tss_desc_ptr, ldt, ldt_desc_ptr
 .globl  gdt_ptr
 .globl  idt_desc_ptr, idt
+.globl load_lidt
 
 #ifdef __APPLE__
 .globl _idt
@@ -128,3 +129,7 @@ _idt:
 	.endr
 
 idt_bottom:
+
+load_lidt:
+	lidt (idt_desc_ptr)
+	ret

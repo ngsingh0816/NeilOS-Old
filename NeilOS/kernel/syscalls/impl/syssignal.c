@@ -10,6 +10,7 @@
 #include <program/task.h>
 #include <program/signal.h>
 #include <common/log.h>
+#include <syscalls/interrupt.h>
 
 // Send a signal to a process
 uint32_t kill(uint32_t pid, uint32_t signum) {
@@ -27,13 +28,22 @@ uint32_t kill(uint32_t pid, uint32_t signum) {
 }
 
 // Set the signal handler for a certain signal
-uint32_t signal(uint32_t signum, sighandler_t handler) {
-	LOG_DEBUG_INFO_STR("(%d, 0x%x)", signum, handler);
+uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", signum, act, oldact);
 
 	if (signum > NUMBER_OF_SIGNALS || signum == 0)
 		return -1;
 	
-	signal_set_handler(current_pcb, signum, handler);
+	if (oldact)
+		*oldact = current_pcb->signal_handlers[signum];
+	if (act) {
+		if (act->flags & SA_SIGINFO) {
+#if DEBUG
+			blue_screen("SIGINFO requested but not supported.");
+#endif
+		}
+		signal_set_handler(current_pcb, signum, *act);
+	}
 	return 0;
 }
 
@@ -50,4 +60,41 @@ uint32_t siggetmask(uint32_t signum) {
 	LOG_DEBUG_INFO_STR("(%d)", signum);
 
 	return signal_is_masked(current_pcb, signum);
+}
+
+#define SIG_SETMASK 0	/* set mask with sigprocmask() */
+#define SIG_BLOCK 1	/* set of signals to block */
+#define SIG_UNBLOCK 2	/* set of signals to, well, unblock */
+
+// Set signal masks
+uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", signum, *set, *oldset);
+	
+	if (how < SIG_SETMASK || how > SIG_UNBLOCK)
+		return -1;
+	
+	if (oldset)
+		*oldset = current_pcb->signal_mask >> 1;
+	if (set) {
+		if (how == SIG_BLOCK)
+			signal_block(current_pcb, (*set) << 1);
+		else if (how == SIG_UNBLOCK)
+			signal_unblock(current_pcb, (*set) << 1);
+		else
+			signal_set_mask(current_pcb, (*set) << 1);
+	}
+
+	return 0;
+}
+
+// Suspend execution until signal
+uint32_t sigsuspend(const sigset_t* mask) {
+	LOG_DEBUG_INFO_STR("(%d)", *mask);
+	
+	if (!mask)
+		return -1;
+	
+	signal_wait(current_pcb, mask);
+	// errno = EINTR
+	return -1;
 }

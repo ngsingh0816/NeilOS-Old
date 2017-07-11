@@ -3,7 +3,7 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			33
+#define NUM_SYSCALLS			35
 
 #include <boot/x86_desc.h>
 
@@ -23,12 +23,15 @@
 
 .globl signal_handler
 .globl sigreturn
+.globl sigreturn_impl
+.globl sigjmp
 
 .globl syscalls
 
 #ifdef __APPLE__
 
 .globl _sigreturn
+.globl _sigjmp
 .globl _context_switch_asm
 .globl _return_from_user
 .globl _idt_vectors
@@ -39,6 +42,8 @@
 
 sigreturn:
 _sigreturn:
+sigjmp:
+_sigjmp:
 context_switch_asm:
 _context_switch_asm:
 return_from_user:
@@ -122,10 +127,26 @@ context_switch_asm:
 	// Assume that we must have come from context switch or return_to_user
 	// so just restore the saved esp and return
 	movl (%ebx), %esp
-sigreturn:
-	popa
 
+	popa
 	sti
+
+	ret
+
+// Return into a signal handler (exec, ret, signum)
+sigjmp:
+	movl %esp, %eax
+
+	pushl 12(%eax)
+	pushl 8(%eax)
+	pushl 4(%eax)
+
+	ret
+
+// Restore the context
+sigreturn:
+	call sigreturn_impl
+	addl $4, %esp
 
 	ret
 
