@@ -91,9 +91,9 @@ unsigned int errno = 0;
 	dup2 - done
 	alarm
 	execvp
-	closedir
-	opendir
-	readdir
+	closedir - done
+	opendir - done
+	readdir - done
 	chdir
 	execv
  * For vi:
@@ -107,7 +107,7 @@ unsigned int errno = 0;
 
 void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
 	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl,
-	mkdir, link, unlink, utime,
+	mkdir, link, unlink, readdir, utime,
 	brk, sbrk,
 	dup, dup2,
 	times, gettimeofday,

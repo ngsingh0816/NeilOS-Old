@@ -3,7 +3,7 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			35
+#define NUM_SYSCALLS			36
 
 #include <boot/x86_desc.h>
 

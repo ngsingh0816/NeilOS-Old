@@ -63,7 +63,8 @@ uint64_t ext2_truncate_inode(ext_inode_t* inode, uint64_t size);
 
 // Read a directory inode from a specific offset (returns the byte address of the next directory entry
 // or uint64_t(-1) if none exists) and places the name of the entry into the buffer
-uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer, uint32_t length, uint32_t* length_out);
+uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer,
+							 uint32_t length, uint32_t* length_out, ext_dentry_t* dentry_out);
 
 // Helpers
 ext_inode_t ext2_get_parent_inode(const char* filename);

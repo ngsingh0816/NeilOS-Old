@@ -3,6 +3,7 @@
 
 #include <common/types.h>
 #include <syscalls/descriptor.h>
+#include <syscalls/impl/sysfs.h>
 
 // Initialize the filesystem.
 bool filesystem_init(char* filesystem);
@@ -41,6 +42,8 @@ uint64_t filesystem_truncate(int32_t fd, uint64_t nsize);
 uint32_t filesystem_read_directory(int32_t fd, void* buf, uint32_t length);
 uint32_t filesystem_write_directory(int32_t fd, const void* buf, uint32_t length);
 uint64_t filesystem_llseek_directory(int32_t fd, uint64_t offset, int whence);
+
+uint32_t filesystem_readdir(int32_t fd, void* buf, uint32_t length, dirent_t* dirent);
 
 file_descriptor_t* filesystem_duplicate(file_descriptor_t* f);
 

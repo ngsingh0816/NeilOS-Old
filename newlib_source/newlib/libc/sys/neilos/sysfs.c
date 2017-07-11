@@ -12,18 +12,22 @@
 #include <utime.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/dirent.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 extern unsigned int sys_errno();
 
 extern unsigned int sys_mkdir(const char* name);
 extern unsigned int sys_link(const char* filename, const char* new_name);
 extern unsigned int sys_unlink(const char* filename);
+extern unsigned int sys_readdir(int fd, void* buf, int size, struct dirent* dirent);
 extern unsigned int sys_utime(const char* filename, unsigned int* times);
 
 // Helpers
 extern unsigned int sys_open(const char* filename, unsigned int mode);
 extern unsigned int sys_close(int fd);
-extern int fstat(int file, struct stat* st);
 
 int mkdir(const char* name, mode_t mode) {
 	int ret = sys_mkdir(name);
@@ -32,14 +36,14 @@ int mkdir(const char* name, mode_t mode) {
 	return ret;
 }
 
-int link(char* old, char* new) {
+int link(const char* old, const char* new) {
 	int ret = sys_link(old, new);
 	if (ret == -1)
 		errno = sys_errno();
 	return ret;
 }
 
-int unlink(char* name) {
+int unlink(const char* name) {
 	int ret = sys_unlink(name);
 	if (ret == -1)
 		errno = sys_errno();
@@ -130,5 +134,94 @@ int utime(const char* filename, const struct utimbuf* times) {
 		ret = sys_utime(filename, NULL);
 	if (ret != 0)
 		errno = sys_errno();
+	return ret;
+}
+
+DIR *opendir(const char* filename) {
+	if (!filename) {
+		errno = ENOENT;
+		return NULL;
+	}
+	
+	DIR* ret = malloc(sizeof(DIR));
+	if (!ret) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	memset(ret, 0, sizeof(DIR));
+	ret->dd_buf = malloc(256);
+	if (!ret->dd_buf) {
+		free(ret);
+		errno = ENOMEM;
+		return NULL;
+	}
+	ret->dd_size = 256;
+	
+	int fd = sys_open(filename, O_RDONLY);
+	if (fd == -1) {
+		errno = ENOENT;
+		free(ret->dd_buf);
+		free(ret);
+		return NULL;
+	}
+	
+	struct stat st;
+	if (fstat(fd, &st) == -1 || !(st.st_mode & _IFDIR)) {
+		errno = ENOTDIR;
+		free(ret->dd_buf);
+		free(ret);
+		return NULL;
+	}
+	
+	ret->dd_fd = fd;
+	return ret;
+}
+
+struct dirent dirent_rd;
+struct dirent* readdir(DIR* dir) {
+	dir->dd_len = sys_readdir(dir->dd_fd, dir->dd_buf, dir->dd_size, &dirent_rd);
+	if (dir->dd_len == -1) {
+		errno = sys_errno();
+		return NULL;
+	} else if (dir->dd_len == 0)
+		return NULL;
+	memcpy(dirent_rd.d_name, dir->dd_buf, dir->dd_len);
+	dirent_rd.d_name[dir->dd_len] = 0;
+
+	return &dirent_rd;
+}
+
+void rewinddir(DIR* dir) {
+	seekdir(dir, 0);
+}
+
+long telldir(DIR* dir) {
+	if (!dir) {
+		errno = EBADF;
+		return -1;
+	}
+	
+	return lseek(dir->dd_fd, 0, SEEK_CUR);
+}
+
+void seekdir(DIR * dir, off_t loc) {
+	if (!dir)
+		return;
+	
+	lseek(dir->dd_fd, loc, SEEK_SET);
+}
+
+int closedir(DIR * dir) {
+	if (!dir) {
+		errno = EBADF;
+		return -1;
+	}
+	
+	int ret = close(dir->dd_fd);
+	if (ret == -1)
+		errno = sys_errno();
+	
+	free(dir->dd_buf);
+	free(dir);
 	return ret;
 }

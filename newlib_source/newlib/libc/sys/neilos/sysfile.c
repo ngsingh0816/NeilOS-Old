@@ -65,7 +65,7 @@ int write(int file, char* ptr, int len) {
 }
 
 int lseek(int file, int ptr, int dir) {
-	int ret = sys_llseek(file, 0, ptr, dir);
+	int ret = sys_llseek(file, (ptr < 0) ? -1 : 0, ptr, dir);
 	if (ret == -1)
 		errno = sys_errno();
 	return ret;

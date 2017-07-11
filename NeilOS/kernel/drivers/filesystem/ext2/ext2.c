@@ -484,7 +484,8 @@ uint64_t ext2_truncate_inode(ext_inode_t* inode, uint64_t size) {
 
 // Read a directory inode from a specific offset (returns the byte address of the next directory entry
 // or 0 if none exists)
-uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer, uint32_t length, uint32_t* length_out) {
+uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer, uint32_t length,
+							 uint32_t* length_out, ext_dentry_t* dentry_out) {
 	if (!ext2_inode_is_directory(inode))
 		return uint64_make(0, 0);
 	
@@ -510,6 +511,9 @@ uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer, 
 	}
 	if (length_out)
 		*length_out = copy_size;
+	
+	if (dentry_out)
+		*dentry_out = dentry;
 	
 	// Return the address of the next
 	offset = uint64_add(offset, uint64_make(0, dentry.rec_len));

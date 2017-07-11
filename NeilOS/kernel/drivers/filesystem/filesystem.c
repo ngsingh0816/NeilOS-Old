@@ -184,7 +184,7 @@ uint32_t fread_file(void* buffer, uint32_t size, uint32_t count, file_descriptor
 }
 
 // Read a directory
-uint32_t fread_directory(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* f) {
+uint32_t fread_directory(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* f, dirent_t* dirent) {
 	if (size * count == 0)
 		return 0;
 	
@@ -197,7 +197,14 @@ uint32_t fread_directory(void* buffer, uint32_t size, uint32_t count, file_descr
 	// Get the next offset
 	uint32_t ret = 0;
 	while (ret == 0) {
-		uint64_t value = ext2_read_directory(&dir->inode, dir->offset, buffer, size * count, &ret);
+		ext_dentry_t dentry;
+		uint64_t value = ext2_read_directory(&dir->inode, dir->offset, buffer, size * count, &ret, &dentry);
+		if (dirent) {
+			dirent->ino = dentry.inode;
+			dirent->off = dir->index;
+			dirent->reclen = dentry.rec_len;
+			dirent->type = dentry.file_type;
+		}
 		dir->offset = value;
 		// We've reached the end of the block
 		if (uint64_equal(dir->offset, uint64_make(0, 0))) {
@@ -227,7 +234,7 @@ uint32_t fread(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* f
 	if (file->mode & FILE_TYPE_REGULAR)
 		return fread_file(buffer, size, count, file);
 	else if (file->mode & FILE_TYPE_DIRECTORY)
-		return fread_directory(buffer, size, count, file);
+		return fread_directory(buffer, size, count, file, NULL);
 	
 	return -1;
 }
@@ -297,18 +304,16 @@ uint64_t fseek_file(file_descriptor_t* f, uint64_t offset, int whence) {
 uint64_t fseek_directory(file_descriptor_t* f, uint64_t offset, int whence) {
 	directory_info_t* dir = (directory_info_t*)f->info;
 	
-	// Negative seeking is not supported
-	if ((offset.high >> 31) & 0x1)
-		return uint64_make(0, dir->index);
-	else if (offset.high != 0)
-		whence = SEEK_END;
-	
 	// Find the correct relative offset if we need to
 	if (whence == SEEK_CUR) {
-		if (offset.low < dir->index)
+		if ((offset.high >> 31) & 0x1) {
 			whence = SEEK_SET;
-		else
-			offset.low -= dir->index;
+			offset.low = dir->index + offset.low;
+			offset.high = 0;
+		} else if (offset.high == 0 && offset.low == 0) {
+			// Just return the current index
+			return uint64_make(0, dir->index);
+		}
 	}
 	
 	// Set the new index
@@ -327,7 +332,7 @@ uint64_t fseek_directory(file_descriptor_t* f, uint64_t offset, int whence) {
 		// Get the next offset
 		uint32_t ret = 0;
 		while (ret == 0) {
-			uint64_t value = ext2_read_directory(&dir->inode, dir->offset, NULL, 256, &ret);
+			uint64_t value = ext2_read_directory(&dir->inode, dir->offset, NULL, 256, &ret, NULL);
 			dir->offset = value;
 			// We've reached the end of the block
 			if (uint64_equal(dir->offset, uint64_make(0, 0))) {
@@ -518,7 +523,11 @@ uint64_t filesystem_llseek_file(int32_t fd, uint64_t offset, int whence) {
 // Read from a directory. Each subsequent call to read will return the next
 // entry in the directory until we've read all the entries and then it will return 0.
 uint32_t filesystem_read_directory(int32_t fd, void* buf, uint32_t length) {
-	return fread_directory(buf, 1, length, descriptors[fd]);
+	return fread_directory(buf, 1, length, descriptors[fd], NULL);
+}
+
+uint32_t filesystem_readdir(int32_t fd, void* buf, uint32_t length, dirent_t* dirent) {
+	return fread_directory(buf, 1, length, descriptors[fd], dirent);
 }
 
 // Write to a directory (which means link a new file in)

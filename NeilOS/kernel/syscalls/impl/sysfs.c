@@ -33,6 +33,10 @@ uint32_t link(const char* filename, const char* new_name) {
 	return (ret ? 0 : -1);
 }
 
+uint32_t readdir(int fd, void* buf, int size, dirent_t* dirent) {
+	return filesystem_readdir(fd, buf, size, dirent);
+}
+
 // Unlink a file (note: deletes the file if it is the last remaining link)
 uint32_t unlink(const char* filename) {
 	LOG_DEBUG_INFO_STR("(%s)", filename);
