@@ -282,7 +282,7 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 
 // Perform relocation for a dylib
 bool elf_perform_relocation_dylib(dylib_rel_section_t* rel_sections, uint32_t num_rel_sections,
-								  dylib_list_t* dylibs, uint32_t offset, bool copy) {
+								  dylib_list_t* dylibs, uint32_t offset) {
 	for (uint32_t q = 0; q < num_rel_sections; q++) {
 		dylib_rel_t* rels = rel_sections[q].rels;
 		for (uint32_t z = 0; z < rel_sections[q].num_rels; z++) {
@@ -646,7 +646,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 	dylib_list_t list;
 	memset(&list, 0, sizeof(list));
 	list.dylib = dylib;
-	if (!elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections, &list, offset, true))
+	if (!elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections, &list, offset))
 		goto cleanup;
 	
 	ret = true;
@@ -674,5 +674,5 @@ bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb) {
 	list.dylib = dylib;
 	list.next = pcb->dylibs;
 	return elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections,
-										&list, dylib->page_list->vaddr, false);
+										&list, dylib->page_list->vaddr);
 }
