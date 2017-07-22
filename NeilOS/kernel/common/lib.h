@@ -136,6 +136,20 @@ do {                                    \
 			);                      \
 } while(0)
 
+/* Save flags and then enable interrupt flag
+ * Saves the EFLAGS register into the variable "flags", and then
+ * enables interrupts on this processor */
+#define sti_and_save(flags)             \
+do {                                    \
+	asm volatile("pushfl        \n      \
+				popl %0         \n      \
+				sti"                    \
+				: "=r"(flags)           \
+				:                       \
+				: "memory", "cc"        \
+				);                      \
+} while(0)
+
 /* Restore flags
  * Puts the value in "flags" into the EFLAGS register.  Most often used
  * after a cli_and_save_flags(flags) */

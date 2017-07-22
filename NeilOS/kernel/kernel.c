@@ -18,23 +18,25 @@
 #include <drivers/pit/pit.h>
 #include <program/task.h>
 
-/* Done:
+/* Features:
  * Memory Allocator
  * Locks (spinlock, mutex, semaphore, r/w)
+ * Hard Drive Driver
+ * Scheduler
  * Ext2 Read Support
  * Ext2 Write Support
  * Time
  * Virtual Memory Manager (bitmap for 4mb pages)
- * Redo syscalls to be more linux / Create own (basic) programs
- * Elf file format
- * Newlib (static)
+ * Elf file loading
+ * libc (static newlib)
+ * Signals
  * C++ User support
  * Pipes
  * Named Pipes (FIFOs)
  * Logging
  */
 
-/* Done (but could be improved):
+/* TODO (could be improved):
  * Hard Drive Driver (has VMWare DMA bug)
  * Rework syscall open - need to dynamically parse devices
  * Scheduler (round robin probably not the best) - could do something basic
@@ -44,18 +46,23 @@
 	give them more time next quantum (to a limit), otherwise give them less.
  * Signals - make the signal execute in user space, not kernel space
  * Make ext2 faster (cache things so there are less 4 byte reads)
+	* Could also optimize ATA read / write to do multiple blocks at a time
+		* probably won't help because we never read more than one block
  */
 
 /* TODO (bugs)
+ * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
+	we go back to the scheduler
  */
 
 /* Things to test
  */
 
 /* TODO:
- * Sigaction
- * Make fork() copy on write
  * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
+ * Allow 4kb paging (also add mapping in a page as a function of page_list and add a permissions value to it)
+ * Make fork() copy on write
+ * DMA for large memory transfers?
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Sockets stub
@@ -63,15 +70,18 @@
 	* Potential multitasking issues:
 		* file locks
 		* reading in one thread while closing in another (file descriptor lock)
+		* Need a memory lock for all vm_get_next_unmapped_page
+		* Probably should use locks instead of cli or set_multitasking(false) in most cases
+		* Also definitely missing locks for just about everything (especially linked lists)
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
- * Ethernet Driver
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
  * Grahpics (QEMU VBE) Driver?
  * GUI (Compositing Window Manager)
-	* Interacts through message queues
+	* Interacts through message queues?
  * Improved Scheduler
+ * Ethernet Driver
  * Sockets?
  * Message Queues?
  * Page files on disk?
@@ -445,6 +455,15 @@ entry (unsigned long magic, unsigned long addr)
 		} else if (strncmp(input, "inodes", strlen("inodes")) == 0) {
 			printf("0x%x inodes remaining.\n", ext2_superblock()->free_inode_count);
 		} else if (strncmp(input, "exit", strlen("exit")) == 0) {
+			task_list_t* t = tasks->pcb->children;
+			while (t) {
+				if (t->pcb)
+					t->pcb->parent = NULL;
+				task_list_t* next = t->next;
+				kfree(t);
+				t = next;
+			}
+			tasks->pcb->children = NULL;
 			break;
 		} else if (strncmp(input, "time", strlen("time")) == 0) {
 #include <common/time.h>
@@ -508,6 +527,7 @@ entry (unsigned long magic, unsigned long addr)
 			if (res == 0) {
 				p->parent = tasks->pcb;
 				run(p);
+				signal_set_pending(tasks->pcb, SIGCHILD, false);
 			}
 			else
 				printf("Command not found.\n");

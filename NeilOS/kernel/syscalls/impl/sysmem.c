@@ -9,6 +9,7 @@
 #include "sysmem.h"
 #include <program/task.h>
 #include <common/log.h>
+#include <memory/page_list.h>
 
 // Set the program break to a specific address
 uint32_t brk(uint32_t addr) {
@@ -19,64 +20,22 @@ uint32_t brk(uint32_t addr) {
 	
 	
 	if (addr > current_pcb->brk) {
-		bool flags = set_multitasking_enabled(false);
 		// Allocate new pages
 		uint32_t start = current_pcb->brk - (current_pcb->brk % FOUR_MB_SIZE) + FOUR_MB_SIZE;
 		for (; start < addr; start += FOUR_MB_SIZE) {
-			memory_list_t* t = current_pcb->memory_map;
-			memory_list_t* prev = NULL;
-			bool found = false;
-			while (t) {
-				if (t->vaddr == start) {
-					found = true;
-					break;
-				}
-				prev = t;
-				t = t->next;
-			}
-			if (found)
-				continue;
-			prev->next = kmalloc(sizeof(memory_list_t));
-			if (!prev->next) {
+			page_list_t* t = page_list_get(&current_pcb->page_list, start, true);
+			if (!t) {
 				brk(current_pcb->brk);
-				set_multitasking_enabled(flags);
-				return -1;
-			}
-			
-			if (!add_memory_block(prev->next, prev, start)) {
-				kfree(prev->next);
-				prev->next = NULL;
-				brk(current_pcb->brk);
-				set_multitasking_enabled(flags);
 				return -1;
 			}
 			
 			// Map this new page into memory
-			vm_map_page(prev->next->vaddr, prev->next->paddr, USER_PAGE_DIRECTORY_ENTRY);
+			vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
 		}
-		set_multitasking_enabled(flags);
 	} else if (addr < current_pcb->brk) {
 		uint32_t start = addr - (addr % FOUR_MB_SIZE) + FOUR_MB_SIZE;
-		bool flags = set_multitasking_enabled(false);
-		for (; start < current_pcb->brk; start += FOUR_MB_SIZE) {
-			memory_list_t* t = current_pcb->memory_map;
-			while (t) {
-				if (t->vaddr == start) {
-					page_free((void*)t->vaddr);
-					if (t->prev)
-						t->prev->next = t->next;
-					else
-						current_pcb->memory_map = t->next;
-					if (t->next)
-						t->next->prev = t->prev ? t->prev : current_pcb->memory_map;
-					kfree(t);
-					break;
-				}
-				t = t->next;
-			}
-		}
-		
-		set_multitasking_enabled(flags);
+		for (; start < current_pcb->brk; start += FOUR_MB_SIZE)
+			page_list_remove(&current_pcb->page_list, start);
 	}
 	
 	// Return the new break

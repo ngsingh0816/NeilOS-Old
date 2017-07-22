@@ -81,6 +81,8 @@ void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions) {
 	
 	// Map the page
 	page_directory[page] = paddr | permissions;
+	
+	flush_tlb();
 }
 
 // Unmaps a virtual address and allows it to be used
@@ -92,6 +94,8 @@ void vm_unmap_page(uint32_t vaddr) {
 	
 	// Unmap it
 	page_directory[page] = UNUSED_PAGE;
+	
+	flush_tlb();
 }
 
 // Returns whether the 4MB page is mapped

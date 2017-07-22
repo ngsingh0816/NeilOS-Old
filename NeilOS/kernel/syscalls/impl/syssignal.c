@@ -68,7 +68,7 @@ uint32_t siggetmask(uint32_t signum) {
 
 // Set signal masks
 uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
-	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", signum, *set, *oldset);
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", how, *set, *oldset);
 	
 	if (how < SIG_SETMASK || how > SIG_UNBLOCK)
 		return -1;

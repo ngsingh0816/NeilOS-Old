@@ -69,10 +69,12 @@ int32_t run(pcb_t* pcb) {
 
 // Run a program but save the state of this "parent" program
 int32_t run_with_fake_parent(pcb_t* pcb, pcb_t* parent) {
+	bool flags = set_multitasking_enabled(false);
+	set_current_task(pcb);
+	
 	// Critical section that ends with return to user
 	cli();
-	
-	set_current_task(pcb);
+	set_multitasking_enabled(flags);
 	
 	pcb->state = RUNNING;
 	// Execute the program (and enable interrupts)
@@ -120,7 +122,8 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 	if (queue_task(filename, argv, envp, &pcb) != 0)
 		return -1;
 	
-	return run_with_fake_parent(pcb, NULL);
+	run_with_fake_parent(pcb, NULL);
+	return 0;
 }
 
 // Get the pid of the current process
@@ -149,6 +152,8 @@ uint32_t waitpid(uint32_t pid) {
 					uint32_t ret = child->return_value;
 					if (child->prev)
 						child->prev->next = child->next;
+					if (child->next)
+							child->next->prev = child->prev;
 					if (child == pcb->children)
 						pcb->children = child->next;
 					kfree(child);

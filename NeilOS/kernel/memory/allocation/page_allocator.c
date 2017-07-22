@@ -57,7 +57,11 @@ void page_allocator_init() {
 
 // Get a number of 4MB pages
 void* page_get_four_mb(uint32_t num, uint32_t type) {
-	return page_get(num * (1024 * 1024 * 4) / MIN_PAGE_SIZE, type);
+	return page_get(num * FOUR_MB_SIZE / MIN_PAGE_SIZE, type);
+}
+
+void* page_physical_get_four_mb(uint32_t num) {
+	return page_physical_get(num * FOUR_MB_SIZE / MIN_PAGE_SIZE);
 }
 
 // Helper to convert a physical address to a virtual one
@@ -87,8 +91,18 @@ void* convert_physical_to_virtual(uint32_t paddr, uint32_t size, uint32_t type) 
 	return (void*)(paddr_offset + addr);
 }
 
+
+// Get a number of 64KB physical pages
+void* page_get(uint32_t size, uint32_t type) {
+	void* addr = page_physical_get(size);
+	if (!addr)
+		return NULL;
+	
+	return convert_physical_to_virtual((uint32_t)addr, size * MIN_PAGE_SIZE, type);
+}
+
 // Get a number of 64KB pages
-void* page_get(uint32_t s, uint32_t type) {
+void* page_physical_get(uint32_t s) {
 	if (s == 0)
 		return NULL;
 	
@@ -147,7 +161,7 @@ void* page_get(uint32_t s, uint32_t type) {
 		buddy_set_node_value(buddy, node, NODE_USED);
 		
 		// We have the physical address
-		return convert_physical_to_virtual((node_index * node_size), size, type);
+		return (void*)(node_index * node_size);
 	}
 	
 	// Get the number of levels down we need to go
@@ -170,10 +184,10 @@ void* page_get(uint32_t s, uint32_t type) {
 	buddy_set_node_value(buddy, node, NODE_USED_INDIRECT);
 	
 	// Return the memory location of this left most node
-	return convert_physical_to_virtual(buddy_get_index_of_node_at_level(left_node, level) * size, size, type);
+	return (void*)(buddy_get_index_of_node_at_level(left_node, level) * size);
 }
 
-void physical_page_free_impl(void* addr, void* vaddr, bool use_vadr);
+void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr);
 
 void page_free(void* addr) {
 	void* vaddr = addr;
@@ -181,14 +195,14 @@ void page_free(void* addr) {
 	// Convert this virtual address to a physical one
 	addr = vm_virtual_to_physical((uint32_t)vaddr);
 	
-	physical_page_free_impl(addr, vaddr, true);
+	page_physical_free_impl(addr, vaddr, true);
 }
 
-void physical_page_free(void* addr) {
-	physical_page_free_impl(addr, NULL, false);
+void page_physical_free(void* addr) {
+	page_physical_free_impl(addr, NULL, false);
 }
 
-void physical_page_free_impl(void* addr, void* vaddr, bool use_vadr) {
+void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr) {
 	// Many blocks could have this address but only one can be in use (and all below it are in use too)
 	// Find the smallest size block and work our way up to the one that
 	uint32_t size = MIN_PAGE_SIZE;

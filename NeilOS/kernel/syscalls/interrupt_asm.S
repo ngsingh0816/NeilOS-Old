@@ -115,9 +115,14 @@ context_switch_asm:
 	movl 4(%esp), %eax
 	movl 8(%esp), %ebx
 
+	cmp $0, %eax
+	je done_parent_cs
+
 	// Prepare the first argument for a context switch by saving the stack
 	pusha
 	movl %esp, (%eax)
+
+done_parent_cs:
 
 	// Allow for signal handling
 	pushl %ebx

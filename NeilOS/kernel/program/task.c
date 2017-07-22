@@ -13,6 +13,7 @@
 
 // Start with no tasks
 task_list_t* tasks = NULL;
+task_list_t* delete_task_list = NULL;
 
 // Current pcb
 pcb_t* current_pcb = NULL;
@@ -91,18 +92,20 @@ void copy_task_into_memory(uint32_t start_address, file_descriptor_t* file) {
 	}
 }
 
-// Map a tasks address space into memory
+// Map a task's address space into memory
+// Note: must be called with multitasking disabled
 void map_task_into_memory(pcb_t* pcb) {
 	// Unmap whatever is there currently
 	uint32_t z;
-	for (z = 0; z < 2 * ONE_GB_SIZE; z += FOUR_MB_SIZE)
-		vm_unmap_page(z + USER_ADDRESS);
+	for (z = 0; z < 3 * ONE_GB_SIZE; z += FOUR_MB_SIZE)
+		vm_unmap_page(z + ONE_GB_SIZE);
 	// Loop through all the pages in the memory list
-	memory_list_t* t = pcb->memory_map;
+	page_list_t* t = pcb->page_list;
 	while (t) {
 		vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
 		t = t->next;
 	}
+	
 	flush_tlb();
 }
 
@@ -218,17 +221,17 @@ bool add_child_task(pcb_t* parent, uint32_t pid, pcb_t* pcb) {
 // Copy a task into memory
 bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename) {
 	bool flags = set_multitasking_enabled(false);
-	map_task_into_memory(pcb);
+	set_current_task(pcb);
 	
 	// Try different file formats
-	if (!elf_load_into_memory(filename, pcb)) {
+	if (!elf_load(filename, pcb)) {
 		if (parent)
-			map_task_into_memory(parent);
+			set_current_task(parent);
 		return false;
 	}
 	
 	if (parent)
-		map_task_into_memory(parent);
+		set_current_task(parent);
 	set_multitasking_enabled(flags);
 	
 	return true;
@@ -271,13 +274,10 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 // Helper for error function
 void pcb_error(pcb_t* pcb, task_list_t* task) {
 	// Memory map
-	memory_list_t* t = pcb->memory_map;
-	while (t) {
-		memory_list_t* prev = t;
-		physical_page_free((void*)t->paddr);
-		t = t->next;
-		kfree(prev);
-	}
+	page_list_dealloc(pcb->page_list);
+	
+	// Dylibs
+	dylib_list_dealloc(pcb->dylibs);
 	
 	// Descriptors
 	pcb_free_descriptors(pcb);
@@ -316,86 +316,45 @@ pcb_t* duplicate_current_task() {
 	add_child_task(current, task->pid, pcb);
 	
 	// Copy over the memory used
-	// TODO: make this point to the same thing, and copy on write
-	bool flags = set_multitasking_enabled(false);
-	
-	pcb->memory_map = NULL;
-	memory_list_t** t = &pcb->memory_map;
-	memory_list_t* prev = NULL;
-	memory_list_t* n = current->memory_map;
+	pcb->page_list = NULL;
+	page_list_t* n = current->page_list;
 	while (n) {
-		*t = kmalloc(sizeof(memory_list_t));
-		if (!(*t)) {
-			set_multitasking_enabled(flags);
+		if (!page_list_add_copy(&pcb->page_list, n, true)) {
 			pcb_error(pcb, task);
 			return NULL;
 		}
 		
-		memset(*t, 0, sizeof(memory_list_t));
-		
-		void* page = page_get_four_mb(1, VIRTUAL_MEMORY_KERNEL);
-		if (!page) {
-			kfree(*t);
-			set_multitasking_enabled(flags);
-			pcb_error(pcb, task);
-			return NULL;
-		}
-		memcpy(page, (void*)n->vaddr, FOUR_MB_SIZE);
-		(*t)->vaddr = n->vaddr;
-		(*t)->paddr = (uint32_t)vm_virtual_to_physical((uint32_t)page);
-		vm_unmap_page((uint32_t)page);
-		
-		(*t)->prev = prev;
-		prev = (*t);
-		t = &((*t)->next);
 		n = n->next;
 	}
-		   
-	set_multitasking_enabled(flags);
+	
+	// Copy the dylib lists too
+	dylib_list_t* l = pcb->dylibs;
+	pcb->dylibs = NULL;
+	while (l) {
+		if (!dylib_list_copy_for_pcb(l, pcb)) {
+			pcb_error(pcb, task);
+			return NULL;
+		}
+		
+		l = l->next;
+	}
 	
 	return pcb;
 }
 
-bool add_memory_block(memory_list_t* list, memory_list_t* prev, uint32_t vaddr) {
-	list->next = NULL;
-	list->vaddr = (uint32_t)page_get_four_mb(1, VIRTUAL_MEMORY_USER);
-	if (!list->vaddr)
-		return false;
-	
-	list->paddr = (uint32_t)vm_virtual_to_physical(list->vaddr);
-	vm_unmap_page(list->vaddr);
-	list->vaddr = vaddr;
-	list->prev = prev;
-	if (prev)
-		prev->next = list;
-	
-	return true;
-}
-
 bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
 	// Find the last memory mapped region and set the stack to that
-	memory_list_t* t = pcb->memory_map;
-	memory_list_t* prev = NULL;
+	page_list_t* t = pcb->page_list;
 	while (t) {
 		if (t->vaddr > pcb->stack_address)
 			pcb->stack_address = t->vaddr;
-		prev = t;
 		t = t->next;
 	}
 	// Map another block in for the stack
-	memory_list_t* stack_block = (memory_list_t*)kmalloc(sizeof(memory_list_t));
-	if (!stack_block) {
-		kfree(stack_block);
+	page_list_t* stack_block = page_list_get(&pcb->page_list, pcb->stack_address + FOUR_MB_SIZE, true);
+	if (!stack_block)
 		return false;
-	}
 	pcb->stack_address += FOUR_MB_SIZE;
-	bool flags = set_multitasking_enabled(false);
-	if (!add_memory_block(stack_block, prev, pcb->stack_address)) {
-		set_multitasking_enabled(flags);
-		return false;
-	}
-	set_multitasking_enabled(flags);
-	
 	vm_map_page(stack_block->vaddr, stack_block->paddr, USER_PAGE_DIRECTORY_ENTRY);
 	
 	// The stack grows downward
@@ -566,7 +525,8 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	pcb_t pcb = *current;
 	bool flags = set_multitasking_enabled(false);
 	
-	pcb.memory_map = NULL;
+	pcb.page_list = NULL;
+	pcb.dylibs = NULL;
 	pcb.stack_address = 0;
 	
 	if (!load_task_into_memory(&pcb, current, kfile)) {
@@ -591,13 +551,8 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	
 	// Free the task memory allocated by this task
 	set_current_task(current);
-	memory_list_t* t = current->memory_map;
-	while (t) {
-		page_free((void*)t->vaddr);
-		memory_list_t* temp = t->next;
-		kfree(t);
-		t = temp;
-	}
+	page_list_dealloc(current->page_list);
+	dylib_list_dealloc(current->dylibs);
 	
 	*current = pcb;
 	set_current_task(current);
@@ -646,24 +601,11 @@ void terminate_task(uint32_t ret) {
 		current->should_terminate = true;
 		return;
 	}
-	
-	// Critical section
-	cli();
+	current->should_terminate = false;
 	
 	task_list_t* hint = current->task->next;
 	
-	// Free the task memory allocated by this task
-	memory_list_t* t = current->memory_map;
-	while (t) {
-		page_free((void*)t->vaddr);
-		memory_list_t* temp = t->next;
-		kfree(t);
-		t = temp;
-	}
-	
 	// Unload the task and get its parent
-	current->state = UNLOADED;
-	current_pcb = NULL;
 	pcb_t* parent = current->parent;
 	
 	// Mark this task as a zombie
@@ -683,17 +625,9 @@ void terminate_task(uint32_t ret) {
 			signal_send(parent, SIGCHILD);
 	}
 	
-	// Unlink the task from the task list
-	task_list_t* task = current->task;
-	if (task->prev)
-		task->prev->next = task->next;
-	else
-		tasks = task->next;
-	
-	kfree(task);
-	
 	// Delete the children
 	task_list_t* child = current->children;
+	current->children = NULL;
 	while (child) {
 		task_list_t* prev = child;
 		if (child->pcb)
@@ -703,16 +637,22 @@ void terminate_task(uint32_t ret) {
 		kfree(prev);
 	}
 	
+	// Free the task memory and dylibsallocated by the deleted task
+	page_list_t* page_list = current->page_list;
+	current->page_list = NULL;
+	page_list_dealloc(page_list);
+	
+	dylib_list_t* dylibs = current->dylibs;
+	current->dylibs = NULL;
+	dylib_list_dealloc(dylibs);
+	
 	// Descriptors
 	pcb_free_descriptors(current);
 	
 	current->argv = NULL;
 	current->envp = NULL;
 	
-	// Free the kernel stack and pcb
-	kfree(current);
-	
-	// Find next possible task to run
+	/*// Find next possible task to run
 	pcb_t* next_pcb = get_next_runnable_task(hint);
 	if (!next_pcb) {
 		// Resume the parent as the last resort
@@ -725,17 +665,46 @@ void terminate_task(uint32_t ret) {
 #endif
 
 	}
+	
 	set_current_task(next_pcb);
 	if (next_pcb->state == READY)
-		next_pcb->state = RUNNING;
-			
-	// Pass along the return code and resume the parent task
-	asm ("pushl %0\n"
-		 "pushl %1\n"
-		 "jmp return_from_user"
-		 :
-		 : "d"(next_pcb->saved_esp), "a"(ret));
+		next_pcb->state = RUNNING;*/
 	
+	// Ensure we can't get scheduled out of this
+	cli();
+	
+	// Unlink the task from the task list (so therefore cannot be scheduled)
+	task_list_t* task = current->task;
+	if (task->prev)
+		task->prev->next = task->next;
+	if (task->next)
+		task->next->prev = task->prev;
+	if (task == tasks)
+		tasks = task->next;
+	
+	// Queue this task to be deleted
+	task->next = delete_task_list;
+	task->prev = NULL;
+	if (delete_task_list)
+		delete_task_list->prev = task;
+	delete_task_list = task;
+	
+	schedule();
+	
+	// TODO: temp should be a run(tasks->pcb)
+	if (tasks && tasks->pcb)
+		context_switch(NULL, tasks->pcb);
+	
+#ifdef DEBUG
+	// Should never get here
+	blue_screen("No runnable tasks. :(");
+#else
+	// TODO: temp - Load a shell
+	pcb_t* next = NULL;
+	if (queue_task_load("shell", NULL, NULL, &next) == -1)
+		blue_screen("No runnable tasks. :(");
+	run(next);
+#endif
 #elif HALT_SYSTEM
 	cli();
 	printf("Halting due to an exception.\n");
@@ -745,29 +714,38 @@ void terminate_task(uint32_t ret) {
 
 // Maps memory so that this task is loaded
 void set_current_task(pcb_t* pcb) {
+	bool flags = set_multitasking_enabled(false);
+	
+	current_pcb = NULL;
+	descriptors = NULL;
+	
 	map_task_into_memory(pcb);
 	set_kernel_stack((uint32_t)pcb + USER_KERNEL_STACK_SIZE);
 	
 	current_pcb = pcb;
 	descriptors = pcb->descriptors;
+	
+	set_multitasking_enabled(flags);
 }
 
 // Switch from one task to another (automatically enables interrupts)
 void context_switch(pcb_t* from, pcb_t* to) {
 	// Don't bother switching if they are the same
-	if (from == to && !signal_pending(from)) {
+	if (from && from == to && !signal_pending(from)) {
 		sti();
 		return;
 	}
 	
-	// Crticial section
 	cli();
-	
-	from->state = READY;
-	to->state = RUNNING;
 	
 	// Map the "to" task back into memory and set its parameters
 	set_current_task(to);
+	
+	if (from)
+		from->state = READY;
+	// TODO: this is just for kernel shell test, also will never happen in real life
+	if (to->state != UNLOADED)
+		to->state = RUNNING;
 	
 	// This part auto enables interrupts
 	context_switch_asm(from, to);
@@ -776,30 +754,47 @@ void context_switch(pcb_t* from, pcb_t* to) {
 // Run the scheduler (gets called up PIT interrupt)
 void schedule() {
 	// This whole function is a critical section
-	cli();
+	uint32_t flags;
+	cli_and_save(flags);
+
+	// Check for any tasks that need to be deallocated
+	task_list_t* d = delete_task_list;
+	while (d) {
+		if (d->pcb)
+			kfree(d->pcb);
+		task_list_t* next = d->next;
+		kfree(d);
+		d = next;
+	}
+	delete_task_list = NULL;
 	
-	pcb_t* current = current_pcb;
-	if (!current) {
-		sti();
+	// If we have disabled multitasking, don't do anything
+	if (!irq_enabled(PIT_IRQ)) {
+		restore_flags(flags);
 		return;
 	}
 	
+	pcb_t* current = current_pcb;
+	
 	// If this task is supposed to terminate, terminate it
-	if (current->should_terminate) {
-		sti();
+	if (current && current->should_terminate) {
+		restore_flags(flags);
 		current->should_terminate = false;
 		terminate_task(1);
 		return;
 	}
 	
-	pcb_t* next_pcb = get_next_runnable_task(current->task->next);
+	task_list_t* hint = NULL;
+	if (current)
+		hint = current->task->next;
+	pcb_t* next_pcb = get_next_runnable_task(hint);
 	
 	// If there are no runnable tasks, do nothing (unless this task has signals pending)
 	if (!next_pcb) {
-		if (signal_pending(current))
+		if (current && signal_pending(current))
 			next_pcb = current;
 		else {
-			sti();
+			restore_flags(flags);
 			return;
 		}
 	}
@@ -808,7 +803,8 @@ void schedule() {
 	if (next_pcb->state != UNLOADED)
 		context_switch(current, next_pcb);
 	else {
-		current->state = READY;
+		if (current)
+			current->state = READY;
 		run_with_fake_parent(next_pcb, current);
 	}
 }

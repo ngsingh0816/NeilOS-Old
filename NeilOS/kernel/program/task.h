@@ -8,6 +8,8 @@
 #include <drivers/terminal/terminal.h>
 #include <drivers/filesystem/ext2/ext2.h>
 #include <program/signal.h>
+#include <memory/page_list.h>
+#include <program/dylib.h>
 
 #define USER_KERNEL_STACK_SIZE		(1024 * 8)			// 8 KB
 #define USER_STACK_SIZE				(1024 * 16)			// 16 KB
@@ -39,15 +41,6 @@ typedef struct task_list {
 // List for all the running tasks
 extern task_list_t* tasks;
 
-// Linked list of memory pages
-typedef struct memory_list {
-	struct memory_list* next;
-	struct memory_list* prev;
-	
-	uint32_t paddr;
-	uint32_t vaddr;
-} memory_list_t;
-
 // Structure to hold information per process
 // This contains all the info that a task needs to operated correctly.
 typedef struct pcb {
@@ -64,7 +57,7 @@ typedef struct pcb {
 	
 	// Each entry in the list holds the physical address of the
 	// corresponding 4MB page starting at 0x8000000
-	memory_list_t* memory_map;
+	page_list_t* page_list;
 	uint32_t brk;
 	
 	// The file descriptors for this task
@@ -93,6 +86,9 @@ typedef struct pcb {
 	sigset_t signal_save_mask[NUMBER_OF_SIGNALS];
 	sigaction_t signal_handlers[NUMBER_OF_SIGNALS];
 	volatile bool signal_waiting;
+	
+	// Dynamic objects
+	dylib_list_t* dylibs;
 } pcb_t;
 
 // The current pcb
@@ -106,9 +102,6 @@ pcb_t* pcb_from_pid(uint32_t pid);
 
 // Sets the kernel stack in the TSS
 void set_kernel_stack(uint32_t address);
-
-// Add a memory block to a memory list
-bool add_memory_block(memory_list_t* list, memory_list_t* prev, uint32_t vaddr);
 
 // Duplicate current task (fork)
 pcb_t* duplicate_current_task();
@@ -126,9 +119,10 @@ pcb_t* unload_current_task();
 void terminate_task(uint32_t ret);
 
 // Maps a task's page directory into memory
+// Note: must be called with multitasking disabled
 void map_task_into_memory(pcb_t* pcb);
 
-// Maps memory so that this task is loaded
+// Maps memory so that this task is loaded (optionally disables interrupts)
 void set_current_task(pcb_t* pcb);
 
 // Switch from one task to another
