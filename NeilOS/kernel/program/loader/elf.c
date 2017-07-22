@@ -470,9 +470,9 @@ bool elf_load(char* filename, pcb_t* pcb) {
 		}
 	}
 	
-	// Perform relocation
+	// Perform relocation (but don't include symbols from ourself)
 	if (!elf_perform_relocation(section_headers, &header, &file, section_names, strtabs,
-								pcb->dylibs, 0, true))
+								pcb->dylibs->next, 0, true))
 		goto cleanup;
 	
 	ret = true;

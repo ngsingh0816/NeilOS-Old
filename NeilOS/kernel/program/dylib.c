@@ -122,6 +122,7 @@ dylib_t* dylib_create_from_pcb(pcb_t* pcb) {
 	memset(list, 0, sizeof(dylib_list_t));
 	list->dylib = dylib;
 	list->next = pcb->dylibs;
+	// Must be first to hide duplicate external symbols
 	pcb->dylibs = list;
 	
 	return dylib;
@@ -140,6 +141,7 @@ dylib_t* dylib_get(char* name, bool allocate) {
 			kfree(realname);
 			return t->dylib;
 		}
+		t = t->next;
 	}
 	
 	if (allocate) {
@@ -152,6 +154,20 @@ dylib_t* dylib_get(char* name, bool allocate) {
 	return NULL;
 }
 
+// Helper to place a dylib_list entry at the end of a list
+void dylib_list_push_back(dylib_list_t** list, dylib_list_t* entry) {
+	dylib_list_t* prev = *list;
+	while (prev && prev->next)
+		prev = prev->next;
+	
+	if (!(*list))
+		*list = entry;
+	else {
+		entry->prev = prev;
+		prev->next = entry;
+	}
+}
+
 // Copy a dylib list
 bool dylib_list_copy_for_pcb(dylib_list_t* list, pcb_t* pcb) {
 	dylib_list_t* l = kmalloc(sizeof(dylib_list_t));
@@ -161,10 +177,9 @@ bool dylib_list_copy_for_pcb(dylib_list_t* list, pcb_t* pcb) {
 	memset(l, 0, sizeof(dylib_list_t));
 	l->dylib = list->dylib;
 	l->dylib->num_instances++;
-	l->next = pcb->dylibs;
-	if (pcb->dylibs)
-		pcb->dylibs->prev = l;
-	pcb->dylibs = l;
+	
+	// We must place this at the back because the order of linking is important for duplicate symbols
+	dylib_list_push_back(&pcb->dylibs, l);
 	
 	return true;
 }
@@ -216,11 +231,8 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb, bool relocate) {
 	pcb->page_list->prev = pl_end;
 	pcb->page_list = pl_end;
 	
-	if (pcb->dylibs) {
-		list->next = pcb->dylibs;
-		pcb->dylibs->prev = list;
-	}
-	pcb->dylibs = list;
+	// We must place this at the back because the order of linking is important for duplicate symbols
+	dylib_list_push_back(&pcb->dylibs, list);
 	
 	dylib->num_instances++;
 	

@@ -603,8 +603,6 @@ void terminate_task(uint32_t ret) {
 	}
 	current->should_terminate = false;
 	
-	task_list_t* hint = current->task->next;
-	
 	// Unload the task and get its parent
 	pcb_t* parent = current->parent;
 	
