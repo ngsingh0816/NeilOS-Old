@@ -67,10 +67,9 @@ void* page_physical_get_four_mb(uint32_t num) {
 // Helper to convert a physical address to a virtual one
 void* convert_physical_to_virtual(uint32_t paddr, uint32_t size, uint32_t type) {
 	// Check if it already mapped into virtual memory
-	uint32_t ppage = paddr / PAGE_SIZE;
 	uint32_t paddr_offset = paddr % PAGE_SIZE;
 	void* addr = NULL;
-	if (!page_mapping_exists(ppage, type, &addr)) {
+	if (!page_mapping_exists(paddr, type, &addr)) {
 		if (size == 0)
 			size = 1;
 		

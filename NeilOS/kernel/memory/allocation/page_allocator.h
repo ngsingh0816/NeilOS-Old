@@ -11,6 +11,8 @@
 
 #include <common/types.h>
 
+#define MEMORY_PAGE_SIZE		(1024 * 64)			// 64 KB
+
 // This is a virtual and physical memory allocator (it returns virtual addresses)
 
 // Initialize the base memory

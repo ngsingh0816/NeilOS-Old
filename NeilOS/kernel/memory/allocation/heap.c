@@ -53,9 +53,26 @@ heap_block_t* heap = NULL;
 
 // Returns a pointer to newly allocated memory or NULL if it cannot be allocated
 void* kmalloc(uint32_t real_size) {
+	// TODO: we are wasting a lot of memory, but doing this breaks things
+	/*if (real_size == 0)
+		return NULL;*/
+	
+	uint32_t original_size = real_size;
+	
+	// Needed for the extra byte of flags (but align it to 4 for fastness)
+	real_size += sizeof(uint32_t);
+	
 	// Don't support anything bigger than the max size
-	if (real_size > MAX_SIZE)
-		return NULL;
+	if (real_size > MAX_SIZE) {
+		// Try and allocate a page for this
+		uint32_t new_size = (real_size - 1) / MEMORY_PAGE_SIZE + 1;
+		uint32_t* ret = page_get(new_size, VIRTUAL_MEMORY_KERNEL);
+		if (!ret)
+			return NULL;
+		// Mark this as using a page instead of kmalloc
+		*(ret++) = 1;
+		return (void*)ret;
+	}
 	
 	// Don't allow anything smaller than the min size
 	if (real_size < MIN_SIZE)
@@ -113,7 +130,10 @@ void* kmalloc(uint32_t real_size) {
 		if (node_size == size) {
 			// If this size is an exact match, just set the node as in use and return
 			buddy_set_node_value(buddy, node, NODE_USED);
-			return (void*)((uint32_t)heap_block + sizeof(heap_block_t) + node_index * node_size);
+			uint32_t* ret =  (uint32_t*)((uint32_t)heap_block + sizeof(heap_block_t) + node_index * node_size);
+			// Mark this as using kmalloc, not a page
+			*(ret++) = 0;
+			return (void*)ret;
 		}
 		
 		// Get the number of levels down we need to go
@@ -136,8 +156,11 @@ void* kmalloc(uint32_t real_size) {
 		buddy_set_node_value(buddy, node, NODE_USED_INDIRECT);
 		
 		// Return the memory location of this left most node
-		return (void*)((uint32_t)heap_block + sizeof(heap_block_t) +
+		uint32_t* ret = (uint32_t*)((uint32_t)heap_block + sizeof(heap_block_t) +
 							buddy_get_index_of_node_at_level(left_node, level) * size);
+		// Mark as using kmalloc and not a page
+		*(ret++) = 0;
+		return (void*)ret;
 	}
 	
 	// None could be found, so try to allocate a new heap block in physical memory
@@ -181,11 +204,17 @@ void* kmalloc(uint32_t real_size) {
 	}
 	
 	// Try again (this isn't recursion because it will happen a max of one extra time)
-	return kmalloc(real_size);
+	return kmalloc(original_size);
 }
 
 // Free allocated memory and combine blocks
 void kfree(void* addr) {
+	// Check if we used a page or kmalloc
+	uint32_t* real_addr = addr;
+	if (*(--real_addr) == 1)
+		return page_free(real_addr);
+	addr = (void*)real_addr;
+	
 	// Figure out which heap block this address is in
 	heap_block_t* heap_block;
 	uint32_t naddr = 0;

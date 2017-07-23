@@ -103,13 +103,13 @@ bool vm_is_page_mapped(uint32_t vaddr) {
 	uint32_t page = vaddr / FOUR_MB_SIZE;
 	uint32_t num_entries_per_bitmap = sizeof(uint32_t) * 8;
 	
-	return (vm_bitmap[page / num_entries_per_bitmap] & (1 << (page % num_entries_per_bitmap)));
+	return ((vm_bitmap[page / num_entries_per_bitmap] & (1 << (page % num_entries_per_bitmap))) != 0);
 }
 
 // Gets the page a virtual page is mapped to
 void* vm_virtual_to_physical(uint32_t vaddr) {
 	uint32_t page = vaddr / FOUR_MB_SIZE;
-	return (void*)(page_directory[page] & ~(FOUR_MB_SIZE - 1));
+	return (void*)((page_directory[page] & ~(FOUR_MB_SIZE - 1)) + (vaddr & (FOUR_MB_SIZE - 1)));
 }
 
 // Gets the type for a virtual page
