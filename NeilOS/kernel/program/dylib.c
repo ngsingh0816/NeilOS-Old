@@ -185,26 +185,25 @@ bool dylib_list_copy_for_pcb(dylib_list_t* list, pcb_t* pcb) {
 }
 
 // Load a dylib for a specific application
-bool dylib_load_for_task_by_name(char* name, pcb_t* pcb, bool relocate) {
+bool dylib_load_for_task_by_name(char* name, pcb_t* pcb) {
 	dylib_t* dylib = dylib_get(name, true);
 	if (!dylib)
 		return false;
 	
-	return dylib_load_for_task(dylib, pcb, relocate);
+	return dylib_load_for_task(dylib, pcb);
 }
 
-bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb, bool relocate) {
+bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	dylib_list_t* list = kmalloc(sizeof(dylib_list_t));
 	if (!list)
 		return false;
 	
-	if (relocate) {
-		// Map the original dylib in
-		page_list_t* t = dylib->page_list;
-		while (t) {
-			vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
-			t = t->next;
-		}
+	// Map the original dylib in
+	bool flags = set_multitasking_enabled(false);
+	page_list_t* t = dylib->page_list;
+	while (t) {
+		vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
+		t = t->next;
 	}
 
 	// Copy over the dylib data
@@ -212,6 +211,8 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb, bool relocate) {
 	list->dylib = dylib;
 	page_list_t* p = dylib->page_list;
 	page_list_t* pl = NULL;
+	uint32_t num_pages = 0;
+	uint32_t offset = (uint32_t)-1;
 	while (p) {
 		page_list_t* page = page_list_add_copy(&pl, p, true);
 		if (!page) {
@@ -219,25 +220,51 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb, bool relocate) {
 			kfree(list);
 			return false;
 		}
-		if (relocate)
-			vm_map_page(page->vaddr, page->paddr, USER_PAGE_DIRECTORY_ENTRY);
 	
+		num_pages++;
+		if (offset > page->vaddr)
+			offset = page->vaddr;
 		p = p->next;
 	}
+	set_multitasking_enabled(flags);
+	
+	// Restore pages
+	set_current_task(pcb);
+	// Map these pages to a new offset
+	uint32_t vaddr = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_SHARED);
+	if (!vaddr) {
+		page_list_dealloc(pl);
+		kfree(list);
+		return false;
+	}
+	list->offset = vaddr;
+
+	p = pl;
+	while (p) {
+		p->vaddr += vaddr - offset;
+		p = p->next;
+	}
+	
 	page_list_t* pl_end = pl;
 	while (pl_end && pl_end->next)
 		pl_end = pl_end->next;
 	pl_end->next = pcb->page_list;
 	pcb->page_list->prev = pl_end;
-	pcb->page_list = pl_end;
+	pcb->page_list = pl;
+	
+	// Map these pages in
+	p = pl;
+	while (p && p != pl_end->next) {
+		vm_map_page(p->vaddr, p->paddr, USER_PAGE_DIRECTORY_ENTRY);
+		p = p->next;
+	}
 	
 	// We must place this at the back because the order of linking is important for duplicate symbols
 	dylib_list_push_back(&pcb->dylibs, list);
 	
 	dylib->num_instances++;
 	
-	if (relocate)
-		elf_load_dylib_for_task(dylib, pcb);
+	elf_load_dylib_for_task(dylib, pcb, list->offset);
 	
 	return true;
 }
@@ -268,7 +295,7 @@ void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* foun
 	while (t) {
 		void* ret = dylib_get_symbol_address(t->dylib, name, found);
 		if (*found)
-			return ret;
+			return (void*)((uint32_t)ret + t->offset);
 		t = t->next;
 	}
 	return NULL;

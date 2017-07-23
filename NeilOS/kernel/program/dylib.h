@@ -17,6 +17,8 @@ struct dylib;
 
 typedef struct dylib_list {
 	struct dylib* dylib;
+	uint32_t offset;
+	
 	struct dylib_list* prev;
 	struct dylib_list* next;
 } dylib_list_t;
@@ -79,16 +81,13 @@ bool dylib_list_copy_for_pcb(dylib_list_t* list, struct pcb* pcb);
 dylib_t* dylib_create_from_pcb(struct pcb* pcb);
 
 // Load a dylib for a specific application by name
-bool dylib_load_for_task_by_name(char* name, struct pcb* pcb, bool relocate);
+bool dylib_load_for_task_by_name(char* name, struct pcb* pcb);
 
 // Load a dylib for a specific application
-bool dylib_load_for_task(dylib_t* dylib, struct pcb* pcb, bool relocate);
+bool dylib_load_for_task(dylib_t* dylib, struct pcb* pcb);
 
 // Unload a dylib for a specific application
 void dylib_unload_for_task(dylib_t* dylib);
-
-// Get the symbol address for a specific symbol
-void* dylib_get_symbol_address(dylib_t* dylib, char* name, bool* found);
 
 // Get the symbol address for a specific symbol
 void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* found);

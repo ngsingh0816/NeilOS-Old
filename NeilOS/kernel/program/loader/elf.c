@@ -350,11 +350,12 @@ bool elf_perform_relocation(elf_section_header_t* sections, elf_header_t* header
 						bool found = false;
 						void* value = dylib_get_symbol_address_list(dylibs, symbol_name, &found);
 						if (!found) {
-							//printf("Undefined symbol - %s in section %s\n", symbol_name, &section_names[section->name]);
-							/*ret = false;*/
+							/*printf("Undefined symbol - %s in section %s for 0x%x\n",
+								   symbol_name, &section_names[section->name], dest);*/
 							continue;
 						}
-						//printf("Symbol(%d) - %s (0x%x)\n", (rels[i].type == ELF_REL_COPY), symbol_name, value);
+						/*printf("Symbol(%d) - %s (*0x%x = 0x%x) at 0x%x\n", (rels[i].type == ELF_REL_COPY),
+							   symbol_name, value, *(uint32_t*)value, dest);*/
 						if (rels[i].type == ELF_REL_COPY) {
 							uint32_t size = symtab[rels[i].index].size;
 							memcpy(dest, value, size);
@@ -458,7 +459,7 @@ bool elf_load(char* filename, pcb_t* pcb) {
 			
 			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
 				if (tags[i].tag == ELF_DYNAMIC_NEEDED) {
-					if (!dylib_load_for_task_by_name(&strtab[tags[i].value], pcb, true)) {
+					if (!dylib_load_for_task_by_name(&strtab[tags[i].value], pcb)) {
 						printf("Could not load needed library: %s\n", &strtab[tags[i].value]);
 						kfree(tags);
 						goto cleanup;
@@ -535,6 +536,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 	
 	// Offset these pages and map them
 	// TODO: might need a memory lock or something
+	bool flags = set_multitasking_enabled(false);
 	uint32_t offset = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_SHARED);
 	page_list_t* t = dylib->page_list;
 	while (t) {
@@ -559,9 +561,10 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 				   program_header->mem_size - program_header->size);
 		}
 	}
+	set_multitasking_enabled(flags);
 	
 	// Load the dynamic symbol table
-	if (!elf_load_symbol_table(section_headers, &header, &file, section_names, strtabs, dylib, offset, ".dynsym"))
+	if (!elf_load_symbol_table(section_headers, &header, &file, section_names, strtabs, dylib, 0, ".dynsym"))
 		goto cleanup;
 	
 	// Get number of rel sections
@@ -591,15 +594,8 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 				goto cleanup;
 			}
 			
-			// Find out how many rels there are but don't count relative rels because
-			// they can be optimized out
-			uint32_t num_rels = 0;
-			for (uint32_t i = 0; i < section->size / sizeof(elf_rel_t); i++) {
-				if (rels[i].type == ELF_REL_RELATIVE)
-					continue;
-				
-				num_rels++;
-			}
+			// Allocate rel table
+			uint32_t num_rels = section->size / sizeof(elf_rel_t);
 			
 			dylib_rel_t* dylib_rels = kmalloc(sizeof(dylib_rel_t) * num_rels);
 			if (!dylib_rels) {
@@ -613,13 +609,6 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 			
 			// Copy the info
 			for (uint32_t i = 0; i < section->size / sizeof(elf_rel_t); i++) {
-				if (rels[i].type == ELF_REL_RELATIVE) {
-					// Handle this case manually
-					void** dest = (void**)(rels[i].offset + offset);
-					*dest += offset;
-					continue;
-				}
-			
 				dylib_rels[dylib_num_rels].offset = rels[i].offset;
 				dylib_rels[dylib_num_rels].value = rels[i].value;
 				char* symbol_name = elf_get_symbol_name(&section_headers[section->link], symtab, rels[i].index, strtabs);
@@ -642,13 +631,6 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 		}
 	}
 	
-	// Perform relocation
-	dylib_list_t list;
-	memset(&list, 0, sizeof(list));
-	list.dylib = dylib;
-	if (!elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections, &list, offset))
-		goto cleanup;
-	
 	ret = true;
 	
 cleanup:
@@ -668,11 +650,7 @@ cleanup:
 }
 
 // Copy information and perform relocation for a dylib
-bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb) {
-	dylib_list_t list;
-	memset(&list, 0, sizeof(list));
-	list.dylib = dylib;
-	list.next = pcb->dylibs;
+bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb, uint32_t offset) {
 	return elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections,
-										&list, dylib->page_list->vaddr);
+										pcb->dylibs, offset);
 }

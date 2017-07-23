@@ -45,9 +45,9 @@ uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type) {
 	// Standard linear search
 	uint32_t z = VM_KERNEL_START;
 	if (type == VIRTUAL_MEMORY_SHARED)
-		type = VM_SHARED_START;
+		z = VM_SHARED_START;
 	if (type == VIRTUAL_MEMORY_USER)
-		type = VM_USER_START;
+		z = VM_USER_START;
 	
 	static const uint32_t bits_in_uint32_t = 8 * sizeof(uint32_t);
 	
