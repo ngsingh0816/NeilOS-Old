@@ -295,6 +295,9 @@ void* dylib_get_symbol_address_hash(dylib_t* dylib, uint32_t hash, char* name, b
 	*found = false;
 	uint32_t index = dylib->hash.buckets[hash % dylib->hash.nbuckets];
 	while (index != 0) {
+		if (index >= dylib->num_symbols || index >= dylib->hash.nchains)
+			break;
+		
 		if (dylib->symbols[index].valid && strncmp(&dylib->symbol_names[dylib->symbols[index].name_index],
 											   name, len) == 0) {
 			*found = true;
@@ -302,7 +305,7 @@ void* dylib_get_symbol_address_hash(dylib_t* dylib, uint32_t hash, char* name, b
 		}
 		index = dylib->hash.chains[index];
 	}
-	return NULL;
+	return dylib_get_symbol_address_name(dylib, name, found);
 }
 
 // Get the symbol address for a specific symbol

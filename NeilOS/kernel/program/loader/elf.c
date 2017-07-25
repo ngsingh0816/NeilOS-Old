@@ -244,7 +244,7 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 			if (!dynsym)
 				return false;
 			
-			uint32_t num_symbols = section_header->size / sizeof(elf_symbol_table_t) - 1;
+			uint32_t num_symbols = section_header->size / sizeof(elf_symbol_table_t);
 			dylib->symbols = (dylib_symbol*)kmalloc(num_symbols * sizeof(dylib_symbol));
 			if (!dylib->symbols) {
 				kfree(dynsym);
@@ -263,9 +263,9 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 			
 			// Load the symbol info
 			for (uint32_t i = 0; i < num_symbols; i++) {
-				dylib->symbols[i].name_index = dynsym[i + 1].name;
-				dylib->symbols[i].addr = (void*)(offset + dynsym[i + 1].value);
-				dylib->symbols[i].valid = dynsym[i + 1].shindex != ELF_SYMBOL_UNDEFINED;
+				dylib->symbols[i].name_index = dynsym[i].name;
+				dylib->symbols[i].addr = (void*)(offset + dynsym[i].value);
+				dylib->symbols[i].valid = dynsym[i].shindex != ELF_SYMBOL_UNDEFINED;
 				dylib->num_symbols++;
 			}
 			
@@ -283,7 +283,7 @@ uint32_t elf_compute_hash(char* name) {
 	uint32_t h = 0, g;
 	while (*name) {
 		h = (h << 4) + *name++;
-		if ((g = (h & 0xf0000000)))
+		if ((g = h & 0xf0000000))
 			h ^= g >> 24;
 		h &= ~g;
 	}
@@ -299,7 +299,7 @@ bool elf_load_hash_table(elf_section_header_t* sections, elf_header_t* header,
 			continue;
 		
 		// Read
-		uint32_t* buffer = elf_read_data(file, sections[q].addr, sections[q].size);
+		uint32_t* buffer = elf_read_data(file, sections[q].offset, sections[q].size);
 		if (!buffer)
 			return false;
 		
@@ -524,6 +524,10 @@ bool elf_load(char* filename, pcb_t* pcb) {
 								pcb->dylibs->next, 0, true))
 		goto cleanup;
 	
+	// Load hash table
+	if (!elf_load_hash_table(section_headers, &header, &file, section_names, strtabs, pcb->dylibs->dylib))
+		goto cleanup;
+	
 	ret = true;
 	
 cleanup:
@@ -681,6 +685,10 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 			kfree(rels);
 		}
 	}
+	
+	// Load hash table
+	if (!elf_load_hash_table(section_headers, &header, &file, section_names, strtabs, dylib))
+		goto cleanup;
 	
 	ret = true;
 	
