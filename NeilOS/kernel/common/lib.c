@@ -244,7 +244,7 @@ void blue_screen(char* message, ...) {
 	printf("\n\n");
 	printf("If this is the first time you've seen this Stop error screen,\n"
 		   "restart your computer. If this screen appears again, follow\nthese steps:\n\n");
-	printf("Check to make sure any new hardware or software is properally installed.\n"
+	printf("Check to make sure any new hardware or software is properly installed.\n"
 		   "If this is a new installation, ask your hardware or software manufacturer\n"
 		   "for any windows updates you might need.\n\n");
 	printf("If problems continue, disable or remove any newly installed hardware\n"

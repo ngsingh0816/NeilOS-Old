@@ -53,6 +53,8 @@
 /* TODO (bugs)
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
+ * Fix memory map - programs load at like 128MB by default so we must flip the memory map
+ * Crash on startup in vmware
  */
 
 /* Things to test

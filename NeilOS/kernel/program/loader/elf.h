@@ -22,4 +22,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib);
 // Copy information and perform relocation for a dylib
 bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb, uint32_t offset);
 
+// Compute the hash of a symbol name
+uint32_t elf_compute_hash(char* name);
+
 #endif /* ELF_H */

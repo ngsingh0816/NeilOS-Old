@@ -250,31 +250,78 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 				kfree(dynsym);
 				return false;
 			}
+			char* strtab = strtabs[section_header->link];
+			uint32_t str_len = sections[section_header->link].size;
+			dylib->symbol_names = kmalloc(str_len + 1);
+			if (!dylib->symbol_names) {
+				kfree(dylib->symbols);
+				dylib->symbols = NULL;
+				kfree(dynsym);
+				return false;
+			}
+			memcpy(dylib->symbol_names, strtab, str_len + 1);
 			
 			// Load the symbol info
 			for (uint32_t i = 0; i < num_symbols; i++) {
-				char* name = elf_get_symbol_name(section_header, dynsym, i + 1, strtabs);
-				uint32_t len = strlen(name);
-				dylib->symbols[i].name = kmalloc(len + 1);
-				if (!dylib->symbols[i].name) {
-					for (uint32_t q = 0; q < num_symbols; q++) {
-						if (dylib->symbols[i].name)
-							kfree(dylib->symbols[i].name);
-					}
-					kfree(dylib->symbols);
-					dylib->symbols = NULL;
-					
-					kfree(dynsym);
-					return false;
-				}
-				memcpy(dylib->symbols[i].name, name, len + 1);
+				dylib->symbols[i].name_index = dynsym[i + 1].name;
 				dylib->symbols[i].addr = (void*)(offset + dynsym[i + 1].value);
 				dylib->symbols[i].valid = dynsym[i + 1].shindex != ELF_SYMBOL_UNDEFINED;
 				dylib->num_symbols++;
 			}
 			
 			kfree(dynsym);
+			
+			break;
 		}
+	}
+	
+	return true;
+}
+
+// Compute the hash of a symbol name
+uint32_t elf_compute_hash(char* name) {
+	uint32_t h = 0, g;
+	while (*name) {
+		h = (h << 4) + *name++;
+		if ((g = (h & 0xf0000000)))
+			h ^= g >> 24;
+		h &= ~g;
+	}
+	return h;
+}
+
+// Load a hash table
+bool elf_load_hash_table(elf_section_header_t* sections, elf_header_t* header,
+						 file_descriptor_t* file, char* section_names, char** strtabs,
+						 dylib_t* dylib) {
+	for (uint32_t q = 0; q < header->section_header_num_entries; q++) {
+		if (sections[q].type != ELF_SECTION_HASH)
+			continue;
+		
+		// Read
+		uint32_t* buffer = elf_read_data(file, sections[q].addr, sections[q].size);
+		if (!buffer)
+			return false;
+		
+		// Allocate
+		dylib->hash.nbuckets = buffer[0];
+		dylib->hash.nchains = buffer[1];
+		dylib->hash.buckets = kmalloc(buffer[0] * sizeof(uint32_t));
+		if (!dylib->hash.buckets) {
+			kfree(buffer);
+			return false;
+		}
+		dylib->hash.chains = kmalloc(buffer[1] * sizeof(uint32_t));
+		if (!dylib->hash.chains) {
+			kfree(dylib->hash.buckets);
+			dylib->hash.buckets = NULL;
+			kfree(buffer);
+			return false;
+		}
+		
+		// Copy
+		memcpy(dylib->hash.buckets, &buffer[2], buffer[0] * sizeof(uint32_t));
+		memcpy(dylib->hash.chains, &buffer[2 + buffer[0]], buffer[1]);
 	}
 	
 	return true;
@@ -285,6 +332,7 @@ bool elf_perform_relocation_dylib(dylib_rel_section_t* rel_sections, uint32_t nu
 								  dylib_list_t* dylibs, uint32_t offset) {
 	for (uint32_t q = 0; q < num_rel_sections; q++) {
 		dylib_rel_t* rels = rel_sections[q].rels;
+		char* rel_names = rel_sections[q].rel_names;
 		for (uint32_t z = 0; z < rel_sections[q].num_rels; z++) {
 			void** dest = (void**)(rels[z].offset + offset);
 			switch (rels[z].type) {
@@ -292,7 +340,7 @@ bool elf_perform_relocation_dylib(dylib_rel_section_t* rel_sections, uint32_t nu
 				case ELF_REL_COPY:
 				case ELF_REL_JUMP_SLOT: {
 					bool found = false;
-					void* value = dylib_get_symbol_address_list(dylibs, rels[z].name, &found);
+					void* value = dylib_get_symbol_address_list(dylibs, &rel_names[rels[z].name_index], &found);
 					if (!found) {
 						//printf("Undefined symbol - %s %s\n", rels[z].name);
 						//ret = false;*/
@@ -603,6 +651,17 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 				kfree(rels);
 				goto cleanup;
 			}
+			uint32_t strtab_index = section_headers[section->link].link;
+			uint32_t str_len = section_headers[strtab_index].size;
+			dylib->rel_sections[dylib->num_rel_sections].rel_names = kmalloc(str_len);
+			if (!dylib->rel_sections[dylib->num_rel_sections].rel_names) {
+				kfree(dylib_rels);
+				kfree(symtab);
+				kfree(rels);
+				goto cleanup;
+			}
+			memcpy(dylib->rel_sections[dylib->num_rel_sections].rel_names, strtabs[strtab_index], str_len);
+			
 			dylib->rel_sections[dylib->num_rel_sections].rels = dylib_rels;
 			dylib->rel_sections[dylib->num_rel_sections++].num_rels = 0;
 			uint32_t dylib_num_rels = 0;
@@ -611,15 +670,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 			for (uint32_t i = 0; i < section->size / sizeof(elf_rel_t); i++) {
 				dylib_rels[dylib_num_rels].offset = rels[i].offset;
 				dylib_rels[dylib_num_rels].value = rels[i].value;
-				char* symbol_name = elf_get_symbol_name(&section_headers[section->link], symtab, rels[i].index, strtabs);
-				int len = strlen(symbol_name) + 1;
-				dylib_rels[dylib_num_rels].name = kmalloc(len);
-				if (!dylib_rels[dylib_num_rels].name) {
-					kfree(symtab);
-					kfree(rels);
-					goto cleanup;
-				}
-				memcpy(dylib_rels[dylib_num_rels].name, symbol_name, len);
+				dylib_rels[dylib_num_rels].name_index = symtab[rels[i].index].name;
 				dylib_rels[dylib_num_rels].size = symtab[rels[i].index].size;
 				
 				dylib_num_rels++;

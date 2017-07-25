@@ -24,13 +24,13 @@ typedef struct dylib_list {
 } dylib_list_t;
 
 typedef struct {
-	char* name;
+	uint32_t name_index;
 	void* addr;
 	bool valid;
 } dylib_symbol;
 
 typedef struct {
-	char* name;
+	uint32_t name_index;
 	uint32_t offset;
 	union {
 		uint32_t value;
@@ -45,6 +45,7 @@ typedef struct {
 
 typedef struct {
 	dylib_rel_t* rels;
+	char* rel_names;
 	uint32_t num_rels;
 } dylib_rel_section_t;
 
@@ -54,11 +55,21 @@ typedef struct {
 	uint32_t size;
 } dylib_data_section_t;
 
+typedef struct {
+	uint32_t nbuckets;
+	uint32_t nchains;
+	uint32_t* buckets;
+	uint32_t* chains;
+} dylib_hash_section_t;
+
 typedef struct dylib {
 	char* name;
 	page_list_t* page_list;
 	
+	dylib_hash_section_t hash;
+	
 	dylib_symbol* symbols;
+	char* symbol_names;
 	uint32_t num_symbols;
 	
 	dylib_rel_section_t* rel_sections;

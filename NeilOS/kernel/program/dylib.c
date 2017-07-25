@@ -275,12 +275,13 @@ void dylib_unload_for_task(dylib_t* dylib) {
 		dylib_dealloc(dylib);
 }
 
-// Get the symbol address for a specific symbol
-void* dylib_get_symbol_address(dylib_t* dylib, char* name, bool* found) {
+// Get the symbol address for a specific symbol by name
+void* dylib_get_symbol_address_name(dylib_t* dylib, char* name, bool* found) {
 	uint32_t len = strlen(name) + 1;
 	*found = false;
 	for (uint32_t z = 0; z < dylib->num_symbols; z++) {
-		if (dylib->symbols[z].valid && strncmp(dylib->symbols[z].name, name, len) == 0) {
+		if (dylib->symbols[z].valid && strncmp(&dylib->symbol_names[dylib->symbols[z].name_index],
+											   name, len) == 0) {
 			*found = true;
 			return dylib->symbols[z].addr;
 		}
@@ -289,11 +290,32 @@ void* dylib_get_symbol_address(dylib_t* dylib, char* name, bool* found) {
 }
 
 // Get the symbol address for a specific symbol
+void* dylib_get_symbol_address_hash(dylib_t* dylib, uint32_t hash, char* name, bool* found) {
+	uint32_t len = strlen(name) + 1;
+	*found = false;
+	uint32_t index = dylib->hash.buckets[hash % dylib->hash.nbuckets];
+	while (index != 0) {
+		if (dylib->symbols[index].valid && strncmp(&dylib->symbol_names[dylib->symbols[index].name_index],
+											   name, len) == 0) {
+			*found = true;
+			return dylib->symbols[index].addr;
+		}
+		index = dylib->hash.chains[index];
+	}
+	return NULL;
+}
+
+// Get the symbol address for a specific symbol
 void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* found) {
 	dylib_list_t* t = dylibs;
 	*found = false;
+	uint32_t hash = elf_compute_hash(name);
 	while (t) {
-		void* ret = dylib_get_symbol_address(t->dylib, name, found);
+		void* ret = NULL;
+		if (t->dylib->hash.nbuckets != 0)
+			ret = dylib_get_symbol_address_hash(t->dylib, hash, name, found);
+		else
+			ret = dylib_get_symbol_address_name(t->dylib, name, found);
 		if (*found)
 			return (void*)((uint32_t)ret + t->offset);
 		t = t->next;
@@ -333,27 +355,28 @@ void dylib_unload(char* name) {
 void dylib_dealloc(dylib_t* dylib) {
 	if (dylib->name)
 		kfree(dylib->name);
-	if (dylib->symbols) {
-		for (uint32_t z = 0; z < dylib->num_symbols; z++) {
-			if (dylib->symbols[z].name)
-				kfree(dylib->symbols[z].name);
-		}
+	if (dylib->symbols)
 		kfree(dylib->symbols);
-	}
+	if (dylib->symbol_names)
+		kfree(dylib->symbol_names);
 	if (dylib->rel_sections) {
 		for (uint32_t z = 0; z < dylib->num_rel_sections; z++) {
 			if (dylib->rel_sections[z].rels) {
 				for (uint32_t i = 0; i < dylib->rel_sections[z].num_rels; i++) {
-					if (dylib->rel_sections[z].rels[i].name)
-						kfree(dylib->rel_sections[z].rels[i].name);
 					if (dylib->rel_sections[z].rels[i].data)
 						kfree(dylib->rel_sections[z].rels[i].data);
 				}
+				if (dylib->rel_sections[z].rel_names)
+					kfree(dylib->rel_sections[z].rel_names);
 				kfree(dylib->rel_sections[z].rels);
 			}
 		}
 		kfree(dylib->rel_sections);
 	}
+	if (dylib->hash.buckets)
+		kfree(dylib->hash.buckets);
+	if (dylib->hash.chains)
+		kfree(dylib->hash.chains);
 	page_list_dealloc(dylib->page_list);
 }
 
