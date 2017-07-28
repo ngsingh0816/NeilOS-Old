@@ -242,14 +242,35 @@ void general_protection(uint32_t code, uint32_t eip) {
 	blue_screen("General protection fault - 0x%x (eip: 0x%x)", code, eip);
 }
 
+#define PAGE_PRESENT		0x1
+#define WRITE_VIOLATON		0x2
+
 // Interrupt 14
 void page_fault(uint32_t code, uint32_t eip) {
-	signal_send(current_pcb, SIGSEGV);
-	
-#if DEBUG
+	// Get the address it happened at
 	uint32_t address = 0;
 	asm volatile ("movl %%cr2, %0"
 				  : "=a"(address));
+	
+	// Check if we were copying on write
+	if ((code & PAGE_PRESENT) && (code & WRITE_VIOLATON)) {
+		pcb_t* pcb = current_pcb;
+		uint32_t addr_aligned = address & ~(FOUR_MB_SIZE - 1);
+		// Find the page that deals with this
+		page_list_t* t = pcb->page_list;
+		while (t) {
+			if (t->vaddr == addr_aligned && t->copy_on_write) {
+				if (!page_list_copy_on_write(t))
+					break;
+				return;
+			}
+			t = t->next;
+		}
+	}
+	
+	signal_send(current_pcb, SIGSEGV);
+	
+#if DEBUG
 	blue_screen("Page fault - 0x%x at address 0x%x (eip: 0x%x)", code, address, eip);
 #else
 	printf("Segfault.\n");

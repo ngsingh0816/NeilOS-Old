@@ -12,18 +12,14 @@
 	2GB-4GB: User
  */
 
-// Page permissions
-#define USER_NOT_PRESENT_PAGE		0x6
-#define USER_PAGE_DIRECTORY_ENTRY	0x97
-#define USER_PAGE_TABLE_ENTRY		0x7
-#define KERNEL_PAGE_TABLE_ENTRY		0x3
-#define KERNEL_PAGE_DIRECTORY_ENTRY	0x193
-#define UNUSED_PAGE					0x2
-
 // Virtual Memory Allocator
 #define VIRTUAL_MEMORY_KERNEL			0
 #define VIRTUAL_MEMORY_SHARED			1
 #define VIRTUAL_MEMORY_USER				2
+
+// Page permissions
+#define MEMORY_WRITE				(1 << 0)
+#define MEMORY_KERNEL				(1 << 1)
 
 // Common sizes
 #define FOUR_KB_SIZE				4096
@@ -36,8 +32,11 @@ uint32_t vm_get_next_unmapped_page(uint32_t type);
 // Gets the address of the next unmapped 4MB pages of the specific type
 uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type);
 
-// Maps a virtual addresss (4MB aligned) to a physical address (4MB aligned)
+// Maps a virtual address (4MB aligned) to a physical address (4MB aligned)
 void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions);
+
+// Maps a virtual address (4MB aligned) to a physical page table (4kb aligned)
+void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permissions);
 
 // Unmaps a virtual address and allows it to be used
 void vm_unmap_page(uint32_t vaddr);

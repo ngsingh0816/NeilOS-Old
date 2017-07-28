@@ -55,6 +55,7 @@
 	we go back to the scheduler
  * Fix memory map - programs load at like 128MB by default so we must flip the memory map
  * Crash on startup in vmware
+ * Segfaults say GPF not page fault (i think)
  */
 
 /* Things to test
@@ -64,6 +65,7 @@
  * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
  * Allow 4kb paging (also add mapping in a page as a function of page_list and add a permissions value to it)
  * Make fork() copy on write
+ * Add gitignore and add to github
  * DMA for large memory transfers?
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c

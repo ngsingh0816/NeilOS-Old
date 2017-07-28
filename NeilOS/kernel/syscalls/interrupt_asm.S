@@ -21,6 +21,8 @@
 .globl context_switch_asm
 .globl get_context
 
+.globl fork_return
+
 .globl signal_handler
 .globl sigreturn
 .globl sigreturn_impl
@@ -39,6 +41,7 @@
 .globl _intx80
 .globl _get_context
 .globl _return_to_user
+.globl _fork_return
 
 sigreturn:
 _sigreturn:
@@ -58,6 +61,8 @@ get_context:
 _get_context:
 return_to_user:
 _return_to_user:
+fork_return:
+_fork_return:
 
 #else
 
@@ -86,7 +91,7 @@ get_context:
 	movl %edi, 0(%eax)
 	movl %esi, 4(%eax)
 
-	// Save old edp (located at ebp)
+	// Save old ebp (located at ebp)
 	pushl %ebx
 	movl (%ebp), %ebx
 	movl %ebx, 8(%eax)
@@ -211,6 +216,11 @@ return_from_user:
 
 	ret
 
+// Helper to return a child from fork (immediately exits)
+// fork_return()
+fork_return:
+	iret
+
 // The assembly linkage function for calling an interrupt
 interrupt:
 	// Check if its a syscall
@@ -257,7 +267,7 @@ interrupt:
 	// Call the syscall
 	is_syscall:
 		// Get the value from eax back
-		popl %eax
+		movl 4(%esp), %eax
 
 		// Check its a valid syscall
 		cmp $0, %eax
@@ -336,10 +346,10 @@ interrupt:
 		popl %ebp
 
 	done_syscall:
-		iret
+		ret
 	invalid_syscall:
 		movl $-1, %eax
-		iret
+		ret
 	terminate_syscall_task:
 		movl $-1, %eax
 		pushl %eax
@@ -364,179 +374,280 @@ done_interrupt:
 	// Restore registers
 	popa
 
-	// Pop the saved eax from the direct interrupt handler
-	popl %eax
-	iret
+	ret
 
 // Interrupt handlers (call through to a common function)
 int0:
+	pushl %edx
+
 	// Get eip
-	movl (%esp), %edx
+	movl 4(%esp), %edx
 
 	pushl %eax
 	movl $0, %eax
-	jmp interrupt
+	call interrupt
+
+	popl %eax
+	popl %edx
+	iret
 int2:
 	pushl %eax
 	movl $2, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int3:
 	pushl %eax
 	movl $3, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int4:
 	pushl %eax
 	movl $4, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int5:
 	pushl %eax
 	movl $5, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int6:
 	pushl %eax
 	movl $6, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int7:
 	pushl %eax
 	movl $7, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int8:
 	// Double fault pushes a 0 onto the stack
-	popl %ebx
+	addl $4, %esp
 	pushl %eax
 	movl $8, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int9:
 	pushl %eax
 	movl $9, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int10:
 	// invalid tss
-	popl %ebx
+	pushl %ebx
+	movl 4(%esp), %ebx
 
 	pushl %eax
 	movl $10, %eax
-	jmp interrupt
+	call interrupt
+
+	popl %eax
+	popl %ebx
+	addl $4, %esp
+	iret
 int11:
 	// segment not present
-	popl %ebx
+	pushl %ebx
+	movl 4(%esp), %ebx
 
 	pushl %eax
 	movl $11, %eax
-	jmp interrupt
+	call interrupt
+
+	popl %eax
+	popl %ebx
+	addl $4, %esp
+	iret
 int12:
 	// stack segment fault
-	popl %ebx
+	pushl %ebx
+	movl 4(%esp), %ebx
 
 	pushl %eax
 	movl $12, %eax
-	jmp interrupt
-int13:
-	// Get eip
-	movl 4(%esp), %edx
+	call interrupt
 
-	// GPF
+	popl %eax
 	popl %ebx
+	addl $4, %esp
+	iret
+int13: // gpf
+	pushl %ebx
+	pushl %edx
+
+	movl 12(%esp), %edx
+	movl 8(%esp), %ebx
 
 	pushl %eax
 	movl $13, %eax
-	jmp interrupt
-int14:
-	// page fault
-	// Get eip
-	movl 4(%esp), %edx
-	// Get code
+	call interrupt
+
+	popl %eax
+	popl %edx
 	popl %ebx
+	addl $4, %esp
+	iret
+int14:	// page fault
+	pushl %ebx
+	pushl %edx
+
+	// Get eip
+	movl 12(%esp), %edx
+	// Get code
+	movl 8(%esp), %ebx
 
 	pushl %eax
 	movl $14, %eax
-	jmp interrupt
+	call interrupt
+
+	popl %eax
+	popl %edx
+	popl %ebx
+	addl $4, %esp
+	iret
 int16:
 	pushl %eax
 	movl $16, %eax
-	jmp interrupt
-int17:
-	// alignment check
-	popl %ebx
+	call interrupt
+	popl %eax
+	iret
+int17: // alignment check
+	pushl %ebx
+	movl 4(%esp), %ebx
 
 	pushl %eax
 	movl $17, %eax
-	jmp interrupt
+	call interrupt
+
+	popl %eax
+	popl %ebx
+	addl $4, %esp
+	iret
 int18:
 	pushl %eax
 	movl $18, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 int19:
 	pushl %eax
 	movl $19, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx20:
 	pushl %eax
 	movl $0x20, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx21:
 	pushl %eax
 	movl $0x21, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx22:
 	pushl %eax
 	movl $0x22, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx23:
 	pushl %eax
 	movl $0x23, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx24:
 	pushl %eax
 	movl $0x24, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx25:
 	pushl %eax
 	movl $0x25, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx26:
 	pushl %eax
 	movl $0x26, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx27:
 	pushl %eax
 	movl $0x27, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx28:
 	pushl %eax
 	movl $0x28, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx29:
 	pushl %eax
 	movl $0x29, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx2A:
 	pushl %eax
 	movl $0x2A, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx2B:
 	pushl %eax
 	movl $0x2B, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx2C:
 	pushl %eax
 	movl $0x2C, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx2D:
 	pushl %eax
 	movl $0x2D, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx2E:
 	pushl %eax
 	movl $0x2E, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx2F:
 	pushl %eax
 	movl $0x2F, %eax
-	jmp interrupt
+	call interrupt
+	popl %eax
+	iret
 intx80:
+	pusha
+	call pcb_set_context
+	popa
+
 	pushl %eax
 	movl $0x80, %eax
-	jmp interrupt
+	call interrupt
+	addl $4, %esp
+	iret
 
 #endif

@@ -464,10 +464,10 @@ bool elf_load(char* filename, pcb_t* pcb) {
 		uint32_t real_size = program_header->mem_size > program_header->size ?
 			program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
-			page_list_t* t = page_list_get(&pcb->page_list, pos, true);
+			page_list_t* t = page_list_get(&pcb->page_list, pos, MEMORY_WRITE, true);
 			if (!t)
 				return false;
-			vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
+			page_list_map(t);
 		}
 		
 		// Load the program segment into memory
@@ -579,7 +579,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 		uint32_t real_size = program_header->mem_size > program_header->size ?
 		program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
-			page_list_t* t = page_list_get(&dylib->page_list, pos, true);
+			page_list_t* t = page_list_get(&dylib->page_list, pos, MEMORY_WRITE, true);
 			if (!t)
 				return false;
 			num_pages++;
@@ -593,7 +593,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 	page_list_t* t = dylib->page_list;
 	while (t) {
 		t->vaddr += offset;
-		vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
+		page_list_map(t);
 		t = t->next;
 	}
 	

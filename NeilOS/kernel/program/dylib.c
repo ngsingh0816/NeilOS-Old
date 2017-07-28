@@ -202,7 +202,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	bool flags = set_multitasking_enabled(false);
 	page_list_t* t = dylib->page_list;
 	while (t) {
-		vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
+		page_list_map(t);
 		t = t->next;
 	}
 
@@ -249,13 +249,14 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	while (pl_end && pl_end->next)
 		pl_end = pl_end->next;
 	pl_end->next = pcb->page_list;
-	pcb->page_list->prev = pl_end;
+	if (pcb->page_list)
+		pcb->page_list->prev = pl_end;
 	pcb->page_list = pl;
 	
 	// Map these pages in
 	p = pl;
 	while (p && p != pl_end->next) {
-		vm_map_page(p->vaddr, p->paddr, USER_PAGE_DIRECTORY_ENTRY);
+		page_list_map(p);
 		p = p->next;
 	}
 	

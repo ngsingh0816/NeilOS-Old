@@ -55,6 +55,9 @@ typedef struct pcb {
 	// If this is set, the task will terminate next time it is loaded (fifth, 13)
 	bool should_terminate;
 	
+	// The saved context of the task
+	context_state_t	context;
+	
 	// Each entry in the list holds the physical address of the
 	// corresponding 4MB page starting at 0x8000000
 	page_list_t* page_list;

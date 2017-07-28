@@ -102,7 +102,7 @@ void map_task_into_memory(pcb_t* pcb) {
 	// Loop through all the pages in the memory list
 	page_list_t* t = pcb->page_list;
 	while (t) {
-		vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
+		page_list_map(t);
 		t = t->next;
 	}
 	
@@ -351,11 +351,11 @@ bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
 		t = t->next;
 	}
 	// Map another block in for the stack
-	page_list_t* stack_block = page_list_get(&pcb->page_list, pcb->stack_address + FOUR_MB_SIZE, true);
+	page_list_t* stack_block = page_list_get(&pcb->page_list, pcb->stack_address + FOUR_MB_SIZE, MEMORY_WRITE, true);
 	if (!stack_block)
 		return false;
 	pcb->stack_address += FOUR_MB_SIZE;
-	vm_map_page(stack_block->vaddr, stack_block->paddr, USER_PAGE_DIRECTORY_ENTRY);
+	page_list_map(stack_block);
 	
 	// The stack grows downward
 	pcb->stack_address += USER_STACK_SIZE;

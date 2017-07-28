@@ -18,14 +18,25 @@
 #define VM_SHARED_START				0x08									// 1GB / 4MB / 32
 #define VM_USER_START				0x10									// 2GB / 4MB / 32
 
+// Special pages
+#define USER_PAGE_DIRECTORY_ENTRY	0x97
+#define USER_PAGE_TABLE_ENTRY		0x7
+#define KERNEL_PAGE_TABLE_ENTRY		0x3
+#define KERNEL_PAGE_DIRECTORY_ENTRY	0x193
+#define UNUSED_PAGE					0x0
+#define UNUSED_USER_PAGE			0x6
+
+// Page values
+#define PAGE_PRESENT_BIT			0x1
+#define PAGE_WRITE_BIT				0x2
+#define PAGE_USER_BIT				0x4
+#define PAGE_DIRECTORY_BIT			0x90;
+
 //This is our page directory which holds all pages. It is aligned by 4 KB. It holds 1024 
 //4mb pages/page tables for a total of 4gb.
 uint32_t page_directory[PAGE_DIRECTORY_NUM_ENTRIES] __attribute__((aligned(FOUR_KB_SIZE)));
 //Page table holds 1024 4kb pages from 0-4mb in video memory
 uint32_t page_table[PAGE_TABLE_NUM_ENTRIES] __attribute__((aligned(FOUR_KB_SIZE)));
-// User page table (for user VRAM)
-uint32_t user_page_table[PAGE_TABLE_NUM_ENTRIES] __attribute__((aligned(FOUR_KB_SIZE)));
-
 
 //load cr3 register with the page directory's address
 extern void load_cr3(uint32_t* directory_address);
@@ -80,7 +91,28 @@ void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions) {
 	vm_bitmap[page / num_entries_per_bitmap] |= (1 << (page % num_entries_per_bitmap));
 	
 	// Map the page
-	page_directory[page] = paddr | permissions;
+	uint32_t data = PAGE_PRESENT_BIT | PAGE_DIRECTORY_BIT;
+	if (!(permissions & MEMORY_KERNEL))
+		data |= PAGE_USER_BIT;
+	if (permissions & MEMORY_WRITE)
+		data |= PAGE_WRITE_BIT;
+	page_directory[page] = paddr | data;
+		
+	flush_tlb();
+}
+
+// Maps a virtual address (4MB aligned) to a physical page table (4kb aligned)
+void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permissions) {
+	uint32_t page = vaddr / FOUR_MB_SIZE;
+	uint32_t num_entries_per_bitmap = sizeof(uint32_t) * 8;
+	vm_bitmap[page / num_entries_per_bitmap] |= (1 << (page % num_entries_per_bitmap));
+	
+	uint32_t data = PAGE_PRESENT_BIT;
+	if (!(permissions & MEMORY_KERNEL))
+		data |= PAGE_USER_BIT;
+	if (permissions & MEMORY_WRITE)
+		data |= PAGE_WRITE_BIT;
+	page_directory[page] = (uint32_t)page_table | data;
 	
 	flush_tlb();
 }
@@ -140,7 +172,7 @@ int setup_pages() {
 	
 	// Loop through all 1024 4KB pages to make up the first 4MB
 	for (i = 0; i < PAGE_TABLE_NUM_ENTRIES; i++) {
-		int code = USER_NOT_PRESENT_PAGE;
+		int code = UNUSED_USER_PAGE;
 		// Move each page by 4kb
 		uint32_t address = i * FOUR_KB_SIZE;
 		if (address == VRAM_START)
@@ -151,22 +183,11 @@ int setup_pages() {
 		page_table[i] = address | code;
 	}
 	
-	// Fill in the user page table as well so it is cached
-	for (i = 0; i < PAGE_TABLE_NUM_ENTRIES; i++) {
-		int code = USER_NOT_PRESENT_PAGE;
-		// Move each page by 4kb
-		uint32_t address = i * FOUR_KB_SIZE;
-		if (address == VRAM_START)
-			code = USER_PAGE_TABLE_ENTRY;
-		// Set the page table entry
-		user_page_table[i] = address | code;
-	}
-	
 	// Set this value in the the page directories to point to the page table
-	vm_map_page(FOUR_MB_SIZE * 0, (uint32_t)page_table, KERNEL_PAGE_TABLE_ENTRY);
+	vm_map_page_table(FOUR_MB_SIZE * 0, page_table, MEMORY_WRITE | MEMORY_KERNEL);
 	// Reserve 12 MB for the kernel
 	for (i = 1; i < 3; i++)
-		vm_map_page(i * FOUR_MB_SIZE, i * FOUR_MB_SIZE, KERNEL_PAGE_DIRECTORY_ENTRY);
+		vm_map_page(i * FOUR_MB_SIZE, i * FOUR_MB_SIZE, MEMORY_WRITE | MEMORY_KERNEL);
 	
 	// Set the page directory address in the CR3 register, CR4 as we have different sized pages and CR0 enable paging
 	load_cr3(page_directory);

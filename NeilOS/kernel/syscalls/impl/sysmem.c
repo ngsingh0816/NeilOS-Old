@@ -23,14 +23,14 @@ uint32_t brk(uint32_t addr) {
 		// Allocate new pages
 		uint32_t start = current_pcb->brk - (current_pcb->brk % FOUR_MB_SIZE) + FOUR_MB_SIZE;
 		for (; start < addr; start += FOUR_MB_SIZE) {
-			page_list_t* t = page_list_get(&current_pcb->page_list, start, true);
+			page_list_t* t = page_list_get(&current_pcb->page_list, start, MEMORY_WRITE, true);
 			if (!t) {
 				brk(current_pcb->brk);
 				return -1;
 			}
 			
 			// Map this new page into memory
-			vm_map_page(t->vaddr, t->paddr, USER_PAGE_DIRECTORY_ENTRY);
+			page_list_map(t);
 		}
 	} else if (addr < current_pcb->brk) {
 		uint32_t start = addr - (addr % FOUR_MB_SIZE) + FOUR_MB_SIZE;

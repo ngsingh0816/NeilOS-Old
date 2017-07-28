@@ -48,5 +48,10 @@ load_cr0_and_cr4:
 	orl $0x80000000, %ecx
 	movl %ecx, %cr0
 
+	// Set 16th bit of CR0 (prevents supervisor from writing to read only pages)
+	movl %cr0, %ecx
+	orl $(1 << 16), %ecx
+	movl %ecx, %cr0
+
 	leave
 	ret

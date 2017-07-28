@@ -18,6 +18,12 @@
 // Initialize the base memory
 void page_allocator_init();
 
+// Gets a 4kb aligned 4kb page (must be freed with page_free_aligned_four_kb)
+void* page_physical_get_aligned_four_kb();
+
+// Frees a 4kb aligned 4kb page
+void page_physical_free_aligned_four_kb(void* addr);
+
 // Get a number of 64KB pages (type is KERNEL, SHARED, or USER)
 void* page_get(uint32_t size, uint32_t type);
 

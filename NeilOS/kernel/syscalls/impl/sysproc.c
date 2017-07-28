@@ -15,6 +15,8 @@
 extern void return_to_user(pcb_t* pcb, pcb_t* parent);
 // Gets the context of the machine right before this function call is executed
 extern void get_context(context_state_t* context);
+// What to return to from a child forking
+extern void fork_return(context_state_t context);
 
 // Initialize the descriptors for a pcb
 void init_descriptors(pcb_t* pcb) {
@@ -90,22 +92,34 @@ int32_t run_with_fake_parent(pcb_t* pcb, pcb_t* parent) {
 	return ret;
 }
 
+// Helper to save the current pcb context
+void pcb_set_context(context_state_t state) {
+	current_pcb->context = state;
+}
+
 // Duplicate a program and memory space
 uint32_t fork() {
 	LOG_DEBUG_INFO();
 
-	context_state_t context;
-	get_context(&context);
-	
 	pcb_t* pcb = NULL;
 	if ((pcb = duplicate_current_task()) == NULL)
 		return -1;
 	
-	// Pusha (with eax set to 0 so the child returns 0)
-	context.esp = context.esp - (uint32_t)current_pcb + (uint32_t)pcb;
-	pcb->saved_esp = context.esp - sizeof(context_state_t);
-	context.eax = 0;
-	memcpy((void*)pcb->saved_esp, &context, sizeof(context_state_t));
+	// Set the context to return to fork_return() with eax set to 0 so
+	// the child returns 0. Also move the esp from the current pcb kernel stack
+	// to this new process's kernel stack and copy over the context for fork_return().
+	pcb->context.eax = 0;
+	// This points to where the iret info is
+	// We need info for the context switch (popa, ret)
+	// This ret should point to fork_return, which is just iret.
+	// So just add in a context state followed by fork_return's address
+	pcb->saved_esp = pcb->context.esp + (uint32_t)pcb - (uint32_t)current_pcb -
+						sizeof(uint32_t) - sizeof(context_state_t);
+	char* esp = (char*)pcb->saved_esp;
+	memcpy(esp, &pcb->context, sizeof(context_state_t));
+	uint32_t addr = (uint32_t)fork_return;
+	memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
+	pcb->in_syscall = false;
 	
 	// Enable the child to be scheduled
 	pcb->state = READY;
@@ -116,7 +130,7 @@ uint32_t fork() {
 // Load a new program into the current memory space
 uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 	LOG_DEBUG_INFO_STR("(%s, 0x%x, 0x%x)", filename, argv, envp);
-
+	
 	// Load the task
 	pcb_t* pcb = NULL;
 	if (queue_task(filename, argv, envp, &pcb) != 0)
