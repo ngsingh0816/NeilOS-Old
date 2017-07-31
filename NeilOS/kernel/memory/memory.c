@@ -117,6 +117,16 @@ void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permission
 	flush_tlb();
 }
 
+// Create a page table entry (address must be 4kb aligned)
+uint32_t vm_create_page_table_entry(uint32_t paddr, uint32_t permissions) {
+	uint32_t data = PAGE_PRESENT_BIT;
+	if (!(permissions & MEMORY_KERNEL))
+		data |= PAGE_USER_BIT;
+	if (permissions & MEMORY_WRITE)
+		data |= PAGE_WRITE_BIT;
+	return paddr | data;
+}
+
 // Unmaps a virtual address and allows it to be used
 void vm_unmap_page(uint32_t vaddr) {
 	// Free it in the bitmap

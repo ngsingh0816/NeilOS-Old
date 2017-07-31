@@ -319,7 +319,7 @@ pcb_t* duplicate_current_task() {
 	pcb->page_list = NULL;
 	page_list_t* n = current->page_list;
 	while (n) {
-		if (!page_list_add_copy(&pcb->page_list, n, true)) {
+		if (!page_list_add_copy(&pcb->page_list, n)) {
 			pcb_error(pcb, task);
 			return NULL;
 		}

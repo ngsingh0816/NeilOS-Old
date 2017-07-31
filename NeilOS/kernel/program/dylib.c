@@ -214,7 +214,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	uint32_t num_pages = 0;
 	uint32_t offset = (uint32_t)-1;
 	while (p) {
-		page_list_t* page = page_list_add_copy(&pl, p, true);
+		page_list_t* page = page_list_add_copy(&pl, p);
 		if (!page) {
 			page_list_dealloc(pl);
 			kfree(list);

@@ -336,7 +336,7 @@ bool elf_perform_relocation_dylib(dylib_rel_section_t* rel_sections, uint32_t nu
 		for (uint32_t z = 0; z < rel_sections[q].num_rels; z++) {
 			void** dest = (void**)(rels[z].offset + offset);
 			switch (rels[z].type) {
-				case ELF_REL_GLOB_DATA:	// TODO: this is where we can copy things over for shared data
+				case ELF_REL_GLOB_DATA:
 				case ELF_REL_COPY:
 				case ELF_REL_JUMP_SLOT: {
 					bool found = false;
@@ -390,7 +390,7 @@ bool elf_perform_relocation(elf_section_header_t* sections, elf_header_t* header
 			for (uint32_t i = 0; i < section->size / sizeof(elf_rel_t); i++) {
 				void** dest = (void**)(rels[i].offset + offset);
 				switch (rels[i].type) {
-					case ELF_REL_GLOB_DATA:	// TODO: this is where we can copy things over for shared data
+					case ELF_REL_GLOB_DATA:
 					case ELF_REL_COPY:
 					case ELF_REL_JUMP_SLOT: {
 						char* symbol_name = elf_get_symbol_name(&sections[section->link], symtab, rels[i].index, strtabs);

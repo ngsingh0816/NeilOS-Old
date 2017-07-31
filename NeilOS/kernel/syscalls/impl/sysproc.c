@@ -120,7 +120,7 @@ uint32_t fork() {
 	uint32_t addr = (uint32_t)fork_return;
 	memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
 	pcb->in_syscall = false;
-	
+		
 	// Enable the child to be scheduled
 	pcb->state = READY;
 	

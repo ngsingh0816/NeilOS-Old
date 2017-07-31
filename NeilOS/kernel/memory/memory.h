@@ -26,6 +26,8 @@
 #define FOUR_MB_SIZE				(4096 * 1024)
 #define ONE_GB_SIZE					(uint32_t)(1024 * 1024 * 1024)
 
+#define NUM_PAGE_TABLE_ENTRIES		1024
+
 // Gets the address of the next unmapped 4MB page of the specific type
 uint32_t vm_get_next_unmapped_page(uint32_t type);
 
@@ -37,6 +39,9 @@ void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions);
 
 // Maps a virtual address (4MB aligned) to a physical page table (4kb aligned)
 void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permissions);
+
+// Create a page table entry
+uint32_t vm_create_page_table_entry(uint32_t paddr, uint32_t permissions);
 
 // Unmaps a virtual address and allows it to be used
 void vm_unmap_page(uint32_t vaddr);

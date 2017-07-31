@@ -34,6 +34,8 @@
  * Pipes
  * Named Pipes (FIFOs)
  * Logging
+ * Dynamic Libraries
+ * Copy on Write
  */
 
 /* TODO (could be improved):
@@ -48,6 +50,7 @@
  * Make ext2 faster (cache things so there are less 4 byte reads)
 	* Could also optimize ATA read / write to do multiple blocks at a time
 		* probably won't help because we never read more than one block
+ * Dynamic libraries - lazy linking
  */
 
 /* TODO (bugs)
@@ -55,18 +58,20 @@
 	we go back to the scheduler
  * Fix memory map - programs load at like 128MB by default so we must flip the memory map
  * Crash on startup in vmware
- * Segfaults say GPF not page fault (i think)
+ * There's probably memory leaks
+ * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
+	because a task will be reading something, we context switch into another task, which disables
+	multitasking, and then tries to read but will just hang forever because the first task hasn't let go
+	of the lock
+ * Making fork disable multitasking should make the pipe test freeze, but it doesn't, it just outputs nothing
  */
 
 /* Things to test
  */
 
 /* TODO:
- * Shared / Dynamic User Libraries (dynamic newlib, stdc++)
- * Allow 4kb paging (also add mapping in a page as a function of page_list and add a permissions value to it)
- * Make fork() copy on write
+ * Make libstdc++ dynamic
  * Add gitignore and add to github
- * DMA for large memory transfers?
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Sockets stub
@@ -86,6 +91,7 @@
 	* Interacts through message queues?
  * Improved Scheduler
  * Ethernet Driver
+ * DMA for large memory transfers?
  * Sockets?
  * Message Queues?
  * Page files on disk?

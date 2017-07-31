@@ -10,6 +10,7 @@
 #include "buddy.h"
 #include <common/lib.h>
 #include <memory/memory.h>
+#include <program/task.h>
 
 #define MIN_PAGE_SIZE		(1024 * 1024 / 16)			// 64KB
 #define MAX_PAGE_SIZE		(1024 * 1024 * 1024)		// 1 GB
@@ -65,120 +66,12 @@ void page_allocator_init() {
 	page_get_four_mb(NUMBER_OF_RESERVED_PAGES, VIRTUAL_MEMORY_KERNEL);
 }
 
-// Gets a 4kb aligned 4kb page (must be freed with page_free_aligned_four_kb)
-void* page_physical_get_aligned_four_kb(uint32_t type) {
-	// Find an open page in the list
-	page_four_kb_t* t = four_kb_pages;
-	page_four_kb_t* prev = NULL;
-	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
-	if (!vaddr)
-		return NULL;
-	while (t) {
-		vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL);
-		uint32_t paddr = (uint32_t)t;
-		t = (page_four_kb_t*)vaddr;
-		
-		if (t->type != type || t->full)
-			goto go_next;
-		for (uint32_t z = 0; z < FOUR_MB_SIZE / FOUR_KB_SIZE; z++) {
-			if (!t->entries[z]) {
-				t->entries[z] = 1;
-				vm_unmap_page(vaddr);
-				return (void*)(paddr + FOUR_KB_SIZE * z);
-			}
-		}
-		t->full = true;
-	go_next:
-		prev = t;
-		t = t->next;
-	}
-	vm_unmap_page(vaddr);
-	
-	// Allocate a new page if needed
-	t = page_get_four_mb(1, VIRTUAL_MEMORY_KERNEL);
-	if (!t)
-		return NULL;
-	
-	memset(t, 0, sizeof(page_four_kb_t));
-	t->entries[0] = 1;
-	t->entries[1] = 1;
-	t->type = type;
-	t->next = NULL;
-	t->prev = prev;
-	vaddr = (uint32_t)t;
-	t = vm_virtual_to_physical(vaddr);
-	if (prev) {
-		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL);
-		prev->next = t;
-	}
-	else
-		four_kb_pages = t;
-	
-	vm_unmap_page(vaddr);
-	
-	return (void*)((uint32_t)t + FOUR_KB_SIZE);
-}
-
-// Frees a 4kb aligned 4kb page
-void page_physical_free_aligned_four_kb(void* addr) {
-	// Get 4MB aligned journal
-	page_four_kb_t* t = (page_four_kb_t*)((uint32_t)addr & ~(FOUR_MB_SIZE - 1));
-	uint32_t offset = ((uint32_t)addr - (uint32_t)t) / FOUR_KB_SIZE;
-	
-	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
-	if (!vaddr)
-		return;
-	vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL);
-	t = (page_four_kb_t*)vaddr;
-	
-	t->entries[offset] = 0;
-	t->full = false;
-	
-	// Check if all the entries are 0
-	bool found = false;
-	for (uint32_t z = 0; z < FOUR_MB_SIZE / FOUR_KB_SIZE; z++) {
-		if (t->entries[z]) {
-			found = true;
-			break;
-		}
-	}
-	if (found) {
-		vm_unmap_page(vaddr);
-		return;
-	}
-	
-	// Remove this entry
-	page_four_kb_t* next = t->next, *prev = t->prev;
-	if (prev) {
-		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL);
-		prev->next = next;
-	}
-	if (next) {
-		vm_map_page(vaddr, (uint32_t)next, MEMORY_WRITE | MEMORY_KERNEL);
-		next->prev = prev;
-	}
-	if (t == four_kb_pages)
-		four_kb_pages = next;
-	vm_unmap_page(vaddr);
-	
-	page_physical_free(t);
-}
-
-// Get a number of 4MB pages
-void* page_get_four_mb(uint32_t num, uint32_t type) {
-	return page_get(num * FOUR_MB_SIZE / MIN_PAGE_SIZE, type);
-}
-
-void* page_physical_get_four_mb(uint32_t num) {
-	return page_physical_get(num * FOUR_MB_SIZE / MIN_PAGE_SIZE);
-}
-
 // Helper to convert a physical address to a virtual one
 void* convert_physical_to_virtual(uint32_t paddr, uint32_t size, uint32_t type) {
 	// Check if it already mapped into virtual memory
 	uint32_t paddr_offset = paddr % PAGE_SIZE;
 	void* addr = NULL;
-	if (!page_mapping_exists(paddr, type, &addr)) {
+	if (!page_mapping_exists(paddr - paddr_offset, type, &addr)) {
 		if (size == 0)
 			size = 1;
 		
@@ -199,6 +92,141 @@ void* convert_physical_to_virtual(uint32_t paddr, uint32_t size, uint32_t type) 
 	return (void*)(paddr_offset + addr);
 }
 
+// Gets a 4kb aligned 4kb virtual page
+void* page_get_aligned_four_kb() {
+	void* addr = page_physical_get_aligned_four_kb(VIRTUAL_MEMORY_KERNEL);
+	if (!addr)
+		return NULL;
+	
+	return convert_physical_to_virtual((uint32_t)addr, FOUR_KB_SIZE, VIRTUAL_MEMORY_KERNEL);
+}
+
+// Gets a 4kb aligned 4kb page (must be freed with page_free_aligned_four_kb)
+void* page_physical_get_aligned_four_kb(uint32_t type) {
+	// Find an open page in the list
+	page_four_kb_t* t = four_kb_pages;
+	page_four_kb_t* prev = NULL;
+	bool flags = set_multitasking_enabled(false);
+	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
+	if (!vaddr) {
+		set_multitasking_enabled(flags);
+		return NULL;
+	}
+	while (t) {
+		vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL);
+		uint32_t paddr = (uint32_t)t;
+		t = (page_four_kb_t*)vaddr;
+		
+		if (t->type != type || t->full)
+			goto go_next;
+		for (uint32_t z = 0; z < FOUR_MB_SIZE / FOUR_KB_SIZE; z++) {
+			if (!t->entries[z]) {
+				t->entries[z] = 1;
+				vm_unmap_page(vaddr);
+				set_multitasking_enabled(flags);
+				return (void*)(paddr + FOUR_KB_SIZE * z);
+			}
+		}
+		t->full = true;
+	go_next:
+		prev = (page_four_kb_t*)paddr;
+		t = t->next;
+	}
+	vm_unmap_page(vaddr);
+	
+	// Allocate a new page if needed
+	t = page_get_four_mb(1, VIRTUAL_MEMORY_KERNEL);
+	if (!t) {
+		set_multitasking_enabled(flags);
+		return NULL;
+	}
+	
+	memset(t, 0, sizeof(page_four_kb_t));
+	t->entries[0] = 1;
+	t->entries[1] = 1;
+	t->type = type;
+	t->next = NULL;
+	t->prev = prev;
+	vaddr = (uint32_t)t;
+	t = vm_virtual_to_physical(vaddr);
+	if (prev) {
+		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL);
+		prev = (page_four_kb_t*)vaddr;
+		prev->next = t;
+	}
+	else
+		four_kb_pages = t;
+	
+	vm_unmap_page(vaddr);
+	set_multitasking_enabled(flags);
+
+	return (void*)((uint32_t)t + FOUR_KB_SIZE);
+}
+
+// Frees a 4kb aligned 4kb virtual page
+void page_free_aligned_four_kb(void* addr) {
+	bool ret = page_physical_free_aligned_four_kb(vm_virtual_to_physical((uint32_t)addr));
+	if (ret)
+		vm_unmap_page((uint32_t)addr * ~(FOUR_MB_SIZE - 1));
+}
+
+// Frees a 4kb aligned 4kb page
+bool page_physical_free_aligned_four_kb(void* addr) {
+	// Get 4MB aligned journal
+	uint32_t paddr = ((uint32_t)addr & ~(FOUR_MB_SIZE - 1));
+	page_four_kb_t* t = (page_four_kb_t*)paddr;
+	uint32_t offset = ((uint32_t)addr - paddr) / FOUR_KB_SIZE;
+	
+	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
+	if (!vaddr)
+		return false;
+	vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL);
+	t = (page_four_kb_t*)vaddr;
+	
+	if (!t->entries[offset])
+		printf("Error: physical four kb page 0x%x being freed was not allocated.\n", addr);
+	t->entries[offset] = 0;
+	t->full = false;
+	
+	// Check if all the entries are 0 (excluding the first)
+	bool found = false;
+	for (uint32_t z = 1; z < FOUR_MB_SIZE / FOUR_KB_SIZE; z++) {
+		if (t->entries[z]) {
+			found = true;
+			break;
+		}
+	}
+	if (found) {
+		vm_unmap_page(vaddr);
+		return false;
+	}
+	
+	// Remove this entry
+	page_four_kb_t* next = t->next, *prev = t->prev;
+	if (prev) {
+		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL);
+		((page_four_kb_t*)vaddr)->next = next;
+	}
+	if (next) {
+		vm_map_page(vaddr, (uint32_t)next, MEMORY_WRITE | MEMORY_KERNEL);
+		((page_four_kb_t*)vaddr)->prev = prev;
+	}
+	if (t == four_kb_pages)
+		four_kb_pages = next;
+	vm_unmap_page(vaddr);
+	
+	page_physical_free((void*)paddr);
+	return true;
+}
+
+// Get a number of 4MB pages
+void* page_get_four_mb(uint32_t num, uint32_t type) {
+	return page_get(num * FOUR_MB_SIZE / MIN_PAGE_SIZE, type);
+}
+
+void* page_physical_get_four_mb(uint32_t num) {
+	return page_physical_get(num * FOUR_MB_SIZE / MIN_PAGE_SIZE);
+}
 
 // Get a number of 64KB physical pages
 void* page_get(uint32_t size, uint32_t type) {

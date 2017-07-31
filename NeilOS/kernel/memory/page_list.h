@@ -12,6 +12,22 @@
 #include <common/types.h>
 #include "memory.h"
 
+struct page_list;
+
+typedef struct page_cow_list {
+	// Linked page_list
+	struct page_list* entry;
+	
+	struct page_cow_list* next;
+	struct page_cow_list* prev;
+} page_cow_list_t;
+
+typedef struct {
+	uint32_t* pages;
+	// Bitmaps
+	uint32_t owners[NUM_PAGE_TABLE_ENTRIES / sizeof(uint32_t) / 8];
+} page_table_t;
+
 // Linked list of memory pages
 typedef struct page_list {
 	struct page_list* next;
@@ -20,17 +36,19 @@ typedef struct page_list {
 	uint32_t paddr;
 	uint32_t vaddr;
 	
-	uint32_t* page_table;
 	uint32_t permissions;
 	bool copy_on_write;
+	page_cow_list_t* linked;
 	bool owner;
+	
+	page_table_t* page_table;
 } page_list_t;
 
 // Add a page to the list and return it
 page_list_t* page_list_add(page_list_t** list, uint32_t vaddr, uint32_t permissions);
 
 // Add a page to the list and return it by copying another page entry
-page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p, bool copy_on_write);
+page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p);
 
 // Remove a page from the list (returns false if entry does not exist)
 bool page_list_remove(page_list_t** list, uint32_t vaddr);
@@ -46,7 +64,7 @@ page_list_t* page_list_get(page_list_t** list, uint32_t vaddr, uint32_t permissi
 void page_list_map(page_list_t* list);
 
 // Perform a copy on write
-bool page_list_copy_on_write(page_list_t* list);
+bool page_list_copy_on_write(page_list_t* list, uint32_t address);
 
 // Dealloc a whole page list
 void page_list_dealloc(page_list_t* list);

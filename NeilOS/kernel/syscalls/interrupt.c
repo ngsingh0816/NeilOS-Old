@@ -260,7 +260,7 @@ void page_fault(uint32_t code, uint32_t eip) {
 		page_list_t* t = pcb->page_list;
 		while (t) {
 			if (t->vaddr == addr_aligned && t->copy_on_write) {
-				if (!page_list_copy_on_write(t))
+				if (!page_list_copy_on_write(t, address))
 					break;
 				return;
 			}
