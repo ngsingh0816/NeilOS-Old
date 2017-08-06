@@ -38,7 +38,7 @@
 #define ATA_COMMAND_WRITE_DMA_28			0xCA
 #define ATA_COMMAND_WRITE_DMA_48			0x35
 
-#define PCI_ENABLE_BUSMASTER		0x07
+#define PCI_ENABLE_BUSMASTER		0x07	// Really should be 0x5
 
 #define DMA_IRQ						0x0E
 
@@ -83,6 +83,9 @@ bool ata_dma_init() {
 	base_port = pci_interpret_bar(ide_device.bar[4]);
 	pci_set_command(&ide_device, PCI_ENABLE_BUSMASTER);
 	
+	/*pci_config_write(ide_device.bus, ide_device.device, ide_device.func, 0x3C, DMA_IRQ);
+	printf("0x%x\n", pci_config_read(ide_device.bus, ide_device.device, ide_device.func, 0x3C));*/
+	
 	if (ide_device.command != PCI_ENABLE_BUSMASTER)
 		return false;
 	
@@ -94,7 +97,9 @@ bool ata_dma_init() {
 }
 
 // Read blocks from the specified sector address into a buffer (returns bytes read)
-uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void* buffer, uint32_t blocks) {
+uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void* buffer, uint32_t blocks,
+							 uint32_t offset, uint32_t length) {
+	uint32_t c_offset = 0, c_length = 0;
 	// Loop through all the sectors
 	int z;
 	for (z = 0; z < blocks; z++) {
@@ -157,13 +162,23 @@ uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 		
 		// TODO: figure out why DMA doesn't work on VMWare (need to change BUSMASTER_ENABLE to 0x5)
 		// For some reason results in a IDE_STATUS bus error (bit 2)
+		// Also - the IRQ line for the IDE PCI is perminantly set to 0xFF
 	
 		// Wait for it to be ready
 		while (!dma_data_ready)  {}
 		
 		// Copy over the data
-		memcpy(buffer + (z * BLOCK_SIZE), sector, BLOCK_SIZE);
-				
+		uint32_t s_offset = (c_offset >= offset) ? 0 : (offset - c_offset);
+		if (s_offset < BLOCK_SIZE) {
+			uint32_t remaining = (length > c_length) ? (length - c_length) : 0;
+			uint32_t copy_size = (remaining > BLOCK_SIZE) ? BLOCK_SIZE : remaining;
+			if (s_offset + copy_size > BLOCK_SIZE)
+				copy_size = BLOCK_SIZE - s_offset;
+			memcpy(buffer + c_length, sector + s_offset, copy_size);
+			c_length += copy_size;
+		}
+		c_offset += BLOCK_SIZE;
+		
 		// Get ready for the next address
 		address = uint64_inc(address);
 	}

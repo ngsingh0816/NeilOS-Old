@@ -19,10 +19,10 @@ ext_block_group_descriptor_t ext2_get_block_group_info(uint32_t block_group);
 void ext2_set_block_group_info(uint32_t block_group, ext_block_group_descriptor_t* data);
 
 // Return the nth block index in the block array for an inode.
-uint32_t ext2_get_block_id_at_index(ext_inode_info_t* inode, uint32_t index);
+uint32_t ext2_get_block_id_at_index(ext_inode_t* inode, uint32_t index);
 
 // Set the nth block index in the block array for an inode.
-bool ext2_set_block_id_at_index(ext_inode_info_t* inode, uint32_t index, uint32_t block_id);
+bool ext2_set_block_id_at_index(ext_inode_t* inode, uint32_t index, uint32_t block_id);
 
 // Get the byte address of a block
 uint64_t ext2_get_block_address(uint32_t block_id);

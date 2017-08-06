@@ -62,11 +62,12 @@ uint8_t ata_pio_poll(uint8_t bus) {
 }
 
 // Read sectors from the specified sector address into the buffer (returns number of bytes read)
-uint32_t ata_pio_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void* buffer, uint32_t blocks) {
+uint32_t ata_pio_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void* buffer, uint32_t blocks,
+							 uint32_t offset, uint32_t length) {
 	if (blocks == 0 || blocks > MAX_BLOCK_READ_COUNT)
 		return 0;
 	
-	uint16_t sectors = blocks << 3;
+	uint16_t sectors = blocks * (BLOCK_SIZE / ATA_SECTOR_SIZE);
 	
 	request_irq(PIO_IRQ, ata_pio_handler);
 	
@@ -113,6 +114,8 @@ uint32_t ata_pio_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 	// Read all the sectors
 	int z;
 	uint32_t real_sectors = (sectors == 0) ? (max_sectors) : sectors;
+	uint32_t c_offset = 0;
+	uint32_t c_length = 0;
 	for (z = 0; z < real_sectors; z++) {
 		// Wait for the data to be ready
 		if (ata_pio_poll(bus) & ATA_STATUS_ERROR)
@@ -120,8 +123,17 @@ uint32_t ata_pio_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 				
 		// Copy over the data
 		int i;
-		for (i = 0; i < ATA_SECTOR_SIZE / 2; i++)
-			((uint16_t*)buffer)[(z * ATA_SECTOR_SIZE + i * 2) / 2] = inw(ATA_DATA_PORT(bus));
+		for (i = 0; i < ATA_SECTOR_SIZE / 2; i++) {
+			uint16_t value = inw(ATA_DATA_PORT(bus));
+			
+			for (int q = 0; q < 2; q++) {
+				if (c_offset >= offset && c_length < length) {
+					((uint8_t*)buffer)[c_offset - offset] = (value >> (q * 8)) & 0xFF;
+					c_length++;
+				}
+				c_offset++;
+			}
+		}
 	}
 	
 	return sectors * ATA_SECTOR_SIZE;

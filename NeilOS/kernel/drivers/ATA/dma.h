@@ -15,7 +15,8 @@
 bool ata_dma_init();
 
 // Read blocks from the specified sector address into a buffer (returns bytes read)
-uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void* buffer, uint32_t blocks);
+uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void* buffer, uint32_t blocks,
+							 uint32_t offset, uint32_t lenght);
 
 // Write blocks to the specified sector address from a buffer (returns bytes written)
 uint32_t ata_dma_write_blocks(uint8_t bus, uint8_t drive, uint64_t address, const void* buffer, uint32_t blocks);

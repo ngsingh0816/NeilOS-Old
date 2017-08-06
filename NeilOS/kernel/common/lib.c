@@ -835,9 +835,6 @@ memcpy(void* dest, const void* src, uint32_t n)
 			);
 
 	return dest;
-	/*for (int z = 0; z < n; z++)
-		((uint8_t*)dest)[z] = ((uint8_t*)src)[z];
-	return dest;*/
 }
 
 /*

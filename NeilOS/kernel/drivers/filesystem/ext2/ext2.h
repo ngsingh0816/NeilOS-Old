@@ -69,4 +69,10 @@ uint64_t ext2_read_directory(ext_inode_t* inode, uint64_t offset, void* buffer,
 // Helpers
 ext_inode_t ext2_get_parent_inode(const char* filename);
 
+// Create a ext_inode_t structure
+ext_inode_t ext_inode_create(uint32_t inode);
+
+// Free an inode's interal structure
+void ext_free_inode(ext_inode_t* inode);
+
 #endif

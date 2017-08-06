@@ -67,11 +67,11 @@ void ext2_set_block_group_info(uint32_t block_group, ext_block_group_descriptor_
 
 // Return the nth block index in the block array for an inode.
 // This makes it so you don't have to deal with indirect blocks
-uint32_t ext2_get_block_id_at_index(ext_inode_info_t* inode, uint32_t index) {
+uint32_t ext2_get_block_id_at_index(ext_inode_t* inode, uint32_t index) {
 	uint32_t total_blocks = EXT2_BUFFERS_NUM_DIRECT;
 	// Direct blocks are easy
 	if (index < total_blocks)
-		return inode->blocks[index];
+		return inode->info.blocks[index];
 	
 	uint32_t block_size = 1 << (EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
 	uint32_t num_entries = (block_size >> INDEX_SIZE_BITS);
@@ -80,7 +80,17 @@ uint32_t ext2_get_block_id_at_index(ext_inode_info_t* inode, uint32_t index) {
 	index -= total_blocks - 1;
 	total_blocks = 1;
 	
-	// Check for indirect blocks;
+	// Return our cached version if it is saved
+	uint32_t original_index = index - 1;
+	if (inode->cached_block && inode->cached_block_starting_index <= original_index &&
+		inode->cached_block_starting_index + num_entries > original_index)
+		return inode->cached_block[original_index - inode->cached_block_starting_index];
+	
+	// Try to allocate a cached block inode
+	if (!inode->cached_block)
+		inode->cached_block = kmalloc(block_size);
+	
+	// Check for indirect blocks
 	uint32_t depth;
 	for (depth = 1; depth <= 3; depth++) {
 		index -= total_blocks;
@@ -90,15 +100,29 @@ uint32_t ext2_get_block_id_at_index(ext_inode_info_t* inode, uint32_t index) {
 			uint32_t z;
 			uint32_t divisor = total_blocks / num_entries;
 			uint32_t block = index;
-			uint32_t read_block = inode->blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1];
+			uint32_t read_block = inode->info.blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1];
 			for (z = 0; z < depth; z++) {
+				uint32_t read_size = sizeof(uint32_t);
+				uint32_t* read_dest = &read_block;
+				uint64_t block_offset = uint64_shl(uint64_make(0, block / divisor), INDEX_SIZE_BITS);
+				if (z == depth - 1 && inode->cached_block) {
+					// Read the block into our cache
+					read_size = block_size;
+					read_dest = inode->cached_block;
+					inode->cached_block_starting_index = original_index - (original_index % num_entries);
+					block_offset = uint64_make(0, 0);
+				}
+				
 				// Read the next block index
 				uint64_t addr = ext2_get_block_address(read_block);
-				addr = uint64_add(addr, uint64_shl(uint64_make(0, block / divisor), INDEX_SIZE_BITS));
+				addr = uint64_add(addr, block_offset);
 				ata_partition_lock(ext2_fs());
 				ata_partition_llseek(ext2_fs(), addr, SEEK_SET);
-				ata_partition_read(ext2_fs(), &read_block, sizeof(uint32_t));
+				ata_partition_read(ext2_fs(), read_dest, read_size);
 				ata_partition_unlock(ext2_fs());
+				
+				if (z == depth - 1 && inode->cached_block)
+					return inode->cached_block[block / divisor];
 				
 				// Update to the next index
 				block %= divisor;
@@ -117,11 +141,11 @@ uint32_t ext2_get_block_id_at_index(ext_inode_info_t* inode, uint32_t index) {
 // Note: this will allocate new blocks for indirect blocks.
 // Note 2: this does not deallocate previous blocks in use
 // Returns true upon success (false if no blocks could be allocated)
-bool ext2_set_block_id_at_index(ext_inode_info_t* inode, uint32_t index, uint32_t block_id) {
+bool ext2_set_block_id_at_index(ext_inode_t* inode, uint32_t index, uint32_t block_id) {
 	uint32_t total_blocks = EXT2_BUFFERS_NUM_DIRECT;
 	// Direct blocks are easy
 	if (index < total_blocks) {
-		inode->blocks[index] = block_id;
+		inode->info.blocks[index] = block_id;
 		return true;
 	}
 	
@@ -132,6 +156,11 @@ bool ext2_set_block_id_at_index(ext_inode_info_t* inode, uint32_t index, uint32_
 	// Get the index ready
 	index -= total_blocks - 1;
 	total_blocks = 1;
+	
+	// Clear our cache if we are writing to it
+	if (inode->cached_block && inode->cached_block_starting_index <= original_index - 1 &&
+		inode->cached_block_starting_index + num_entries > original_index - 1)
+		inode->cached_block_starting_index = -1;
 	
 	// Indirect blocks
 	uint32_t depth;
@@ -160,14 +189,14 @@ bool ext2_set_block_id_at_index(ext_inode_info_t* inode, uint32_t index, uint32_
 			}
 			
 			// Assign the first new block if needed
-			uint32_t prev = inode->blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1];
+			uint32_t prev = inode->info.blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1];
 			if (index == 0) {
-				inode->blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1] = last_block;
+				inode->info.blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1] = last_block;
 				if (block_id == EXT2_BLOCK_ID_INVALID)
 					last_block = prev;
 			}
 			else
-				last_block = inode->blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1];
+				last_block = inode->info.blocks[EXT2_BUFFERS_NUM_DIRECT + depth - 1];
 			
 			// Update the correct entry
 			divisor = total_blocks / num_entries;

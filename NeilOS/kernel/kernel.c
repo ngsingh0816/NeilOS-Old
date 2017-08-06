@@ -39,7 +39,6 @@
  */
 
 /* TODO (could be improved):
- * Hard Drive Driver (has VMWare DMA bug)
  * Rework syscall open - need to dynamically parse devices
  * Scheduler (round robin probably not the best) - could do something basic
 	where you measure the time from one context switch to another (because processes
@@ -50,15 +49,15 @@
  * Make ext2 faster (cache things so there are less 4 byte reads)
 	* Could also optimize ATA read / write to do multiple blocks at a time
 		* probably won't help because we never read more than one block
- * Dynamic libraries - lazy linking
+ * Dynamic libraries - lazy linking, dynamic constructors / destructors
  */
 
 /* TODO (bugs)
+ * VMWare DMA bug
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
  * Fix memory map - programs load at like 128MB by default so we must flip the memory map
  * Crash on startup in vmware
- * There's probably memory leaks
  * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
 	because a task will be reading something, we context switch into another task, which disables
 	multitasking, and then tries to read but will just hang forever because the first task hasn't let go
@@ -70,11 +69,17 @@
  */
 
 /* TODO:
- * Make libstdc++ dynamic
+ * Fix VMWare - first bug = not changing PIO block size, second bug has to do with fork
  * Add gitignore and add to github
+ * Fix memory map
+ * SSE memcpy
+ * Make libstdc++ dynamic
+	* Need to implement dynamic constructors
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Sockets stub
+ * Make reading from disk faster (cause of real programs taking a longer time to load).
+ * Dylib Lazy Linking?
  * (Kernel?) Threads (pthread?)
 	* Potential multitasking issues:
 		* file locks
@@ -95,6 +100,7 @@
  * Sockets?
  * Message Queues?
  * Page files on disk?
+	* Could make loading a program only load entry point page and then lazy load the rest?
  * SMP?
  * Module support?
  * OpenGL (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?

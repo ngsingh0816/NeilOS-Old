@@ -93,11 +93,11 @@ uint32_t ext2_get_block_size() {
 // Return the inode of a particular filesystem entry
 ext_inode_t ext2_open(const char* path) {
 	// Loop through each path component and find the relative inode
-	ext_inode_t inode = { ext2_get_inode_info(EXT2_INODE_ROOT), EXT2_INODE_ROOT };
+	ext_inode_t inode = ext_inode_create(EXT2_INODE_ROOT);
 	uint32_t path_length = 0;
 	char* component = (char*)kmalloc(strlen(path) + 1);
 	if (!component)
-		return (ext_inode_t){ { 0 }, EXT2_INODE_INVALID };
+		return ext_inode_create(EXT2_INODE_INVALID);
 	
 	while ((path = path_get_component(&path[path_length], 0, &path_length)) != NULL) {
 		// Copy the string over
@@ -105,12 +105,12 @@ ext_inode_t ext2_open(const char* path) {
 		memcpy(component, path, path_length);
 		
 		// Get the next inode
-		inode = ext2_get_relative_inode(component, &inode.info);
+		inode = ext2_get_relative_inode(component, &inode);
 		
 		// If we can't find the next inode, return error
 		if (inode.inode == EXT2_INODE_INVALID) {
 			kfree(component);
-			return (ext_inode_t){ { 0 }, EXT2_INODE_INVALID };
+			return ext_inode_create(EXT2_INODE_INVALID);
 		}
 	}
 	kfree(component);
@@ -130,7 +130,7 @@ ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode
 	// Allocate a new inode
 	uint32_t node = ext2_allocate_inode(directory);
 	if (node == EXT2_INODE_INVALID)
-		return (ext_inode_t){ {}, EXT2_INODE_INVALID };
+		return ext_inode_create(EXT2_INODE_INVALID);
 	
 	ext_inode_t ret;
 	memset(&ret, 0, sizeof(ext_inode_t));
@@ -155,13 +155,13 @@ ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode
 	if (directory) {
 		if (!ext2_link_inode(&ret, &ret, ".")) {
 			ext2_dealloc_inode(&ret);
-			return (ext_inode_t){ {}, EXT2_INODE_INVALID };
+			return ext_inode_create(EXT2_INODE_INVALID);
 		}
 		
 		if (!ext2_link_inode(&ret, parent, "..")) {
 			ext2_unlink(&ret, ".");
 			ext2_dealloc_inode(&ret);
-			return (ext_inode_t){ {}, EXT2_INODE_INVALID };
+			return ext_inode_create(EXT2_INODE_INVALID);
 		}
 	}
 	
@@ -172,7 +172,7 @@ ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode
 			ext2_unlink(&ret, "..");
 		}
 		ext2_dealloc_inode(&ret);
-		return (ext_inode_t){ {}, EXT2_INODE_INVALID };
+		return ext_inode_create(EXT2_INODE_INVALID);
 	}
 	
 	return ret;
@@ -180,7 +180,7 @@ ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode
 
 // Delete an inode at a particular path
 bool ext2_delete(ext_inode_t* parent, const char* name) {
-	ext_inode_t inode = ext2_get_relative_inode(name, &parent->info);
+	ext_inode_t inode = ext2_get_relative_inode(name, parent);
 	if (inode.inode == EXT2_INODE_INVALID || inode.inode == EXT2_INODE_ROOT)
 		return false;
 	
@@ -214,7 +214,7 @@ bool ext2_delete(ext_inode_t* parent, const char* name) {
 
 // Unlink (remove) an inode (If this is a directory, it must be empty or space will be leaked)
 bool ext2_unlink(ext_inode_t* parent, const char* name) {
-	ext_inode_t inode = ext2_get_relative_inode(name, &parent->info);
+	ext_inode_t inode = ext2_get_relative_inode(name, parent);
 
 	if (!ext2_unlink_inode(parent, name))
 		return false;
@@ -266,7 +266,7 @@ uint32_t ext2_read_data(ext_inode_t* inode, uint64_t offset, void* buffer, uint3
 	uint32_t z;
 	uint32_t copy_pos = 0;
 	for (z = start_block; z <= end_block; z++) {
-		uint32_t block_id = ext2_get_block_id_at_index(&inode->info, z);
+		uint32_t block_id = ext2_get_block_id_at_index(inode, z);
 		
 		// Seek to the right position
 		uint64_t addr = uint64_shl(uint64_make(0, block_id),
@@ -334,7 +334,7 @@ uint32_t ext2_write_data(ext_inode_t* inode, uint64_t offset, const void* buffer
 	uint32_t z;
 	uint32_t copy_pos = 0;
 	for (z = start_block; z <= end_block; z++) {
-		uint32_t block_id = ext2_get_block_id_at_index(&inode->info, z);
+		uint32_t block_id = ext2_get_block_id_at_index(inode, z);
 		
 		// Seek to the right position
 		uint64_t addr = uint64_shl(uint64_make(0, block_id),
@@ -407,7 +407,7 @@ uint64_t ext2_truncate_inode_zero(ext_inode_t* inode, uint64_t size, bool fill) 
 					break;
 				
 				// Set the new block
-				if (!ext2_set_block_id_at_index(&inode->info, block_index++, new_block))
+				if (!ext2_set_block_id_at_index(inode, block_index++, new_block))
 					break;
 				inode->info.num_blocks += block_size >> EXT2_INODE_BLOCK_COUNT_SIZE;
 				num_blocks--;
@@ -448,8 +448,8 @@ uint64_t ext2_truncate_inode_zero(ext_inode_t* inode, uint64_t size, bool fill) 
 			block_index--;
 			
 			// Dealloc the block
-			uint32_t block_id = ext2_get_block_id_at_index(&inode->info, block_index);
-			if (!ext2_set_block_id_at_index(&inode->info, block_index, EXT2_BLOCK_ID_INVALID))
+			uint32_t block_id = ext2_get_block_id_at_index(inode, block_index);
+			if (!ext2_set_block_id_at_index(inode, block_index, EXT2_BLOCK_ID_INVALID))
 				break;
 			
 			inode->info.num_blocks -= block_size >> EXT2_INODE_BLOCK_COUNT_SIZE;
@@ -543,4 +543,21 @@ ext_inode_t ext2_get_parent_inode(const char* filename) {
 	kfree(pp);
 	
 	return inode;
+}
+
+// Create a ext_inode_t structure
+ext_inode_t ext_inode_create(uint32_t inode) {
+	ext_inode_t ret;
+	memset(&ret, 0, sizeof(ext_inode_t));
+	ret.inode = inode;
+	if (ret.inode != EXT2_INODE_INVALID)
+		ret.info = ext2_get_inode_info(inode);
+	
+	return ret;
+}
+
+// Free an inode's interal structure
+void ext_free_inode(ext_inode_t* inode) {
+	if (inode->cached_block)
+		kfree(inode->cached_block);
 }

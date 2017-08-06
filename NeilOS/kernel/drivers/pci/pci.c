@@ -35,7 +35,7 @@
 // Read the PCI Configuration Space for a specific bus, device, function, and register.
 // The register must be 4byte aligned
 uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg) {
-	uint32_t addr = (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | (reg & 0xFC);
+	uint32_t addr = (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | (reg & 0xFC) | 0x80000000;
 	
 	outl(addr, CONFIG_ADDRESS);
 	return inl(CONFIG_DATA);
@@ -44,10 +44,10 @@ uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg)
 // Write the PCI Configuration Space for a specific bus, device, function, and register.
 // The register must be 4byte aligned
 void pci_config_write(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg, uint32_t val) {
-	uint32_t addr = (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | (reg & 0xFC);
+	uint32_t addr = (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | (reg & 0xFC) | 0x80000000;
 	
 	outl(addr, CONFIG_ADDRESS);
-	outw(val, CONFIG_DATA);
+	outl(val, CONFIG_DATA);
 }
 
 static inline uint16_t pci_get_vendor_id(uint8_t bus, uint8_t device, uint8_t func) {
@@ -92,8 +92,8 @@ pci_device_t pci_get_info(uint8_t bus, uint8_t device, uint8_t func) {
 // Set the command value for a device
 void pci_set_command(pci_device_t* device, uint16_t cmd) {
 	uint32_t val = pci_config_read(device->bus, device->device, device->func, COMMAND_REGISTER);
-	pci_config_write(device->bus, device->device, device->func, COMMAND_REGISTER, (val & ~(0xFFFF)) | cmd);
 	
+	pci_config_write(device->bus, device->device, device->func, COMMAND_REGISTER, (val & ~(0xFFFF)) | cmd);
 	device->command = pci_config_read(device->bus, device->device, device->func, COMMAND_REGISTER) & 0xFFFF;
 }
 

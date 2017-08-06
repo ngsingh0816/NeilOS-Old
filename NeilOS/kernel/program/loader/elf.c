@@ -451,6 +451,7 @@ bool elf_load(char* filename, pcb_t* pcb) {
 		goto cleanup;
 	char* section_names = strtabs[header.section_header_name_index];
 	
+	
 	// Load program headers
 	uint16_t z;
 	for (z = 0; z < header.program_header_num_entries; z++) {

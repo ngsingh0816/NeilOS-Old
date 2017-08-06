@@ -122,7 +122,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		directory_info_t* dir = (directory_info_t*)desc->info;
 		memset(dir, 0, sizeof(directory_info_t));
 		dir->inode = inode;
-		dir->offset = ext2_get_block_address(ext2_get_block_id_at_index(&dir->inode.info, 0));
+		dir->offset = ext2_get_block_address(ext2_get_block_id_at_index(&dir->inode, 0));
 		
 		desc->read = filesystem_read_directory;
 		desc->write = filesystem_write_directory;
@@ -144,7 +144,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->write = filesystem_write_file;
 		desc->llseek = filesystem_llseek_file;
 		desc->truncate = filesystem_truncate;
-		if (inode.info.mode  & EXT2_INODE_MODE_FIFO)
+		if (inode.info.mode & EXT2_INODE_MODE_FIFO)
 			desc->mode |= FILE_TYPE_PIPE;
 		else
 			desc->mode |= FILE_TYPE_REGULAR;
@@ -210,7 +210,7 @@ uint32_t fread_directory(void* buffer, uint32_t size, uint32_t count, file_descr
 		if (uint64_equal(dir->offset, uint64_make(0, 0))) {
 			// Go to the next block
 			dir->bank_index++;
-			uint32_t block_id = ext2_get_block_id_at_index(&dir->inode.info, dir->bank_index);
+			uint32_t block_id = ext2_get_block_id_at_index(&dir->inode, dir->bank_index);
 			// Get the real next offset
 			if (block_id == EXT2_BLOCK_ID_INVALID) {
 				dir->offset = uint64_make(0, 0);
@@ -233,7 +233,7 @@ uint32_t fread(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* f
 	
 	if (file->mode & FILE_TYPE_REGULAR)
 		return fread_file(buffer, size, count, file);
-	else if (file->mode & FILE_TYPE_DIRECTORY)
+	if (file->mode & FILE_TYPE_DIRECTORY)
 		return fread_directory(buffer, size, count, file, NULL);
 	
 	return -1;
@@ -321,13 +321,13 @@ uint64_t fseek_directory(file_descriptor_t* f, uint64_t offset, int whence) {
 		// Load the first entry
 		dir->index = 0;
 		dir->bank_index = 0;
-		dir->offset = ext2_get_block_address(ext2_get_block_id_at_index(&dir->inode.info, 0));
+		dir->offset = ext2_get_block_address(ext2_get_block_id_at_index(&dir->inode, 0));
 	} else if (whence == SEEK_END)
 		offset.low = ~0;				// Go as many times as possible until we hit an error
 	
 	// Follow the linked list the desired number of times
 	uint32_t z;
-	uint32_t block_id = ext2_get_block_id_at_index(&dir->inode.info, dir->bank_index);
+	uint32_t block_id = ext2_get_block_id_at_index(&dir->inode, dir->bank_index);
 	for (z = 0; z < offset.low; z++) {		
 		// Get the next offset
 		uint32_t ret = 0;
@@ -338,7 +338,7 @@ uint64_t fseek_directory(file_descriptor_t* f, uint64_t offset, int whence) {
 			if (uint64_equal(dir->offset, uint64_make(0, 0))) {
 				// Go to the next block
 				dir->bank_index++;
-				block_id = ext2_get_block_id_at_index(&dir->inode.info, dir->bank_index);
+				block_id = ext2_get_block_id_at_index(&dir->inode, dir->bank_index);
 				// Check if we've gone too far
 				if (block_id == EXT2_BLOCK_ID_INVALID) {
 					dir->offset = uint64_make(0, 0);
@@ -409,10 +409,10 @@ bool fmkdir(const char* filename) {
 // Hard link a file or directory
 bool flink(file_descriptor_t* file, const char* link_name) {
 	ext_inode_t* inode = NULL;
-	if (file->mode & FILE_TYPE_REGULAR)
-		inode = &((file_info_t*)file->info)->inode;
-	else
+	if (file->mode & FILE_TYPE_DIRECTORY)
 		inode = &((directory_info_t*)file->info)->inode;
+	else
+		inode = &((file_info_t*)file->info)->inode;
 	
 	// Get the parent
 	ext_inode_t parent = ext2_get_parent_inode(link_name);
@@ -471,6 +471,12 @@ bool fclose(file_descriptor_t* file) {
 	
 	// The argument checking is done by the syscall
 	kfree(file->filename);
+	
+	if (file->mode & FILE_TYPE_DIRECTORY)
+		ext_free_inode(&((directory_info_t*)file->info)->inode);
+	else
+		ext_free_inode(&((file_info_t*)file->info)->inode);
+	
 	kfree(file->info);
 	return ret;
 }

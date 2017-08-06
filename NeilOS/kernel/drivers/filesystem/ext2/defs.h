@@ -176,6 +176,10 @@ typedef struct {
 typedef struct {
 	ext_inode_info_t info;
 	uint32_t inode;
+	
+	// Caching info
+	uint32_t* cached_block;
+	uint32_t cached_block_starting_index;
 } ext_inode_t;
 
 #endif

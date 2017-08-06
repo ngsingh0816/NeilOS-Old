@@ -28,7 +28,7 @@ uint32_t ext2_allocate_inode(bool directory);
 bool ext2_dealloc_inode(ext_inode_t* inode);
 
 // Return the inode for the relative path in relation to the given inode.
-ext_inode_t ext2_get_relative_inode(const char* path, ext_inode_info_t* info);
+ext_inode_t ext2_get_relative_inode(const char* path, ext_inode_t* info);
 
 // Link an inode entry in
 bool ext2_link_inode(ext_inode_t* parent, ext_inode_t* inode, const char* name);

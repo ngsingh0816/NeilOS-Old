@@ -204,18 +204,18 @@ uint32_t align_bytes(uint32_t bytes, uint32_t n) {
 
 // Return the inode for the relative path in relation to the given inode.
 // Returns EXT2_INODE_INVALID if no inode could be found
-ext_inode_t ext2_get_relative_inode(const char* path, ext_inode_info_t* info) {
+ext_inode_t ext2_get_relative_inode(const char* path, ext_inode_t* inode) {
 	// Initialize a buffer to hold the block data (dentries cannot span a block)
 	uint32_t block_id = 0;
 	uint32_t index = 0;
 	uint32_t block_size = 1 << (EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
 	int8_t* buffer = (int8_t*)kmalloc(block_size);
 	if (!buffer)
-		return (ext_inode_t){ { 0 }, EXT2_INODE_INVALID };
+		return ext_inode_create(EXT2_INODE_INVALID);
 	uint32_t path_length = strlen(path);
 	
 	// Loop over all valid blocks to find a matching inode
-	while ((block_id = ext2_get_block_id_at_index(info, index++)) != EXT2_BLOCK_ID_INVALID) {
+	while ((block_id = ext2_get_block_id_at_index(inode, index++)) != EXT2_BLOCK_ID_INVALID) {
 		// Read the block
 		uint64_t addr = uint64_shl(uint64_make(0, block_id),
 								   EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
@@ -233,7 +233,7 @@ ext_inode_t ext2_get_relative_inode(const char* path, ext_inode_info_t* info) {
 			if (path_length == dentry->name_len &&
 				(strncmp(dentry->name, path, path_length) == 0)) {
 				// We found a match
-				ext_inode_t ret = (ext_inode_t){ ext2_get_inode_info(dentry->inode), dentry->inode };
+				ext_inode_t ret = ext_inode_create(dentry->inode);
 				kfree(buffer);
 				return ret;
 			}
@@ -245,7 +245,7 @@ ext_inode_t ext2_get_relative_inode(const char* path, ext_inode_info_t* info) {
 	kfree(buffer);
 	
 	// No matching inode was found
-	return (ext_inode_t){ { 0 }, EXT2_INODE_INVALID };
+	return ext_inode_create(EXT2_INODE_INVALID);
 }
 
 // Link an inode entry in
@@ -266,7 +266,7 @@ bool ext2_link_inode(ext_inode_t* parent, ext_inode_t* inode, const char* name) 
 	uint32_t last_pos = 0;
 	
 	// Loop all the blocks
-	while ((block_id = ext2_get_block_id_at_index(&parent->info, index++)) != EXT2_BLOCK_ID_INVALID) {
+	while ((block_id = ext2_get_block_id_at_index(parent, index++)) != EXT2_BLOCK_ID_INVALID) {
 		// Read the block
 		uint64_t addr = ext2_get_block_address(block_id);
 		ata_partition_lock(ext2_fs());
@@ -361,7 +361,7 @@ bool ext2_link_inode(ext_inode_t* parent, ext_inode_t* inode, const char* name) 
 	ata_partition_unlock(ext2_fs());
 	
 	// Update the blocks
-	if (!ext2_set_block_id_at_index(&parent->info, index - 1, new_block)) {
+	if (!ext2_set_block_id_at_index(parent, index - 1, new_block)) {
 		ext2_dealloc_block(new_block);
 		kfree(buffer);
 		return false;
@@ -395,7 +395,7 @@ bool ext2_unlink_inode(ext_inode_t* parent, const char* name) {
 	uint32_t name_len = strlen(name);
 	
 	// Loop over all valid blocks to find a matching inode
-	while ((block_id = ext2_get_block_id_at_index(&parent->info, index++)) != EXT2_BLOCK_ID_INVALID) {
+	while ((block_id = ext2_get_block_id_at_index(parent, index++)) != EXT2_BLOCK_ID_INVALID) {
 		// Read the block
 		uint64_t addr = ext2_get_block_address(block_id);
 		ata_partition_lock(ext2_fs());
@@ -432,7 +432,7 @@ bool ext2_unlink_inode(ext_inode_t* parent, const char* name) {
 				
 				// Delete this block if it is empty
 				if (empty) {
-					if (!ext2_set_block_id_at_index(&parent->info, index - 1, EXT2_BLOCK_ID_INVALID))
+					if (!ext2_set_block_id_at_index(parent, index - 1, EXT2_BLOCK_ID_INVALID))
 						return false;
 					return ext2_dealloc_block(block_id);
 				}

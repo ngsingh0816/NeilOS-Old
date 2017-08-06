@@ -278,6 +278,8 @@ disk_info_t ata_open_partition(uint8_t disk, uint8_t partition) {
 											 (partition - 1) * sizeof(disk_partition_t)), SEEK_SET);
 		ata_partition_read(&d, &part, sizeof(disk_partition_t));
 		
+		printf("0x%x, 0x%x, 0x%x, 0x%x\n", part.val[0], part.val[1], part.val[2], part.val[3]);
+		
 		// Don't open an invalid partition
 		if (part.system_id == PARTITION_INVALID_SYSTEM_ID) {
 			d.bus = -1;
@@ -301,7 +303,7 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 	// Do nothing if we don't need to
 	if (bytes == 0)
 		return 0;
-	
+		
 	pcb_t* pcb = current_pcb;
 	
 	// Calculate the correct address
@@ -314,14 +316,9 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 		bytes = uint64_sub(d->partition_size, d->seek_offset).low;
 	
 	// Get the best read function we can
-	uint32_t (*read)(uint8_t, uint8_t, uint64_t, void*, uint32_t) = ata_pio_read_blocks;
+	uint32_t (*read)(uint8_t, uint8_t, uint64_t, void*, uint32_t, uint32_t, uint32_t) = ata_pio_read_blocks;
 	if (ata_drives[d->bus * 2 + d->drive].dma)
 		read = ata_dma_read_blocks;
-	
-	// Have an intermediate cache
-	void* temp = kmalloc(BLOCK_SIZE);
-	if (!temp)
-		return -1;
 	
 	uint64_t end_addr = uint64_add(addr, uint64_make(0, bytes));
 	uint32_t num_blocks = uint64_sub(uint64_shr(end_addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK), uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK)).low + 1;
@@ -341,7 +338,6 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 			size = bytes - copy_pos;
 			if (size > BLOCK_SIZE) {
 				// Something went wrong
-				kfree(temp);
 				return -1;
 			}
 		}
@@ -351,14 +347,8 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 			break;
 		
 		// Copy this data over (try to avoid copying twice if we don't have to)
-		if (size == BLOCK_SIZE) {
-			if (read(d->bus, d->drive, sector_addr, buf + copy_pos, 1) != BLOCK_SIZE)
-				break;
-		} else {
-			if (read(d->bus, d->drive, sector_addr, temp, 1) != BLOCK_SIZE)
-				break;
-			memcpy(buf + copy_pos, temp + b_offset, size);
-		}
+		if (read(d->bus, d->drive, sector_addr, buf + copy_pos, 1, b_offset, size) != BLOCK_SIZE)
+			break;
 		
 		// Increment our positions
 		sector_addr = uint64_add(sector_addr, uint64_make(0, BLOCK_SIZE / ATA_SECTOR_SIZE));
@@ -367,9 +357,6 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 		if (pcb && signal_pending(pcb))
 			break;
 	}
-	
-	// Free our intermediate buffer
-	kfree(temp);
 	
 	// Update our new seek position
 	d->seek_offset = uint64_add(d->seek_offset, uint64_make(0, copy_pos));
@@ -398,7 +385,7 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 	
 	// Get the best write function we can
 	uint32_t (*write)(uint8_t, uint8_t, uint64_t, const void*, uint32_t) = ata_pio_write_blocks;
-	uint32_t (*read)(uint8_t, uint8_t, uint64_t, void*, uint32_t) = ata_pio_read_blocks;
+	uint32_t (*read)(uint8_t, uint8_t, uint64_t, void*, uint32_t, uint32_t, uint32_t) = ata_pio_read_blocks;
 	if (ata_drives[d->bus * 2 + d->drive].dma) {
 		write = ata_dma_write_blocks;
 		read = ata_dma_read_blocks;
@@ -441,7 +428,7 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 		
 		// Read the data into the temporary buffer if we need to
 		if (needs_read) {
-			if (read(d->bus, d->drive, sector_addr, temp, 1) != BLOCK_SIZE)
+			if (read(d->bus, d->drive, sector_addr, temp, 1, 0, BLOCK_SIZE) != BLOCK_SIZE)
 				break;
 			
 			// Copy over the data we need to into the buffer then write it
