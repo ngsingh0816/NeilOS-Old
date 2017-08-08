@@ -5,10 +5,10 @@
 #include <syscalls/descriptor.h>
 #include <common/concurrency/semaphore.h>
 
-// Each block is 1024
-#define BLOCK_SIZE							1024
+// Each block is 4096
+#define BLOCK_SIZE							4096
 #define NUMBER_OF_SHIFT_BITS_IN_SECTOR		9			// 512 = 2^9
-#define NUMBER_OF_SHIFT_BITS_IN_BLOCK		10			// 1024 = 2^10
+#define NUMBER_OF_SHIFT_BITS_IN_BLOCK		12			// 4096 = 2^12
 
 // Sector size in bytes
 #define ATA_SECTOR_SIZE				512

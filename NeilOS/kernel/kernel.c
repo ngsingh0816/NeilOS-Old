@@ -36,6 +36,7 @@
  * Logging
  * Dynamic Libraries
  * Copy on Write
+ * Grub2
  */
 
 /* TODO (could be improved):
@@ -46,9 +47,6 @@
 	their whole alloted time), and compare it to their alloted time. If they use all of it,
 	give them more time next quantum (to a limit), otherwise give them less.
  * Signals - make the signal execute in user space, not kernel space
- * Make ext2 faster (cache things so there are less 4 byte reads)
-	* Could also optimize ATA read / write to do multiple blocks at a time
-		* probably won't help because we never read more than one block
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
  */
 
@@ -57,12 +55,12 @@
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
  * Fix memory map - programs load at like 128MB by default so we must flip the memory map
- * Crash on startup in vmware
  * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
 	because a task will be reading something, we context switch into another task, which disables
 	multitasking, and then tries to read but will just hang forever because the first task hasn't let go
 	of the lock
  * Making fork disable multitasking should make the pipe test freeze, but it doesn't, it just outputs nothing
+ * Sometimes control+c doesn't work - has to do with somehow multitasking getting disabled
  */
 
 /* Things to test
@@ -121,92 +119,7 @@
 void
 entry (unsigned long magic, unsigned long addr)
 {
-	multiboot_info_t *mbi;
-		
-	/* Clear the screen. */
 	clear();
-	/* Am I booted by a Multiboot-compliant boot loader? */
-	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-	{
-		printf ("Invalid magic number: 0x%#x\n", (unsigned) magic);
-		return;
-	}
-	
-	/* Set MBI to the address of the Multiboot information structure. */
-	mbi = (multiboot_info_t *) addr;
-	
-	/* Print out the flags. */
-	printf ("flags = 0x%#x\n", (unsigned) mbi->flags);
-	
-	/* Are mem_* valid? */
-	if (CHECK_FLAG (mbi->flags, 0))
-		printf ("mem_lower = %uKB, mem_upper = %uKB\n",
-				(unsigned) mbi->mem_lower, (unsigned) mbi->mem_upper);
-	
-	/* Is boot_device valid? */
-	if (CHECK_FLAG (mbi->flags, 1))
-		printf ("boot_device = 0x%#x\n", (unsigned) mbi->boot_device);
-	
-	/* Is the command line passed? */
-	if (CHECK_FLAG (mbi->flags, 2))
-		printf ("cmdline = %s\n", (char *) mbi->cmdline);
-	
-	if (CHECK_FLAG (mbi->flags, 3)) {
-		int mod_count = 0;
-		int i;
-		module_t* mod = (module_t*)mbi->mods_addr;
-		while(mod_count < mbi->mods_count) {
-			printf("Module %d loaded at address: 0x%#x\n", mod_count, (unsigned int)mod->mod_start);
-			printf("Module %d ends at address: 0x%#x\n", mod_count, (unsigned int)mod->mod_end);
-			printf("First few bytes of module:\n");
-			for(i = 0; i<16; i++) {
-				printf("0x%x ", *((char*)(mod->mod_start+i)));
-			}
-			printf("\n");
-			
-			mod_count++;
-			mod++;
-		}
-	}
-	/* Bits 4 and 5 are mutually exclusive! */
-	if (CHECK_FLAG (mbi->flags, 4) && CHECK_FLAG (mbi->flags, 5))
-	{
-		printf ("Both bits 4 and 5 are set.\n");
-		return;
-	}
-	
-	/* Is the section header table of ELF valid? */
-	if (CHECK_FLAG (mbi->flags, 5))
-	{
-		elf_section_header_table_t *elf_sec = &(mbi->elf_sec);
-		
-		printf ("elf_sec: num = %u, size = 0x%#x,"
-				" addr = 0x%#x, shndx = 0x%#x\n",
-				(unsigned) elf_sec->num, (unsigned) elf_sec->size,
-				(unsigned) elf_sec->addr, (unsigned) elf_sec->shndx);
-	}
-	
-	/* Are mmap_* valid? */
-	if (CHECK_FLAG (mbi->flags, 6))
-	{
-		memory_map_t *mmap;
-		
-		printf ("mmap_addr = 0x%#x, mmap_length = 0x%x\n",
-				(unsigned) mbi->mmap_addr, (unsigned) mbi->mmap_length);
-		for (mmap = (memory_map_t *) mbi->mmap_addr;
-				(unsigned long) mmap < mbi->mmap_addr + mbi->mmap_length;
-				mmap = (memory_map_t *) ((unsigned long) mmap
-										 + mmap->size + sizeof (mmap->size)))
-			printf (" size = 0x%x,     base_addr = 0x%#x%#x\n"
-					"     type = 0x%x,  length    = 0x%#x%#x\n",
-					(unsigned) mmap->size,
-					(unsigned) mmap->base_addr_high,
-					(unsigned) mmap->base_addr_low,
-					(unsigned) mmap->type,
-					(unsigned) mmap->length_high,
-					(unsigned) mmap->length_low);
-	}
-	
 	/* Construct an LDT entry in the GDT */
 	{
 		seg_desc_t the_ldt_desc;
@@ -248,7 +161,6 @@ entry (unsigned long magic, unsigned long addr)
 		ltr(KERNEL_TSS);
 	}
 	
-	//clear();
 	// Disable interrupts
 	cli();
 	

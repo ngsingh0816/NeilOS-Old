@@ -24,7 +24,7 @@ ext_inode_info_t ext2_get_inode_info(uint32_t inode) {
 	ext_block_group_descriptor_t group_info = ext2_get_block_group_info(block_group);
 	uint64_t addr = uint64_shl(uint64_make(0, group_info.inode_table),
 							   EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
-	addr = uint64_add(addr, uint64_make(0, sizeof(ext_inode_info_t) * local_inode));
+	addr = uint64_add(addr, uint64_make(0, ext2_superblock()->inode_size * local_inode));
 	
 	// Read the info
 	ata_partition_lock(ext2_fs());
@@ -45,7 +45,7 @@ void ext2_set_inode_info(uint32_t inode, ext_inode_info_t* data) {
 	ext_block_group_descriptor_t group_info = ext2_get_block_group_info(block_group);
 	uint64_t addr = uint64_shl(uint64_make(0, group_info.inode_table),
 							   EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
-	addr = uint64_add(addr, uint64_make(0, sizeof(ext_inode_info_t) * local_inode));
+	addr = uint64_add(addr, uint64_make(0, ext2_superblock()->inode_size * local_inode));
 	
 	// Read the info
 	ata_partition_lock(ext2_fs());

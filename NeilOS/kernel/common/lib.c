@@ -833,6 +833,9 @@ memcpy(void* dest, const void* src, uint32_t n)
 			: "S"(src), "D"(dest), "c"(n)
 			: "eax", "edx", "memory", "cc"
 			);
+	
+/*	for (int z = 0; z < n; z++)
+		((char*)dest)[z] = ((char*)src)[z];*/
 
 	return dest;
 }
