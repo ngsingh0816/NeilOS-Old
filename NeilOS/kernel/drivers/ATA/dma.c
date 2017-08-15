@@ -38,7 +38,7 @@
 #define ATA_COMMAND_WRITE_DMA_28			0xCA
 #define ATA_COMMAND_WRITE_DMA_48			0x35
 
-#define PCI_ENABLE_BUSMASTER		0x07	// Really should be 0x5
+#define PCI_ENABLE_BUSMASTER		0x05
 
 #define DMA_IRQ						0x0E
 
@@ -82,12 +82,6 @@ bool ata_dma_init() {
 	ide_device = pci_device_info(IDE_CLASS, IDE_SUBCLASS);
 	base_port = pci_interpret_bar(ide_device.bar[4]);
 	pci_set_command(&ide_device, PCI_ENABLE_BUSMASTER);
-	
-	/*pci_config_write(ide_device.bus, ide_device.device, ide_device.func, 0x3C, DMA_IRQ);
-	printf("0x%x\n", pci_config_read(ide_device.bus, ide_device.device, ide_device.func, 0x3C));*/
-	
-	/*if (ide_device.command != PCI_ENABLE_BUSMASTER)
-		return false;*/
 	
 	// Save our IRQ
 	request_irq(DMA_IRQ, ata_dma_handler);
