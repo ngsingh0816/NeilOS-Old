@@ -219,6 +219,14 @@ return_from_user:
 // Helper to return a child from fork (immediately exits)
 // fork_return()
 fork_return:
+	pushl %ecx
+	movl $USER_DS, %ecx
+	movw    %cx, %ds
+	movw    %cx, %es
+	movw    %cx, %fs
+	movw    %cx, %gs
+	popl %ecx
+
 	iret
 
 // The assembly linkage function for calling an interrupt

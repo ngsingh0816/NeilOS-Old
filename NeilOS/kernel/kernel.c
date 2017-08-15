@@ -66,7 +66,6 @@
  */
 
 /* TODO:
- * Fix VMWare - first bug = not changing PIO block size, second bug has to do with fork
  * Add gitignore and add to github
  * Fix memory map
  * SSE memcpy
