@@ -26,9 +26,9 @@
 #define IDE_STATUS_INTERRUPT		0x04
 
 // Commands for PCI DMA
-#define IDE_COMMAND_START_WRITE		0x05
-#define IDE_COMMAND_START_READ		0x01
-#define IDE_COMMAND_STOP_WRITE		0x04
+#define IDE_COMMAND_START_WRITE		0x01
+#define IDE_COMMAND_START_READ		0x09
+#define IDE_COMMAND_STOP_WRITE		0x08
 #define IDE_COMMAND_STOP_READ		0x00
 #define IDE_COMMAND_STOP			0x00
 
@@ -86,8 +86,8 @@ bool ata_dma_init() {
 	/*pci_config_write(ide_device.bus, ide_device.device, ide_device.func, 0x3C, DMA_IRQ);
 	printf("0x%x\n", pci_config_read(ide_device.bus, ide_device.device, ide_device.func, 0x3C));*/
 	
-	if (ide_device.command != PCI_ENABLE_BUSMASTER)
-		return false;
+	/*if (ide_device.command != PCI_ENABLE_BUSMASTER)
+		return false;*/
 	
 	// Save our IRQ
 	request_irq(DMA_IRQ, ata_dma_handler);
@@ -105,6 +105,15 @@ uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 	for (z = 0; z < blocks; z++) {
 		request_irq(DMA_IRQ, ata_dma_handler);
 		
+		// Tell it to use one block
+		prdt[0] = (uint32_t)sector;
+		prdt[1] = (1 << 31) | BLOCK_SIZE;
+		outl(prdt, base_port + IDE_PRD_TABLE(bus));
+		
+		outb(IDE_COMMAND_STOP_READ, base_port + IDE_COMMAND(bus));
+		outb(IDE_STATUS_ERROR | IDE_STATUS_INTERRUPT | inb(base_port + IDE_STATUS(bus)),
+			 base_port + IDE_STATUS(bus));
+		
 		// Check if we need to rechoose the correct bus
 		if (ata_previous_drive->bus != bus || ata_previous_drive->drive != drive) {
 			ata_previous_drive = &ata_drives[bus * 2 + drive];
@@ -115,16 +124,7 @@ uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 			for (i = 0; i < 4; i++)
 				inb(ATA_ALT_STATUS_PORT(bus));
 		}
-
-		// Tell it to use one block
-		prdt[0] = (uint32_t)sector;
-		prdt[1] = (1 << 31) | BLOCK_SIZE;
 		
-		// Load the info
-		outb(IDE_COMMAND_STOP_READ, base_port + IDE_COMMAND(bus));
-		outb(IDE_STATUS_ERROR | IDE_STATUS_INTERRUPT, base_port + IDE_STATUS(bus));
-		outl(prdt, base_port + IDE_PRD_TABLE(bus));
-
 		// Load the address
 		if (ata_previous_drive->ext) {
 			// Send high bytes first
