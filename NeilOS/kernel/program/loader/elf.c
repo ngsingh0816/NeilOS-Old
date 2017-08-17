@@ -627,7 +627,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 	// Offset these pages and map them
 	// TODO: might need a memory lock or something
 	bool flags = set_multitasking_enabled(false);
-	uint32_t offset = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_SHARED);
+	uint32_t offset = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_USER);
 	page_list_t* t = dylib->page_list;
 	while (t) {
 		t->vaddr += offset;

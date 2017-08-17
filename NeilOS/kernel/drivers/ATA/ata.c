@@ -277,9 +277,7 @@ disk_info_t ata_open_partition(uint8_t disk, uint8_t partition) {
 		ata_partition_llseek(&d, uint64_make(0, MBR_PARTITION_TABLE_START +
 											 (partition - 1) * sizeof(disk_partition_t)), SEEK_SET);
 		ata_partition_read(&d, &part, sizeof(disk_partition_t));
-		
-		printf("0x%x, 0x%x, 0x%x, 0x%x\n", part.val[0], part.val[1], part.val[2], part.val[3]);
-		
+				
 		// Don't open an invalid partition
 		if (part.system_id == PARTITION_INVALID_SYSTEM_ID) {
 			d.bus = -1;

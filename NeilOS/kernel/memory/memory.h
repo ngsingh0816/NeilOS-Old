@@ -7,15 +7,14 @@
 
 /*
 	Virtual Memory Map
-	0GB-1GB: Kernel
-	1GB-2GB: Shared Libraries
-	2GB-4GB: User
+	0GB-3GB: User
+	3GB-4GB: Kernel (0xC0000000)
  */
 
 // Virtual Memory Allocator
 #define VIRTUAL_MEMORY_KERNEL			0
-#define VIRTUAL_MEMORY_SHARED			1
-#define VIRTUAL_MEMORY_USER				2
+#define VIRTUAL_MEMORY_USER				1
+#define VM_KERNEL_ADDRESS			0xC0000000
 
 // Page permissions
 #define MEMORY_WRITE				(1 << 0)
@@ -27,6 +26,9 @@
 #define ONE_GB_SIZE					(uint32_t)(1024 * 1024 * 1024)
 
 #define NUM_PAGE_TABLE_ENTRIES		1024
+
+// Number of kernel pages reserved
+extern uint32_t num_kernel_pages_reserved;
 
 // Gets the address of the next unmapped 4MB page of the specific type
 uint32_t vm_get_next_unmapped_page(uint32_t type);
@@ -59,6 +61,9 @@ uint32_t vm_get_virtual_page_type(uint32_t vaddr);
 void flush_tlb();
 
 //Sets-up paging and specific control registers to enable paging
-int setup_pages();
+void setup_pages();
+
+// Complete setup of paging once the kernel has gained control
+void complete_paging_setup();
 
 #endif /* MEMORY_H */

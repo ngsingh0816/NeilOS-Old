@@ -231,7 +231,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	// Restore pages
 	set_current_task(pcb);
 	// Map these pages to a new offset
-	uint32_t vaddr = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_SHARED);
+	uint32_t vaddr = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_USER);
 	if (!vaddr) {
 		page_list_dealloc(pl);
 		kfree(list);

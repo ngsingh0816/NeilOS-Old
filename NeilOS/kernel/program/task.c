@@ -97,8 +97,9 @@ void copy_task_into_memory(uint32_t start_address, file_descriptor_t* file) {
 void map_task_into_memory(pcb_t* pcb) {
 	// Unmap whatever is there currently
 	uint32_t z;
-	for (z = 0; z < 3 * ONE_GB_SIZE; z += FOUR_MB_SIZE)
-		vm_unmap_page(z + ONE_GB_SIZE);
+	// TODO: optimize this
+	for (z = FOUR_MB_SIZE; z < VM_KERNEL_ADDRESS; z += FOUR_MB_SIZE)
+		vm_unmap_page(z);
 	// Loop through all the pages in the memory list
 	page_list_t* t = pcb->page_list;
 	while (t) {

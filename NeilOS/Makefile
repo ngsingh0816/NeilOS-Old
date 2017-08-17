@@ -26,7 +26,7 @@ print-%  : ; @echo $* = $($*)
 bootimg: Makefile $(OBJS)
 	rm -f bootimg
 	# Loads the kernel at 4MB
-	$(CC) $(LDFLAGS) $(OBJS) -Ttext=0x400000 -o bootimg
+	$(CC) $(LDFLAGS) $(OBJS) -T linker.ld -o bootimg
 	#sudo ./debug.sh
 
 dep: Makefile.dep

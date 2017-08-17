@@ -37,6 +37,7 @@
  * Dynamic Libraries
  * Copy on Write
  * Grub2
+ * Higher Half Kernel
  */
 
 /* TODO (could be improved):
@@ -53,7 +54,6 @@
 /* TODO (bugs)
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
- * Fix memory map - programs load at like 128MB by default so we must flip the memory map
  * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
 	because a task will be reading something, we context switch into another task, which disables
 	multitasking, and then tries to read but will just hang forever because the first task hasn't let go
@@ -68,7 +68,6 @@
 /* TODO:
  * Get libtool working?
  * Add gitignore and add to github
- * Fix memory map
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Sockets stub
@@ -105,16 +104,17 @@
  * Internet Browser?
  */
 
-/* Macros. */
-/* Check if the bit BIT in FLAGS is set. */
-#define CHECK_FLAG(flags,bit)   ((flags) & (1 << (bit)))
-
-/* Check if MAGIC is valid and print the Multiboot information structure
- pointed by ADDR. */
 void
 entry (unsigned long magic, unsigned long addr)
 {
+	// Paging has already been set up by the time we get here
+	complete_paging_setup();
+	
 	clear();
+	
+	// Setup our page allocator
+	page_allocator_init();
+	
 	/* Construct an LDT entry in the GDT */
 	{
 		seg_desc_t the_ldt_desc;
@@ -172,12 +172,6 @@ entry (unsigned long magic, unsigned long addr)
 	keyboard_init();
 	terminal_init();			// Clears the screen
 	rtc_init();
-	
-	// Setup our page allocator
-	page_allocator_init();
-	
-	// Setup paging
-	setup_pages();
 	
 	// Initialize the filesystem and tasks
 	sti();						// Needed for reading the files

@@ -100,9 +100,9 @@ uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 		request_irq(DMA_IRQ, ata_dma_handler);
 		
 		// Tell it to use one block
-		prdt[0] = (uint32_t)sector;
+		prdt[0] = (uint32_t)sector - VM_KERNEL_ADDRESS;
 		prdt[1] = (1 << 31) | BLOCK_SIZE;
-		outl(prdt, base_port + IDE_PRD_TABLE(bus));
+		outl((uint32_t)prdt - VM_KERNEL_ADDRESS, base_port + IDE_PRD_TABLE(bus));
 		
 		outb(IDE_COMMAND_STOP_READ, base_port + IDE_COMMAND(bus));
 		outb(IDE_STATUS_ERROR | IDE_STATUS_INTERRUPT | inb(base_port + IDE_STATUS(bus)),
@@ -199,11 +199,11 @@ uint32_t ata_dma_write_blocks(uint8_t bus, uint8_t drive, uint64_t address, cons
 		}
 		
 		// Tell it to use one block
-		prdt[0] = (uint32_t)sector;
+		prdt[0] = (uint32_t)sector - VM_KERNEL_ADDRESS;
 		prdt[1] = (1 << 31) | BLOCK_SIZE;
 		
 		// Load the info
-		outl(prdt, base_port + IDE_PRD_TABLE(bus));
+		outl((uint32_t)prdt - VM_KERNEL_ADDRESS, base_port + IDE_PRD_TABLE(bus));
 		outb(IDE_COMMAND_STOP_WRITE, IDE_COMMAND(bus));
 		outb(IDE_STATUS_ERROR | IDE_STATUS_INTERRUPT, base_port + IDE_STATUS(bus));
 		

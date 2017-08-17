@@ -24,7 +24,6 @@
 
 #define NUMBER_OF_PAGES					1024				// 4GB / 4MB
 #define PAGE_SIZE						(1024 * 1024 * 4)	// 4MB
-#define NUMBER_OF_RESERVED_PAGES		3					// Reserve 12 MB for kernel
 
 uint8_t buddy[BUDDY_SIZE];
 uint32_t space_used;
@@ -62,8 +61,8 @@ void page_allocator_init() {
 	buddy_set_node_value(buddy, 0, NODE_FREE);
 		
 	space_used = 0;
-	// Reserve 12MB for the kernel code
-	page_get_four_mb(NUMBER_OF_RESERVED_PAGES, VIRTUAL_MEMORY_KERNEL);
+	// Reserve space for the kernel code
+	page_get_four_mb(num_kernel_pages_reserved, VIRTUAL_MEMORY_KERNEL);
 }
 
 // Helper to convert a physical address to a virtual one
