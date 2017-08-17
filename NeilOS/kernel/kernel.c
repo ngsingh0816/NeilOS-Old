@@ -46,7 +46,7 @@
 	that aren't CPU intensive will call schedule() and sleep so they will not use up
 	their whole alloted time), and compare it to their alloted time. If they use all of it,
 	give them more time next quantum (to a limit), otherwise give them less.
- * Signals - make the signal execute in user space, not kernel space
+ * Signals - make the signal execute in user space, not kernel space (same with dylib init's)
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
  */
 
@@ -66,15 +66,12 @@
  */
 
 /* TODO:
+ * Get libtool working?
  * Add gitignore and add to github
  * Fix memory map
- * SSE memcpy
- * Make libstdc++ dynamic
-	* Need to implement dynamic constructors
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Sockets stub
- * Make reading from disk faster (cause of real programs taking a longer time to load).
  * Dylib Lazy Linking?
  * (Kernel?) Threads (pthread?)
 	* Potential multitasking issues:

@@ -264,9 +264,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	dylib_list_push_back(&pcb->dylibs, list);
 	
 	dylib->num_instances++;
-	
-	elf_load_dylib_for_task(dylib, pcb, list->offset);
-	
+		
 	return true;
 }
 
@@ -365,11 +363,7 @@ void dylib_dealloc(dylib_t* dylib) {
 		kfree(dylib->symbol_names);
 	if (dylib->rel_sections) {
 		for (uint32_t z = 0; z < dylib->num_rel_sections; z++) {
-			if (dylib->rel_sections[z].rels) {
-				for (uint32_t i = 0; i < dylib->rel_sections[z].num_rels; i++) {
-					if (dylib->rel_sections[z].rels[i].data)
-						kfree(dylib->rel_sections[z].rels[i].data);
-				}
+			if (dylib->rel_sections[z].rels) {		
 				if (dylib->rel_sections[z].rel_names)
 					kfree(dylib->rel_sections[z].rel_names);
 				kfree(dylib->rel_sections[z].rels);

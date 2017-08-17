@@ -795,7 +795,7 @@ memset_dword(void* s, int32_t c, uint32_t n)
 *	Function: copy n bytes of src to dest
 */
 
-void*
+__attribute__((noinline)) void*
 memcpy(void* dest, const void* src, uint32_t n)
 {
 	asm volatile("                  \n\
@@ -834,9 +834,6 @@ memcpy(void* dest, const void* src, uint32_t n)
 			: "eax", "edx", "memory", "cc"
 			);
 	
-/*	for (int z = 0; z < n; z++)
-		((char*)dest)[z] = ((char*)src)[z];*/
-
 	return dest;
 }
 

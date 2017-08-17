@@ -40,7 +40,6 @@ typedef struct {
 		} __attribute__((packed));
 	};
 	uint32_t size;
-	void* data;
 } dylib_rel_t;
 
 typedef struct {
@@ -77,6 +76,9 @@ typedef struct dylib {
 	
 	dylib_list_t* dylibs;
 	uint32_t num_instances;			// Number of objects that are linked against this dylib
+	
+	// Init function
+	uint32_t init;
 } dylib_t;
 
 // Returns true whether a dylib is loaded

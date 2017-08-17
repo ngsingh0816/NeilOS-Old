@@ -58,6 +58,8 @@
 #define ELF_DYNAMIC_NULL			0
 #define ELF_DYNAMIC_NEEDED			1
 #define ELF_DYNAMIC_STRTAB			5
+#define ELF_DYNAMIC_INIT			12
+#define ELF_DYNAMIC_FINI			13
 
 #define ELF_REL_NONE				0
 #define ELF_REL_32					1
@@ -321,7 +323,10 @@ bool elf_load_hash_table(elf_section_header_t* sections, elf_header_t* header,
 		
 		// Copy
 		memcpy(dylib->hash.buckets, &buffer[2], buffer[0] * sizeof(uint32_t));
-		memcpy(dylib->hash.chains, &buffer[2 + buffer[0]], buffer[1]);
+		memcpy(dylib->hash.chains, &buffer[2 + buffer[0]], buffer[1] * sizeof(uint32_t));
+		
+		kfree(buffer);
+		break;
 	}
 	
 	return true;
@@ -342,11 +347,12 @@ bool elf_perform_relocation_dylib(dylib_rel_section_t* rel_sections, uint32_t nu
 					bool found = false;
 					void* value = dylib_get_symbol_address_list(dylibs, &rel_names[rels[z].name_index], &found);
 					if (!found) {
-						//printf("Undefined symbol - %s %s\n", rels[z].name);
-						//ret = false;*/
+						//printf("Undefined symbol - %s %s\n", &rel_names[rels[z].name_index]);
+						//ret = false;
 						continue;
 					}
-					//printf("Symbol(%d) - %s (0x%x)\n", (rels[z].type == ELF_REL_COPY), rels[z].name, value);
+					//printf("Symbol(%d) - %s (0x%x)\n", (rels[z].type == ELF_REL_COPY),
+					//&rel_names[rels[z].name_index], value);
 					if (rels[z].type == ELF_REL_COPY)
 						memcpy(dest, value, rels[z].size);
 					else
@@ -355,6 +361,17 @@ bool elf_perform_relocation_dylib(dylib_rel_section_t* rel_sections, uint32_t nu
 				}
 				case ELF_REL_RELATIVE: {
 					*dest += offset;
+					break;
+				}
+				case ELF_REL_PC32:
+					*dest -= (uint32_t)dest;
+				case ELF_REL_32: {
+					bool found = false;
+					void* value = dylib_get_symbol_address_list(dylibs, &rel_names[rels[z].name_index], &found);
+					if (!found) {
+						continue;
+					}
+					*dest += (uint32_t)value;
 					break;
 				}
 				default:
@@ -414,6 +431,18 @@ bool elf_perform_relocation(elf_section_header_t* sections, elf_header_t* header
 					case ELF_REL_RELATIVE: {
 						if (relative)
 							*dest += offset;
+						break;
+					}
+					case ELF_REL_PC32:
+						*dest -= (uint32_t)dest;
+					case ELF_REL_32: {
+						bool found = false;
+						char* symbol_name = elf_get_symbol_name(&sections[section->link], symtab, rels[i].index, strtabs);
+						void* value = dylib_get_symbol_address_list(dylibs, symbol_name, &found);
+						if (!found) {
+							continue;
+						}
+						*dest += (uint32_t)value;
 						break;
 					}
 					default:
@@ -518,6 +547,14 @@ bool elf_load(char* filename, pcb_t* pcb) {
 			
 			kfree(tags);
 		}
+	}
+	
+	// Setup dylibs
+	dylib_list_t* t = pcb->dylibs->next;
+	while (t) {
+		if (!elf_load_dylib_for_task(t->dylib, pcb, t->offset))
+			goto cleanup;
+		t = t->next;
 	}
 	
 	// Perform relocation (but don't include symbols from ourself)
@@ -691,6 +728,37 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 	if (!elf_load_hash_table(section_headers, &header, &file, section_names, strtabs, dylib))
 		goto cleanup;
 	
+	// Get initialization function if available
+	for (z = 0; z < header.section_header_num_entries; z++) {
+		elf_section_header_t* section_header = &section_headers[z];
+		if (section_header->type == ELF_SECTION_DYNAMIC) {
+			elf_dynamic_tag_t* tags = elf_read_data(&file, section_header->offset, section_header->size);
+			if (!tags)
+				goto cleanup;
+			
+			// Find strtab
+			char* strtab = NULL;
+			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
+				if (tags[i].tag == ELF_DYNAMIC_STRTAB) {
+					strtab = elf_get_strtab(section_headers, header.section_header_num_entries, tags[i].value, strtabs);
+					if (!strtab) {
+						kfree(tags);
+						goto cleanup;
+					}
+					break;
+				}
+			}
+			
+			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
+				if (tags[i].tag == ELF_DYNAMIC_INIT) {
+					dylib->init = tags[i].value;
+				}
+			}
+			
+			kfree(tags);
+		}
+	}
+	
 	ret = true;
 	
 cleanup:
@@ -711,6 +779,16 @@ cleanup:
 
 // Copy information and perform relocation for a dylib
 bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb, uint32_t offset) {
-	return elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections,
-										pcb->dylibs, offset);
+	if (!elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections,
+										pcb->dylibs, offset))
+		return false;
+	
+	// Perform the initialization function
+	if (dylib->init) {
+		// TODO: do this in userspace
+		void (*init)() = (void (*)())(offset + dylib->init);
+		init();
+	}
+	
+	return true;
 }
