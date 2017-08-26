@@ -1,0 +1,8 @@
+make distclean
+../configure --prefix=/usr --target=i386-neilos CFLAGS_FOR_TARGET="-fpic"
+make all
+make DESTDIR=$SYSROOT install
+mv i386-neilos/* ./
+// Make shared library
+i386-neilos-ar -x libc.a ( extract all the object files)
+i386-neilos-ld -shared *.o -o libc.dylib ( link them back into a .dylib)

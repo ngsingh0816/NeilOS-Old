@@ -67,7 +67,6 @@
 
 /* TODO:
  * Get libtool working?
- * Add gitignore and add to github
  * More system calls - sleep (nanosleep), mmap
 	* Listed in syscalls.c
 	* Sockets stub
@@ -83,7 +82,8 @@
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
- * Grahpics (QEMU VBE) Driver?
+ * Software Graphics Driver
+ * Graphics (QEMU VBE) Driver?
  * GUI (Compositing Window Manager)
 	* Interacts through message queues?
  * Improved Scheduler
