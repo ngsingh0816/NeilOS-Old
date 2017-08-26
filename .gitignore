@@ -13,3 +13,5 @@ NeilOS/NeilOS.vmdk
 NeilOS/orig_large_old.img
 NeilOS/orig_large.img
 NeilOS/orig_old.img
+NeilOS/mp3.img
+sysroot/null
