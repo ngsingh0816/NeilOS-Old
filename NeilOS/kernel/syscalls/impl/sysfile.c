@@ -16,22 +16,9 @@
 #include <drivers/pipe/pipe.h>
 #include <drivers/pipe/fifo.h>
 #include <common/log.h>
-
-// Device for syscall's purposes
-typedef struct syscall_device {
-	char* name;
-	file_descriptor_t* (*open)(const char*, uint32_t mode);
-} syscall_device_t;
+#include <syscalls/interrupt.h>
 
 file_descriptor_t** descriptors = NULL;
-syscall_device_t syscall_devices[] = {
-	{ "stdin", terminal_open },
-	{ "stdout", terminal_open },
-	{ "stderr", terminal_open },
-	{ "rtc", rtc_open },
-	{ "disk0", ata_open },
-	{ "disk0s1", ata_open },
-};
 
 file_descriptor_t* open_handle(const char* filename, uint32_t mode) {
 	file_descriptor_t* f = NULL;
@@ -49,19 +36,6 @@ file_descriptor_t* open_handle(const char* filename, uint32_t mode) {
 		
 		f->ref_count = 1;
 		return f;
-	}
-	
-	// Loop through the devices
-	int z;
-	for (z = 0; z < sizeof(syscall_devices) / sizeof(syscall_device_t); z++) {
-		if (strncmp(filename, syscall_devices[z].name, strlen(syscall_devices[z].name) + 1) == 0) {
-			f = syscall_devices[z].open(filename, mode);
-			if (f) {
-				f->ref_count = 1;
-				return f;
-			}
-			return NULL;
-		}
 	}
 	
 	// Default to the filesystem if no device was found
@@ -89,13 +63,17 @@ uint32_t open(const char* filename, uint32_t mode) {
 	}
 	
 	// We have no more descriptors available so we can't open anything
-	if (current_fd == -1)
+	if (current_fd == -1) {
+		errno = ENFILE;
 		return -1;
+	}
 	
 	pcb_t* pcb = current_pcb;
 	pcb->descriptors[current_fd] = open_handle(filename, mode);
-	if (!pcb->descriptors[current_fd])
+	if (!pcb->descriptors[current_fd]) {
+		errno = ENOENT;
 		return -1;
+	}
 	
 	descriptors = pcb->descriptors;
 	return current_fd;
@@ -172,7 +150,7 @@ uint32_t truncate(int32_t fd, uint32_t length_high, uint32_t length_low) {
 // Get information about a file descriptor
 uint32_t stat(int32_t fd, sys_stat_type* data) {
 	LOG_DEBUG_INFO_STR("(%d, 0x%x)", fd, data);
-
+	
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS || fd < 0 || !data)
 		return -1;

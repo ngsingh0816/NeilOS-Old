@@ -32,4 +32,7 @@
 // Log a message to /var/log/syslog
 void log(int8_t* fmt, ...);
 
+// Log a message to /var/log/syslog without formatting
+void quick_log(int8_t* fmt, ...);
+
 #endif /* LOG_H */

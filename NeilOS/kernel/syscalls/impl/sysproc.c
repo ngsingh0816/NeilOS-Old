@@ -147,8 +147,12 @@ uint32_t getpid() {
 	return current_pcb->task->pid;
 }
 
+// Options for waitpid
+#define WNOHANG					1
+#define WUNTRACED				2
+
 // Wait for a child to change state (returns the status that the child returned with)
-uint32_t waitpid(uint32_t pid) {
+uint32_t waitpid(uint32_t pid, int* status, int options) {
 	LOG_DEBUG_INFO_STR("(%d)", pid);
 
 	pcb_t* pcb = current_pcb;
@@ -158,7 +162,7 @@ uint32_t waitpid(uint32_t pid) {
 		bool found = false;
 		task_list_t* child = pcb->children;
 		while (child) {
-			if (child->pid == pid) {
+			if (child->pid == pid || pid == -1 || pid == 0) {
 				found = true;
 				// Child is a zombie if child->pcb == NULL
 				if (!child->pcb) {
@@ -171,52 +175,26 @@ uint32_t waitpid(uint32_t pid) {
 					if (child == pcb->children)
 						pcb->children = child->next;
 					kfree(child);
+					
+					// Fill out the status argument if needed
+					if (status) {
+						// TODO: add signal stopping and core dump stopping, etc
+						*status = ((ret & 0xFF) << 8);
+					}
+					
 					return ret;
 				}
 			}
 			child = child->next;
 		}
 		// If the pid does not exist, return error
-		if (!found)
+		if (!found || (options & WNOHANG))
 			return -1;
 		
 		schedule();
 	}
 	
 	// Should terminate
-	return -1;
-}
-
-// Wait for any child to finish
-uint32_t wait(uint32_t pid) {
-	LOG_DEBUG_INFO_STR("(%d)", pid);
-
-	pcb_t* pcb = current_pcb;
-	if (!pcb->children)
-		return -1;
-	
-	// Wait until the child has finished
-	while (!pcb->should_terminate) {
-		task_list_t* child = pcb->children;
-		while (child) {
-			// Child is a zombie if child->pcb == NULL
-			if (!child->pcb) {
-				// Remove child
-				uint32_t ret = child->return_value;
-				if (child->prev)
-					child->prev->next = child->next;
-				if (child == pcb->children)
-					pcb->children = child->next;
-				kfree(child);
-				return ret;
-			}
-			child = child->next;
-		}
-		
-		schedule();
-	}
-	
-	// Signal was caught
 	return -1;
 }
 
@@ -254,6 +232,13 @@ uint32_t getwd(char* buf) {
 	// TODO: implement working directories
 	if (!buf)
 		return -1;
-	memcpy(buf, "", strlen("") + 1);
+	memcpy(buf, "/", strlen("/") + 1);
+	return 0;
+}
+
+// Change the current working directory
+uint32_t chdir(const char* path) {
+	LOG_DEBUG_INFO_STR("(%s)", path);
+
 	return 0;
 }

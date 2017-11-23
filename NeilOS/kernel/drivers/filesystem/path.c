@@ -8,6 +8,7 @@
 
 #include "path.h"
 #include <common/lib.h>
+#include <memory/allocation/heap.h>
 
 // Get the specified component of the input path. The pointer returned is
 // an indexed pointer of the input path. NULL is returned if no such component exists.
@@ -89,5 +90,18 @@ const char* path_last_component(const char* path, uint32_t* length_out) {
 const char* path_get_parent(const char* path, uint32_t* length_out) {
 	const char* lc = path_last_component(path, NULL);
 	*length_out = (uint32_t)((void*)lc - (void*)path);
+	return path;
+}
+
+// Append a string to a path
+char* path_append(const char* prefix, char* str) {
+	const uint32_t prefix_len = strlen(prefix);
+	uint32_t len = strlen(str);
+	char* path = kmalloc(prefix_len + len + 1);
+	if (!path)
+		return NULL;
+	memcpy(path, prefix, prefix_len);
+	memcpy(&path[prefix_len], str, len);
+	path[prefix_len + len] = 0;
 	return path;
 }

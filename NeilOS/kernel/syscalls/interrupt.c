@@ -89,13 +89,14 @@ unsigned int errno = 0;
 	mkdir - done
 	pipe - done
 	dup2 - done
+    sleep - done
 	alarm
-	execvp
+	execvp - done
 	closedir - done
 	opendir - done
 	readdir - done
 	chdir
-	execv
+	execv - done
  * For vi:
 	need terimos.h
  * For coreutils:
@@ -105,15 +106,16 @@ unsigned int errno = 0;
 	sched_yield
  */
 
-void* syscalls[] = { fork, execve, getpid, waitpid, wait, exit,
+void* syscalls[] = { fork, execve, getpid, waitpid, exit,
 	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl,
 	mkdir, link, unlink, readdir, utime,
 	brk, sbrk,
 	dup, dup2,
 	times, gettimeofday,
-	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend,
+	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend, alarm,
+	sleep,
 	sysconf,
-	getwd,
+	getwd, chdir,
 	sys_errno,
 };
 
@@ -170,14 +172,17 @@ void invalid_opcode(uint32_t code, uint32_t eip) {
 #endif
 }
 
+extern void enable_sse();
+
 // Interrupt 7
+// Most likely a SSE instruction error or FPU (they use the same registers)
 void device_not_available(uint32_t code, uint32_t eip) {
-#if !DEBUG
-	// Kill the current task
-	terminate_task(256);
-#endif
-	
-	blue_screen("Device not available");
+	// Restore sse registers and enable sse
+	enable_sse();
+	if (current_pcb->sse_init)
+		asm volatile(" fxrstor (%0); "::"r"(current_pcb->sse_registers));
+	current_pcb->sse_used = true;
+	current_pcb->sse_init = true;
 }
 
 // Interrupt 8

@@ -144,14 +144,20 @@ uint32_t pipe_stat(int32_t fd, sys_stat_type* data) {
 
 // Close a pipe
 uint32_t pipe_close(file_descriptor_t* fd) {
-	pipe_info_t* info = (pipe_info_t*)fd->info;
-	if (fd->mode & FILE_MODE_WRITE) {
-		if (info->reader)
-			info->reader->info = NULL;
-		kfree(info->buffer);
-		kfree(info);
-	} else {
-		info->reader = NULL;
+	if (fd->ref_count == 0) {
+		pipe_info_t* info = (pipe_info_t*)fd->info;
+		if (!info)
+			return 0;
+		
+		if (fd->mode & FILE_MODE_WRITE) {
+			if (info->reader)
+				info->reader->info = NULL;
+			if (info->buffer)
+				kfree(info->buffer);
+			kfree(info);
+		} else {
+			info->reader = NULL;
+		}
 	}
 	
 	return 0;

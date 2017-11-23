@@ -1,3 +1,5 @@
+build/./kernel/memory/memory_asm.o: kernel/memory/memory_asm.S
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/memory_asm.o ./kernel/memory/memory_asm.S
 build/./kernel/boot/boot.o: kernel/boot/boot.S kernel/boot/multiboot.h \
  kernel/boot/x86_desc.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/boot/boot.o ./kernel/boot/boot.S
@@ -7,50 +9,26 @@ build/./kernel/boot/x86_desc.o: kernel/boot/x86_desc.S \
 build/./kernel/common/concurrency/concurrency.o: \
  kernel/common/concurrency/concurrency.S
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/concurrency.o ./kernel/common/concurrency/concurrency.S
-build/./kernel/memory/memory_asm.o: kernel/memory/memory_asm.S
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/memory_asm.o ./kernel/memory/memory_asm.S
 build/./kernel/syscalls/interrupt_asm.o: kernel/syscalls/interrupt_asm.S
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/interrupt_asm.o ./kernel/syscalls/interrupt_asm.S
-build/./kernel/common/concurrency/rwlock.o: \
- kernel/common/concurrency/rwlock.c kernel/common/concurrency/rwlock.h \
- kernel/common/concurrency/spinlock.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/rwlock.o ./kernel/common/concurrency/rwlock.c
-build/./kernel/common/concurrency/rwsem.o: \
- kernel/common/concurrency/rwsem.c kernel/common/concurrency/rwsem.h \
- kernel/common/concurrency/semaphore.h \
- kernel/common/concurrency/spinlock.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/rwsem.o ./kernel/common/concurrency/rwsem.c
-build/./kernel/common/concurrency/semaphore.o: \
- kernel/common/concurrency/semaphore.c \
- kernel/common/concurrency/semaphore.h \
- kernel/common/concurrency/spinlock.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/semaphore.o ./kernel/common/concurrency/semaphore.c
-build/./kernel/common/concurrency/spinlock.o: \
- kernel/common/concurrency/spinlock.c \
- kernel/common/concurrency/spinlock.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/spinlock.o ./kernel/common/concurrency/spinlock.c
-build/./kernel/common/lib.o: kernel/common/lib.c kernel/common/lib.h \
- kernel/common/types.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/lib.o ./kernel/common/lib.c
-build/./kernel/common/log.o: kernel/common/log.c kernel/common/log.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/log.o ./kernel/common/log.c
-build/./kernel/common/time.o: kernel/common/time.c kernel/common/time.h \
- kernel/common/types.h kernel/common/lib.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/time.o ./kernel/common/time.c
-build/./kernel/common/types.o: kernel/common/types.c \
- kernel/common/types.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/types.o ./kernel/common/types.c
-build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
- kernel/drivers/ATA/ata.h kernel/drivers/ATA/pio.h \
- kernel/drivers/ATA/dma.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ATA/ata.o ./kernel/drivers/ATA/ata.c
-build/./kernel/drivers/ATA/dma.o: kernel/drivers/ATA/dma.c \
- kernel/drivers/ATA/dma.h kernel/drivers/ATA/ata.h \
- kernel/drivers/ATA/pio.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ATA/dma.o ./kernel/drivers/ATA/dma.c
-build/./kernel/drivers/ATA/pio.o: kernel/drivers/ATA/pio.c \
- kernel/drivers/ATA/pio.h kernel/drivers/ATA/ata.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ATA/pio.o ./kernel/drivers/ATA/pio.c
+build/./kernel/drivers/pit/pit.o: kernel/drivers/pit/pit.c \
+ kernel/drivers/pit/pit.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pit/pit.o ./kernel/drivers/pit/pit.c
+build/./kernel/drivers/pci/pci.o: kernel/drivers/pci/pci.c \
+ kernel/drivers/pci/pci.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pci/pci.o ./kernel/drivers/pci/pci.c
+build/./kernel/drivers/video/video.o: kernel/drivers/video/video.c \
+ kernel/drivers/video/video.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/video/video.o ./kernel/drivers/video/video.c
+build/./kernel/drivers/pipe/pipe.o: kernel/drivers/pipe/pipe.c \
+ kernel/drivers/pipe/pipe.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pipe/pipe.o ./kernel/drivers/pipe/pipe.c
+build/./kernel/drivers/pipe/fifo.o: kernel/drivers/pipe/fifo.c \
+ kernel/drivers/pipe/fifo.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pipe/fifo.o ./kernel/drivers/pipe/fifo.c
+build/./kernel/drivers/terminal/terminal.o: \
+ kernel/drivers/terminal/terminal.c kernel/drivers/terminal/terminal.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/terminal/terminal.o ./kernel/drivers/terminal/terminal.c
 build/./kernel/drivers/filesystem/ext2/block.o: \
  kernel/drivers/filesystem/ext2/block.c \
  kernel/drivers/filesystem/ext2/block.h \
@@ -83,44 +61,38 @@ build/./kernel/drivers/filesystem/filesystem.o: \
 build/./kernel/drivers/filesystem/path.o: \
  kernel/drivers/filesystem/path.c kernel/drivers/filesystem/path.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/filesystem/path.o ./kernel/drivers/filesystem/path.c
-build/./kernel/drivers/keyboard/keyboard.o: \
- kernel/drivers/keyboard/keyboard.c kernel/drivers/keyboard/keyboard.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/keyboard/keyboard.o ./kernel/drivers/keyboard/keyboard.c
-build/./kernel/drivers/pci/pci.o: kernel/drivers/pci/pci.c \
- kernel/drivers/pci/pci.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pci/pci.o ./kernel/drivers/pci/pci.c
 build/./kernel/drivers/pic/i8259.o: kernel/drivers/pic/i8259.c \
  kernel/drivers/pic/i8259.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pic/i8259.o ./kernel/drivers/pic/i8259.c
-build/./kernel/drivers/pipe/fifo.o: kernel/drivers/pipe/fifo.c \
- kernel/drivers/pipe/fifo.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pipe/fifo.o ./kernel/drivers/pipe/fifo.c
-build/./kernel/drivers/pipe/pipe.o: kernel/drivers/pipe/pipe.c \
- kernel/drivers/pipe/pipe.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pipe/pipe.o ./kernel/drivers/pipe/pipe.c
-build/./kernel/drivers/pit/pit.o: kernel/drivers/pit/pit.c \
- kernel/drivers/pit/pit.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pit/pit.o ./kernel/drivers/pit/pit.c
 build/./kernel/drivers/rtc/rtc.o: kernel/drivers/rtc/rtc.c \
  kernel/drivers/rtc/rtc.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/rtc/rtc.o ./kernel/drivers/rtc/rtc.c
-build/./kernel/drivers/terminal/terminal.o: \
- kernel/drivers/terminal/terminal.c kernel/drivers/terminal/terminal.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/terminal/terminal.o ./kernel/drivers/terminal/terminal.c
-build/./kernel/drivers/video/video.o: kernel/drivers/video/video.c \
- kernel/drivers/video/video.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/video/video.o ./kernel/drivers/video/video.c
+build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
+ kernel/drivers/ATA/ata.h kernel/drivers/ATA/pio.h \
+ kernel/drivers/ATA/dma.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ATA/ata.o ./kernel/drivers/ATA/ata.c
+build/./kernel/drivers/ATA/dma.o: kernel/drivers/ATA/dma.c \
+ kernel/drivers/ATA/dma.h kernel/drivers/ATA/ata.h \
+ kernel/drivers/ATA/pio.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ATA/dma.o ./kernel/drivers/ATA/dma.c
+build/./kernel/drivers/ATA/pio.o: kernel/drivers/ATA/pio.c \
+ kernel/drivers/ATA/pio.h kernel/drivers/ATA/ata.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ATA/pio.o ./kernel/drivers/ATA/pio.c
+build/./kernel/drivers/keyboard/keyboard.o: \
+ kernel/drivers/keyboard/keyboard.c kernel/drivers/keyboard/keyboard.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/keyboard/keyboard.o ./kernel/drivers/keyboard/keyboard.c
+build/./kernel/drivers/devices/zero.o: kernel/drivers/devices/zero.c \
+ kernel/drivers/devices/zero.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/devices/zero.o ./kernel/drivers/devices/zero.c
+build/./kernel/drivers/devices/devices.o: \
+ kernel/drivers/devices/devices.c kernel/drivers/devices/devices.h \
+ kernel/drivers/devices/null.h kernel/drivers/devices/zero.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/devices/devices.o ./kernel/drivers/devices/devices.c
+build/./kernel/drivers/devices/null.o: kernel/drivers/devices/null.c \
+ kernel/drivers/devices/null.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/devices/null.o ./kernel/drivers/devices/null.c
 build/./kernel/kernel.o: kernel/kernel.c
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/kernel.o ./kernel/kernel.c
-build/./kernel/memory/allocation/heap.o: kernel/memory/allocation/heap.c \
- kernel/memory/allocation/heap.h kernel/memory/allocation/buddy.h \
- kernel/memory/allocation/page_allocator.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/allocation/heap.o ./kernel/memory/allocation/heap.c
-build/./kernel/memory/allocation/page_allocator.o: \
- kernel/memory/allocation/page_allocator.c \
- kernel/memory/allocation/page_allocator.h \
- kernel/memory/allocation/buddy.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/allocation/page_allocator.o ./kernel/memory/allocation/page_allocator.c
 build/./kernel/memory/memory.o: kernel/memory/memory.c \
  kernel/memory/memory.h kernel/memory/allocation/page_allocator.h \
  kernel/memory/allocation/heap.h
@@ -130,39 +102,80 @@ build/./kernel/memory/page_list.o: kernel/memory/page_list.c \
  kernel/memory/allocation/page_allocator.h \
  kernel/memory/allocation/heap.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/page_list.o ./kernel/memory/page_list.c
+build/./kernel/memory/allocation/heap.o: kernel/memory/allocation/heap.c \
+ kernel/memory/allocation/heap.h kernel/memory/allocation/buddy.h \
+ kernel/memory/allocation/page_allocator.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/allocation/heap.o ./kernel/memory/allocation/heap.c
+build/./kernel/memory/allocation/page_allocator.o: \
+ kernel/memory/allocation/page_allocator.c \
+ kernel/memory/allocation/page_allocator.h \
+ kernel/memory/allocation/buddy.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/allocation/page_allocator.o ./kernel/memory/allocation/page_allocator.c
+build/./kernel/common/log.o: kernel/common/log.c kernel/common/log.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/log.o ./kernel/common/log.c
+build/./kernel/common/lib.o: kernel/common/lib.c kernel/common/lib.h \
+ kernel/common/types.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/lib.o ./kernel/common/lib.c
+build/./kernel/common/concurrency/spinlock.o: \
+ kernel/common/concurrency/spinlock.c \
+ kernel/common/concurrency/spinlock.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/spinlock.o ./kernel/common/concurrency/spinlock.c
+build/./kernel/common/concurrency/semaphore.o: \
+ kernel/common/concurrency/semaphore.c \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/semaphore.o ./kernel/common/concurrency/semaphore.c
+build/./kernel/common/concurrency/rwlock.o: \
+ kernel/common/concurrency/rwlock.c kernel/common/concurrency/rwlock.h \
+ kernel/common/concurrency/spinlock.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/rwlock.o ./kernel/common/concurrency/rwlock.c
+build/./kernel/common/concurrency/rwsem.o: \
+ kernel/common/concurrency/rwsem.c kernel/common/concurrency/rwsem.h \
+ kernel/common/concurrency/semaphore.h \
+ kernel/common/concurrency/spinlock.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/rwsem.o ./kernel/common/concurrency/rwsem.c
+build/./kernel/common/time.o: kernel/common/time.c kernel/common/time.h \
+ kernel/common/types.h kernel/common/lib.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/time.o ./kernel/common/time.c
+build/./kernel/common/types.o: kernel/common/types.c \
+ kernel/common/types.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/types.o ./kernel/common/types.c
 build/./kernel/program/dylib.o: kernel/program/dylib.c \
  kernel/program/dylib.h kernel/program/task.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/program/dylib.o ./kernel/program/dylib.c
+build/./kernel/program/task.o: kernel/program/task.c \
+ kernel/program/task.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/program/task.o ./kernel/program/task.c
 build/./kernel/program/loader/elf.o: kernel/program/loader/elf.c \
  kernel/program/loader/elf.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/program/loader/elf.o ./kernel/program/loader/elf.c
 build/./kernel/program/signal.o: kernel/program/signal.c \
  kernel/program/signal.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/program/signal.o ./kernel/program/signal.c
-build/./kernel/program/task.o: kernel/program/task.c \
- kernel/program/task.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/program/task.o ./kernel/program/task.c
-build/./kernel/syscalls/impl/sysfile.o: kernel/syscalls/impl/sysfile.c \
- kernel/syscalls/impl/sysfile.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysfile.o ./kernel/syscalls/impl/sysfile.c
-build/./kernel/syscalls/impl/sysfs.o: kernel/syscalls/impl/sysfs.c \
- kernel/syscalls/impl/sysfs.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysfs.o ./kernel/syscalls/impl/sysfs.c
-build/./kernel/syscalls/impl/sysmem.o: kernel/syscalls/impl/sysmem.c \
- kernel/syscalls/impl/sysmem.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysmem.o ./kernel/syscalls/impl/sysmem.c
-build/./kernel/syscalls/impl/sysmisc.o: kernel/syscalls/impl/sysmisc.c \
- kernel/syscalls/impl/sysmisc.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysmisc.o ./kernel/syscalls/impl/sysmisc.c
-build/./kernel/syscalls/impl/sysproc.o: kernel/syscalls/impl/sysproc.c \
- kernel/syscalls/impl/sysproc.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysproc.o ./kernel/syscalls/impl/sysproc.c
-build/./kernel/syscalls/impl/syssignal.o: \
- kernel/syscalls/impl/syssignal.c kernel/syscalls/impl/syssignal.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/syssignal.o ./kernel/syscalls/impl/syssignal.c
 build/./kernel/syscalls/impl/systime.o: kernel/syscalls/impl/systime.c \
  kernel/syscalls/impl/systime.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/systime.o ./kernel/syscalls/impl/systime.c
+build/./kernel/syscalls/impl/sysproc.o: kernel/syscalls/impl/sysproc.c \
+ kernel/syscalls/impl/sysproc.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysproc.o ./kernel/syscalls/impl/sysproc.c
+build/./kernel/syscalls/impl/sysfs.o: kernel/syscalls/impl/sysfs.c \
+ kernel/syscalls/impl/sysfs.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysfs.o ./kernel/syscalls/impl/sysfs.c
+build/./kernel/syscalls/impl/sysmisc.o: kernel/syscalls/impl/sysmisc.c \
+ kernel/syscalls/impl/sysmisc.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysmisc.o ./kernel/syscalls/impl/sysmisc.c
+build/./kernel/syscalls/impl/syssched.o: kernel/syscalls/impl/syssched.c \
+ kernel/syscalls/impl/syssched.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/syssched.o ./kernel/syscalls/impl/syssched.c
+build/./kernel/syscalls/impl/sysfile.o: kernel/syscalls/impl/sysfile.c \
+ kernel/syscalls/impl/sysfile.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysfile.o ./kernel/syscalls/impl/sysfile.c
+build/./kernel/syscalls/impl/sysmem.o: kernel/syscalls/impl/sysmem.c \
+ kernel/syscalls/impl/sysmem.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/sysmem.o ./kernel/syscalls/impl/sysmem.c
+build/./kernel/syscalls/impl/syssignal.o: \
+ kernel/syscalls/impl/syssignal.c kernel/syscalls/impl/syssignal.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/impl/syssignal.o ./kernel/syscalls/impl/syssignal.c
 build/./kernel/syscalls/interrupt.o: kernel/syscalls/interrupt.c \
  kernel/syscalls/interrupt.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/interrupt.o ./kernel/syscalls/interrupt.c

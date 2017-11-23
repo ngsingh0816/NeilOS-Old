@@ -32,4 +32,7 @@ uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset);
 // Suspend execution until signal
 uint32_t sigsuspend(const sigset_t* mask);
 
+// Set up alarm
+uint32_t alarm(uint32_t seconds);
+
 #endif /* SYSSIGNAL_H */

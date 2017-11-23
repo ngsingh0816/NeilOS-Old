@@ -21,6 +21,7 @@ extern unsigned int sys_siggetmask(unsigned int signum);
 extern unsigned int sys_sigprocmask(int how, const sigset_t* set, sigset_t* oldset);
 extern unsigned int sys_sigaction(int signum, const struct sigaction* act, struct sigaction* oldact);
 extern unsigned int sys_sigsuspend(const sigset_t* mask);
+extern unsigned int sys_alarm(int seconds);
 
 int kill(int pid, int sig) {
 	int ret = sys_kill(pid, sig);
@@ -78,6 +79,13 @@ int sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
 
 int sigsuspend(const sigset_t* mask) {
 	int ret = sys_sigsuspend(mask);
+	if (ret == -1)
+		errno = sys_errno();
+	return -1;
+}
+
+int alarm(unsigned int seconds) {
+	int ret = sys_alarm(seconds);
 	if (ret == -1)
 		errno = sys_errno();
 	return -1;

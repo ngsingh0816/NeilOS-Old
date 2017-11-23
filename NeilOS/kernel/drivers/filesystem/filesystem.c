@@ -6,13 +6,6 @@
 #include "ext2/ext2.h"
 #include "path.h"
 
-// Used because it saves 24 bytes
-typedef struct {
-	uint8_t filename[32];
-	uint32_t file_type;
-	uint32_t inode;
-} dentry_internal;
-
 // Internal information for a file
 typedef struct {
 	uint64_t offset;
@@ -27,10 +20,62 @@ typedef struct {
 	ext_inode_t inode;
 } directory_info_t;
 
-dentry_internal dentries[63];
-
 // Filesystem disk partition
 disk_info_t filesystem_fs;
+
+// Device files
+typedef struct device_file {
+	uint32_t inode;
+	file_descriptor_t* (*open)(const char* name, uint32_t mode);
+	struct device_file* next;
+} device_file_t;
+
+device_file_t* device_files = NULL;
+
+// Add a device file
+bool device_file_add(char* name, file_descriptor_t* (*open)(const char*, uint32_t)) {
+	// Append the name to /dev/
+	static const char* prefix = "/dev/";
+	char* path = path_append(prefix, name);
+	if (!path)
+		return false;
+	
+	// Create a file with this name
+	file_descriptor_t file;
+	if (!fopen(path, FILE_MODE_WRITE | FILE_MODE_CREATE, &file)) {
+		kfree(path);
+		return false;
+	}
+	
+	uint32_t inode = ((file_info_t*)file.info)->inode.inode;
+	fclose(&file);
+	
+	device_file_t* t = kmalloc(sizeof(device_file_t));
+	if (!t) {
+		unlink(path);
+		kfree(path);
+		return false;
+	}
+	t->inode = inode;
+	t->open = open;
+	t->next = device_files;
+	device_files = t;
+	
+	kfree(path);
+	
+	return true;
+}
+
+// Return the device file open function for the given inode (null if none exists)
+file_descriptor_t* (*device_file_get_for_inode(uint32_t inode))(const char*, uint32_t) {
+	device_file_t* t = device_files;
+	while (t) {
+		if (t->inode == inode)
+			return t->open;
+		t = t->next;
+	}
+	return NULL;
+}
 
 // Initialize the filesystem
 bool filesystem_init(char* filesystem) {
@@ -101,6 +146,18 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 			return false;
 		memcpy(desc, fifo, sizeof(file_descriptor_t));
 		kfree(fifo);
+		return true;
+	}
+	
+	// If this is a device file, use that open instead
+	file_descriptor_t* (*open)(const char* name, uint32_t mode) = device_file_get_for_inode(inode.inode);
+	if (open) {
+		file_descriptor_t* ret = open(path_last_component(filename, NULL), mode);
+		if (!ret)
+			return false;
+		
+		memcpy(desc, ret, sizeof(file_descriptor_t));
+		kfree(ret);
 		return true;
 	}
 	

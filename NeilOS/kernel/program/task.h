@@ -92,6 +92,12 @@ typedef struct pcb {
 	
 	// Dynamic objects
 	dylib_list_t* dylibs;
+	
+	// SSE / FPU instructions
+	uint8_t sse_registers_unaligned[512 + 16];
+	uint8_t* sse_registers;
+	bool sse_used;
+	bool sse_init;
 } pcb_t;
 
 // The current pcb

@@ -19,7 +19,11 @@
 		2881223E1F10949B00A4D504 /* log.c in Sources */ = {isa = PBXBuildFile; fileRef = 2881223C1F10949B00A4D504 /* log.c */; };
 		28823B7D1F16002700089F67 /* dylib.c in Sources */ = {isa = PBXBuildFile; fileRef = 28823B7B1F16002700089F67 /* dylib.c */; };
 		288B119F1DFCC0FD00473413 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 284828F11DFCC07600E4FC62 /* main.c */; };
+		28A52ECA1F58BB110087ADA9 /* syssched.c in Sources */ = {isa = PBXBuildFile; fileRef = 28A52EC81F58BB110087ADA9 /* syssched.c */; };
 		28B7B58A1F062BAA00020F32 /* sysmisc.c in Sources */ = {isa = PBXBuildFile; fileRef = 28B7B5881F062BAA00020F32 /* sysmisc.c */; };
+		28C4CD8E1F5E6BDB00512DBC /* null.c in Sources */ = {isa = PBXBuildFile; fileRef = 28C4CD8C1F5E6BDB00512DBC /* null.c */; };
+		28C4CD911F5E721C00512DBC /* devices.c in Sources */ = {isa = PBXBuildFile; fileRef = 28C4CD8F1F5E721C00512DBC /* devices.c */; };
+		28C4CD941F5E7C9D00512DBC /* zero.c in Sources */ = {isa = PBXBuildFile; fileRef = 28C4CD921F5E7C9D00512DBC /* zero.c */; };
 		28DF5AC41EF3AB890009CA98 /* boot.S in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5A6C1EF3AB880009CA98 /* boot.S */; };
 		28DF5AC51EF3AB890009CA98 /* x86_desc.S in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5A6F1EF3AB880009CA98 /* x86_desc.S */; };
 		28DF5AC61EF3AB890009CA98 /* concurrency.S in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5A721EF3AB880009CA98 /* concurrency.S */; };
@@ -95,8 +99,17 @@
 		2881223D1F10949B00A4D504 /* log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = log.h; sourceTree = "<group>"; };
 		28823B7B1F16002700089F67 /* dylib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dylib.c; sourceTree = "<group>"; };
 		28823B7C1F16002700089F67 /* dylib.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = dylib.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
+		28A52EC81F58BB110087ADA9 /* syssched.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = syssched.c; sourceTree = "<group>"; };
+		28A52EC91F58BB110087ADA9 /* syssched.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = syssched.h; sourceTree = "<group>"; };
 		28B7B5881F062BAA00020F32 /* sysmisc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysmisc.c; sourceTree = "<group>"; };
 		28B7B5891F062BAA00020F32 /* sysmisc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sysmisc.h; sourceTree = "<group>"; };
+		28C4CD8C1F5E6BDB00512DBC /* null.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = null.c; sourceTree = "<group>"; };
+		28C4CD8D1F5E6BDB00512DBC /* null.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = null.h; sourceTree = "<group>"; };
+		28C4CD8F1F5E721C00512DBC /* devices.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = devices.c; sourceTree = "<group>"; };
+		28C4CD901F5E721C00512DBC /* devices.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = devices.h; sourceTree = "<group>"; };
+		28C4CD921F5E7C9D00512DBC /* zero.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zero.c; sourceTree = "<group>"; };
+		28C4CD931F5E7C9D00512DBC /* zero.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zero.h; sourceTree = "<group>"; };
+		28D796411FC778B20086FDC9 /* fs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = fs.sh; path = NeilOS/fs.sh; sourceTree = SOURCE_ROOT; };
 		28DF5A6C1EF3AB880009CA98 /* boot.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = boot.S; sourceTree = "<group>"; };
 		28DF5A6D1EF3AB880009CA98 /* multiboot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = multiboot.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		28DF5A6E1EF3AB880009CA98 /* x86_desc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = x86_desc.h; sourceTree = "<group>"; };
@@ -164,7 +177,6 @@
 		28DF5AC01EF3AB890009CA98 /* interrupt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = interrupt.h; sourceTree = "<group>"; };
 		28DF5AC11EF3AB890009CA98 /* interrupt_asm.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.asm; path = interrupt_asm.S; sourceTree = "<group>"; };
 		28DF5AE81EF3AB970009CA98 /* build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = build.sh; path = NeilOS/build.sh; sourceTree = SOURCE_ROOT; };
-		28DF5AE91EF3AB970009CA98 /* fs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = fs.sh; path = NeilOS/fs.sh; sourceTree = SOURCE_ROOT; };
 		28DF5AEA1EF3AB970009CA98 /* vmware.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = vmware.sh; path = NeilOS/vmware.sh; sourceTree = SOURCE_ROOT; };
 		28DF5AEC1EF3ADAB0009CA98 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = NeilOS/Makefile; sourceTree = SOURCE_ROOT; };
 		28E62BBB1F17289600538741 /* page_list.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = page_list.c; sourceTree = "<group>"; };
@@ -201,6 +213,8 @@
 				280FE3251F00411700E1A724 /* syssignal.h */,
 				280FE3271F00422000E1A724 /* systime.c */,
 				280FE3281F00422000E1A724 /* systime.h */,
+				28A52EC81F58BB110087ADA9 /* syssched.c */,
+				28A52EC91F58BB110087ADA9 /* syssched.h */,
 			);
 			path = impl;
 			sourceTree = "<group>";
@@ -268,6 +282,19 @@
 			path = product;
 			sourceTree = "<group>";
 		};
+		28C4CD8B1F5E6BD100512DBC /* devices */ = {
+			isa = PBXGroup;
+			children = (
+				28C4CD8F1F5E721C00512DBC /* devices.c */,
+				28C4CD901F5E721C00512DBC /* devices.h */,
+				28C4CD8C1F5E6BDB00512DBC /* null.c */,
+				28C4CD8D1F5E6BDB00512DBC /* null.h */,
+				28C4CD921F5E7C9D00512DBC /* zero.c */,
+				28C4CD931F5E7C9D00512DBC /* zero.h */,
+			);
+			path = devices;
+			sourceTree = "<group>";
+		};
 		28DF5A6A1EF3AB880009CA98 /* kernel */ = {
 			isa = PBXGroup;
 			children = (
@@ -330,6 +357,7 @@
 			isa = PBXGroup;
 			children = (
 				28DF5A831EF3AB880009CA98 /* ATA */,
+				28C4CD8B1F5E6BD100512DBC /* devices */,
 				28DF5A8A1EF3AB880009CA98 /* filesystem */,
 				28DF5A991EF3AB880009CA98 /* keyboard */,
 				280FE3381F00487900E1A724 /* pci */,
@@ -492,9 +520,9 @@
 			children = (
 				28DF5AEC1EF3ADAB0009CA98 /* Makefile */,
 				28DF5AE81EF3AB970009CA98 /* build.sh */,
-				28DF5AE91EF3AB970009CA98 /* fs.sh */,
 				28DF5AEA1EF3AB970009CA98 /* vmware.sh */,
 				287747261F46122D00818EBE /* linker.ld */,
+				28D796411FC778B20086FDC9 /* fs.sh */,
 			);
 			name = build;
 			sourceTree = "<group>";
@@ -598,6 +626,7 @@
 				28DF5AC81EF3AB890009CA98 /* rwsem.c in Sources */,
 				28DF5AE51EF3AB890009CA98 /* interrupt.c in Sources */,
 				28DF5AD71EF3AB890009CA98 /* keyboard.c in Sources */,
+				28C4CD8E1F5E6BDB00512DBC /* null.c in Sources */,
 				28DF5AC71EF3AB890009CA98 /* rwlock.c in Sources */,
 				28DF5ACF1EF3AB890009CA98 /* dma.c in Sources */,
 				288B119F1DFCC0FD00473413 /* main.c in Sources */,
@@ -624,11 +653,14 @@
 				280FE3231F0040C800E1A724 /* sysmem.c in Sources */,
 				28DF5AD01EF3AB890009CA98 /* pio.c in Sources */,
 				280FE3201F003F4900E1A724 /* sysproc.c in Sources */,
+				28A52ECA1F58BB110087ADA9 /* syssched.c in Sources */,
 				28DF5ADF1EF3AB890009CA98 /* page_allocator.c in Sources */,
+				28C4CD941F5E7C9D00512DBC /* zero.c in Sources */,
 				28DF5ADD1EF3AB890009CA98 /* kernel.c in Sources */,
 				28DF5AE01EF3AB890009CA98 /* memory.c in Sources */,
 				28FE4A801F02020F007411F3 /* fifo.c in Sources */,
 				28DF5ADB1EF3AB890009CA98 /* terminal.c in Sources */,
+				28C4CD911F5E721C00512DBC /* devices.c in Sources */,
 				28DF5ACB1EF3AB890009CA98 /* lib.c in Sources */,
 				280FE3431F00735700E1A724 /* pipe.c in Sources */,
 				28DF5ACA1EF3AB890009CA98 /* spinlock.c in Sources */,

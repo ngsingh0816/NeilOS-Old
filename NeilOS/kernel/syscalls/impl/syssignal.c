@@ -98,3 +98,10 @@ uint32_t sigsuspend(const sigset_t* mask) {
 	// errno = EINTR
 	return -1;
 }
+
+// Set up alarm
+uint32_t alarm(uint32_t seconds) {
+	LOG_DEBUG_INFO_STR("(%d)", seconds);
+	
+	return -1;
+}

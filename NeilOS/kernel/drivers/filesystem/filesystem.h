@@ -5,6 +5,11 @@
 #include <syscalls/descriptor.h>
 #include <syscalls/impl/sysfs.h>
 
+// Add a device file
+bool device_file_add(char* name, file_descriptor_t* (*open)(const char*, uint32_t));
+// Return the device file open function for the given inode (null if none exists)
+file_descriptor_t* (*device_file_get_for_inode(uint32_t inode))(const char*, uint32_t);
+
 // Initialize the filesystem.
 bool filesystem_init(char* filesystem);
 

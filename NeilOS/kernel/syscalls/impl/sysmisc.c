@@ -185,6 +185,8 @@ uint32_t sysconf(int name) {
 		case _SC_OPEN_MAX: return NUMBER_OF_DESCRIPTORS;
 		case _SC_PAGESIZE: return FOUR_MB_SIZE;
 		case _SC_VERSION: return 200801;
+		// TODO: actually calculate this
+		case _SC_PHYS_PAGES: return (FOUR_MB_SIZE / FOUR_KB_SIZE);
 		default: {
 #if DEBUG
 			blue_screen("Unimplemented sysconf variable %d.", name);

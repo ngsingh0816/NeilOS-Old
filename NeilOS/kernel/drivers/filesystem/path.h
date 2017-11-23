@@ -23,4 +23,7 @@ const char* path_last_component(const char* path, uint32_t* length_out);
 // an indexed pointer of the input path. NULL is returned if no such component exists.
 const char* path_get_parent(const char* path, uint32_t* length_out);
 
+// Append a string to a path
+char* path_append(const char* prefix, char* str);
+
 #endif

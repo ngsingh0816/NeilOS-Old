@@ -11,16 +11,19 @@
 #include <sys/fcntl.h>
 #include <sys/errno.h>
 #include <stdlib.h>
+#include <string.h>
+
+extern char** environ;
 
 extern unsigned int sys_errno();
 
 extern unsigned int sys_fork();
 extern unsigned int sys_execve(char* filename, char** argv, char** envp);
 extern unsigned int sys_getpid();
-extern unsigned int sys_waitpid(unsigned int pid);
-extern unsigned int sys_wait();
+extern unsigned int sys_waitpid(unsigned int pid, int* status, int options);
 extern unsigned int sys_exit(int status);
 extern unsigned int sys_getwd(char* buf);
+extern unsigned int sys_chdir(const char* path);
 
 int fork() {
 	int ret = sys_fork();
@@ -36,6 +39,34 @@ int execve(char *name, char **argv, char **env) {
 	return ret;
 }
 
+int execv(char* name, char **argv) {
+	return execve(name, argv, environ);
+}
+
+int execvp(char* name, char **argv) {
+	// Hardcode bin and usr/bin in for now
+	int ret = sys_execve(name, argv, environ);
+	if (ret != -1)
+		return ret;
+	char* strs[] = { "/bin/", "/usr/bin/" };
+	uint32_t name_len = strlen(name);
+	for (int z = 0; z < sizeof(strs) / sizeof(char*); z++) {
+		uint32_t len = strlen(strs[z]);
+		char* buffer = malloc(len + name_len + 1);
+		if (!buffer)
+			return ENOMEM;
+		memcpy(buffer, strs, len);
+		memcpy(&buffer[len], name, name_len);
+		buffer[len + name_len] = 0;
+		ret = sys_execve(buffer, argv, environ);
+		free(buffer);
+		if (ret != -1)
+			return ret;
+	}
+	
+	return ENOENT;
+}
+
 int getpid() {
 	int ret = sys_getpid();
 	if (ret == -1)
@@ -43,18 +74,15 @@ int getpid() {
 	return ret;
 }
 
-int waitpid(unsigned int pid) {
-	int ret = sys_waitpid(pid);
+int waitpid(unsigned int pid, int* status, int options) {
+	int ret = sys_waitpid(pid, status, options);
 	if (ret == -1)
 		errno = sys_errno();
 	return ret;
 }
 
 int wait(int *status) {
-	int ret = sys_wait();
-	if (ret == -1)
-		errno = sys_errno();
-	return ret;
+	return waitpid(-1, status, 0);
 }
 
 extern void (*__fini_array_start []) (void) __attribute__((weak));
@@ -62,7 +90,7 @@ extern void (*__fini_array_end []) (void) __attribute__((weak));
 extern void _fini();
 extern void __cxa_finalize(void* d);
 
-void _exit() {
+void _exit(int status) {
 	// Perform deconstructors
 	__cxa_finalize(NULL);
 	unsigned int count = __fini_array_end - __fini_array_start;
@@ -70,7 +98,7 @@ void _exit() {
 		__fini_array_start[z]();
 	_fini();
 	
-	sys_exit(0);
+	sys_exit(status);
 }
 
 char* getwd(char* buf) {
@@ -97,5 +125,12 @@ char* getwd(char* buf) {
 	}
 	return buf;
 }*/
+
+int chdir(const char* path) {
+	int ret = sys_chdir(path);
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
+}
 
 

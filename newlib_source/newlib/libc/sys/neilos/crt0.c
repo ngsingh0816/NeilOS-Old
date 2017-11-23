@@ -9,7 +9,8 @@
 extern void main();
 extern void _init();
 
-extern char** environ;
+static char* initial_environ[] = { (char*)0 };
+char** environ = &initial_environ[0];
 
 extern void (*__preinit_array_start []) (void) __attribute__((weak));
 extern void (*__preinit_array_end []) (void) __attribute__((weak));

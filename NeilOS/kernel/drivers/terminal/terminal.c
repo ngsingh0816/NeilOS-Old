@@ -5,6 +5,7 @@
 #include <drivers/filesystem/filesystem.h>
 #include <program/task.h>
 #include <memory/memory.h>
+#include <common/log.h>
 
 #define SCREEN_WIDTH				80
 #define SCREEN_HEIGHT				25
@@ -289,9 +290,8 @@ uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes) {
 	int i;
 	
 	// Loop over and print all the characters
-	for(i = 0; i < nbytes; i++) {
-		printf("%c", ((uint8_t*)buf)[i]);
-	}
+	for(i = 0; i < nbytes; i++)
+		printf("%c", ((uint8_t*)buf)[i]);	
 	
 	// Return the number of bytes written
 	return nbytes;

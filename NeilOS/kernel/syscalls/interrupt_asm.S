@@ -3,7 +3,7 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			36
+#define NUM_SYSCALLS			38
 
 #include <boot/x86_desc.h>
 
@@ -28,6 +28,9 @@
 .globl sigreturn_impl
 .globl sigjmp
 
+.globl enable_sse
+.globl disable_sse
+
 .globl syscalls
 
 #ifdef __APPLE__
@@ -42,6 +45,8 @@
 .globl _get_context
 .globl _return_to_user
 .globl _fork_return
+.globl _enable_sse
+.globl _disable_sse
 
 sigreturn:
 _sigreturn:
@@ -63,6 +68,10 @@ return_to_user:
 _return_to_user:
 fork_return:
 _fork_return:
+enable_sse:
+_enable_sse:
+disable_sse:
+_disable_sse:
 
 #else
 
@@ -384,6 +393,27 @@ done_interrupt:
 
 	ret
 
+// Enable / Disable SSE
+enable_sse:
+	mov %cr0, %eax
+	and $0xFFFFFFFB, %eax	// clear coprocessor emulation CR0.EM
+	or $0x2, %eax			// set coprocessor monitoring  CR0.MP
+	mov %eax, %cr0
+	mov %cr4, %eax
+	or $(3 << 9), %eax		// set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	mov %eax, %cr4
+	ret
+
+disable_sse:
+	mov %cr0, %eax
+	or $0x4, %eax		    // set coprocessor emulation CR0.EM
+	and  $0xFFFFFFFD, %eax	// clear coprocessor monitoring  CR0.MP
+	mov %eax, %cr0
+	mov %cr4, %eax
+	and $(~(3 << 9)), %eax	// clear CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	mov %eax, %cr4
+	ret
+
 // Interrupt handlers (call through to a common function)
 int0:
 	pushl %edx
@@ -429,10 +459,20 @@ int6:
 	popl %eax
 	iret
 int7:
+	pushl %ebx
+	pushl %edx
+
+	// Get eip
+	movl 8(%esp), %edx
+	// Get code
+	movl $0, %ebx
+
 	pushl %eax
 	movl $7, %eax
 	call interrupt
 	popl %eax
+	popl %edx
+	popl %ebx
 	iret
 int8:
 	// Double fault pushes a 0 onto the stack

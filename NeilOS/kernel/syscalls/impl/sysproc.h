@@ -29,7 +29,7 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]);
 uint32_t getpid();
 
 // Wait for a child to change state (returns the status that the child returned with)
-uint32_t waitpid(uint32_t pid);
+uint32_t waitpid(uint32_t pid, int* status, int options);
 
 // Wait for any child to finish
 uint32_t wait(uint32_t pid);
@@ -39,5 +39,8 @@ uint32_t exit(int status);
 
 // Get the current working directory
 uint32_t getwd(char* buf);
+
+// Change the current working directory
+uint32_t chdir(const char* path);
 
 #endif /* SYSPROC_H */

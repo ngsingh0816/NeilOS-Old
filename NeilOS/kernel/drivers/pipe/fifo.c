@@ -206,22 +206,27 @@ uint32_t fifo_stat(int32_t fd, sys_stat_type* data) {
 uint32_t fifo_close(file_descriptor_t* fd) {
 	down(&open_fifos_lock);
 	fifo_list_t* list = (fifo_list_t*)fd->info;
-	if (fd->mode & FILE_MODE_READ)
-		list->num_readers--;
-	if (fd->mode & FILE_MODE_WRITE)
-		list->num_writers--;
-	if (list->num_readers == 0 && list->num_writers == 0) {
-		if (list->prev)
-			list->prev->next = list->next;
-		else
-			open_fifos = list->next;
-		kfree(list->buffer);
-		kfree(list->filename);
-		kfree(list);
+	if (list) {
+		if (fd->mode & FILE_MODE_READ)
+			list->num_readers--;
+		if (fd->mode & FILE_MODE_WRITE)
+			list->num_writers--;
+		if (list->num_readers == 0 && list->num_writers == 0) {
+			if (list->prev)
+				list->prev->next = list->next;
+			else
+				open_fifos = list->next;
+			if (list->buffer)
+				kfree(list->buffer);
+			if (list->filename)
+				kfree(list->filename);
+			kfree(list);
+		}
 	}
 	up(&open_fifos_lock);
 	
-	kfree(fd->filename);
+	if (fd->filename)
+		kfree(fd->filename);
 	
 	return 0;
 }

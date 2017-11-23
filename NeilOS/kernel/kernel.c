@@ -17,6 +17,7 @@
 #include <drivers/terminal/terminal.h>
 #include <drivers/pit/pit.h>
 #include <program/task.h>
+#include <drivers/devices/devices.h>
 
 /* Features:
  * Memory Allocator
@@ -38,10 +39,10 @@
  * Copy on Write
  * Grub2
  * Higher Half Kernel
+ * Ported GCC
  */
 
 /* TODO (could be improved):
- * Rework syscall open - need to dynamically parse devices
  * Scheduler (round robin probably not the best) - could do something basic
 	where you measure the time from one context switch to another (because processes
 	that aren't CPU intensive will call schedule() and sleep so they will not use up
@@ -182,6 +183,8 @@ entry (unsigned long magic, unsigned long addr)
 	// Initialize the scheduler
 	pit_init();
 	pit_register_handler(schedule);
+	
+	devices_init();
 	
 	clear();
 	

@@ -148,27 +148,37 @@ bool load_argv_and_envp(pcb_t* pcb, const char** argv, const char** envp, uint32
 	// Copy over the environment
 	uint32_t envc = 0;
 	const char** envp_ptr = envp;
+	bool has_path = false;
 	if (envp) {
 		while (*envp_ptr) {
+			if (strncmp(*envp_ptr, "PATH=", sizeof("PATH=") - 1) == 0)
+				has_path = true;
 			envc++;
 			envp_ptr++;
 		}
 		envp_ptr = envp;
 	}
+	if (!has_path)
+		envc++;
 	pcb->envp = (char**)total_ptr;
 	memset(pcb->envp, 0, sizeof(char*) * (envc + 1));
 	
 	total_ptr += sizeof(char*) * (envc + 1);
 	
 	for (z = 0; z < envc; z++) {
-		uint32_t len = strlen(envp[z]);
+		const char* str = "";
+		if (!has_path && z == envc - 1)
+			str = "PATH=/bin:/usr/bin";
+		else
+			str = envp[z];
+		uint32_t len = strlen(str);
 		pcb->envp[z] = (char*)total_ptr;
 		total_ptr += len + 1;
 		if (!pcb->envp[z]) {
 			set_multitasking_enabled(flags);
 			return false;
 		}
-		memcpy(pcb->envp[z], envp[z], len + 1);
+		memcpy(pcb->envp[z], str, len + 1);
 	}
 	
 	if (pcb->parent)
@@ -268,6 +278,11 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 				return false;
 		}
 	}
+	
+	// Update sse registers pointer to be aligned to new registers
+	out->sse_registers = (uint8_t*)((uint32_t)out->sse_registers_unaligned + 16 -
+									((uint32_t)out->sse_registers_unaligned % 16));
+	memcpy(out->sse_registers, in->sse_registers, 512);
 		
 	return true;
 }
@@ -384,6 +399,8 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	pcb->state = UNLOADED;
 	pcb->task = task;
 	pcb->parent = parent;
+	pcb->sse_registers = (uint8_t*)((uint32_t)pcb->sse_registers_unaligned + 16 -
+									((uint32_t)pcb->sse_registers_unaligned % 16));
 	
 	if (parent) {
 		if (!add_child_task(parent, task->pid, pcb)) {
@@ -727,6 +744,8 @@ void set_current_task(pcb_t* pcb) {
 	set_multitasking_enabled(flags);
 }
 
+extern void disable_sse();
+
 // Switch from one task to another (automatically enables interrupts)
 void context_switch(pcb_t* from, pcb_t* to) {
 	// Don't bother switching if they are the same
@@ -736,6 +755,13 @@ void context_switch(pcb_t* from, pcb_t* to) {
 	}
 	
 	cli();
+	
+	// Save SSE registers if needed
+	if (from && from->sse_used) {
+		asm volatile(" fxsave (%0); "::"r"(from->sse_registers));
+		disable_sse();
+		from->sse_used = false;
+	}
 	
 	// Map the "to" task back into memory and set its parameters
 	set_current_task(to);
