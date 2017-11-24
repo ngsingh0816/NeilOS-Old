@@ -103,5 +103,13 @@ uint32_t sigsuspend(const sigset_t* mask) {
 uint32_t alarm(uint32_t seconds) {
 	LOG_DEBUG_INFO_STR("(%d)", seconds);
 	
-	return -1;
+	uint32_t prev = current_pcb->alarm.val;
+	uint32_t time = get_current_time().val;
+	
+	if (seconds == 0)
+		current_pcb->alarm.val = 0;
+	else
+		current_pcb->alarm.val = time + seconds;
+	
+	return (prev == 0 ? 0 : (prev - time));
 }

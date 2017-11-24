@@ -1,5 +1,5 @@
 make distclean
-../configure --prefix=/usr --target=i386-neilos CFLAGS_FOR_TARGET="-fpic"
+../configure --prefix=/usr --target=i686-neilos CFLAGS_FOR_TARGET="-fpic"
 make all
 make DESTDIR=$SYSROOT install
 mv i386-neilos/* ./

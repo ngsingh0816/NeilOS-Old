@@ -137,6 +137,12 @@ void signal_send(pcb_t* pcb, uint32_t signum) {
 
 // Handle signals (returns true if signal is used)
 void signal_handle(pcb_t* pcb) {
+	// Check for alarms
+	if (pcb->alarm.val != 0 && pcb->alarm.val >= get_current_time().val) {
+		pcb->alarm.val = 0;
+		signal_send(pcb, SIGALARM);
+	}
+	
 	if (!signal_pending(pcb))
 		return;
 	

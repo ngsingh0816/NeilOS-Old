@@ -89,6 +89,7 @@ typedef struct pcb {
 	sigset_t signal_save_mask[NUMBER_OF_SIGNALS];
 	sigaction_t signal_handlers[NUMBER_OF_SIGNALS];
 	volatile bool signal_waiting;
+	time_t alarm;
 	
 	// Dynamic objects
 	dylib_list_t* dylibs;

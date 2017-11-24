@@ -28,6 +28,9 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]);
 // Get the pid of the current process
 uint32_t getpid();
 
+// Get the pid of the parent process
+uint32_t getppid();
+
 // Wait for a child to change state (returns the status that the child returned with)
 uint32_t waitpid(uint32_t pid, int* status, int options);
 

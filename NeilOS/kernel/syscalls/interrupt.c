@@ -19,78 +19,23 @@ unsigned int errno = 0;
 
 /* More system Calls
  * Needed for Dash:
-	_execve - done
-	_exit - done
-	abort
-	chdir
-	close - done
-	creat
-	dup - done
-	dup2 - done
-	fcntl - done
-	fork - done
-	fstat - done
-	getcwd - done?
-	getdents
-	getegid
-	geteuid
-	getgid
-	getgroups
-	getpgrp
-	getpid - done
-	getppid
-	getuid
-	lseek - done
-	lstat - done
-	mmap
-	munmap
-	open - done
-	pipe - done
-	pread
-	pwrite
-	read - done
-	setegid
-	seteuid
-	setgid
-	setpgid
-	setuid
-	stat - done
-	tcgetpgrp
-	tcsetpgrp
-	umask - done
-	wait - done?
-	wait3
-	wait4
-	waitpid - done
-	write - done
-	kill - done
-	killpg - done
-	sigaction - done
-	sigaddset - done
-	sigdelset - done
-	sigemptyset - done
-	sigfillset - done
-	sigismember - done
-	signal - done
-	sigprocmask - done
-	sigsuspend - done
-	brk - done
-	sbrk - done
-	syslog
-	clock_gettime
-	clock_nanosleep
-	clock_settime
-	gettimeofday - done
-	nanosleep
-	timer_create
-	timer_delete
-	timer_settime
+	wait3 - done
+ 	tcsetpgrp - done
+ 	getpgrp - done
+ 	setpgid - done
+ 	geteuid - done
+ 	getgid - done
+ 	getegid - done
+ 	getgroups - done
+ 	getuid - done
+ 	getcwd
+ 	getppid - done
  * For GCC (need binutils ones as well):
 	mkdir - done
 	pipe - done
 	dup2 - done
     sleep - done
-	alarm
+	alarm - done
 	execvp - done
 	closedir - done
 	opendir - done
@@ -98,15 +43,23 @@ unsigned int errno = 0;
 	chdir
 	execv - done
  * For vi:
-	need terimos.h
+	need terimos.h - (stubbed)
  * For coreutils:
 	need mount stuff (mntent.h which provides _PATH_MNTTAB and _PATH_MOUNTED, as well as getmntent(FILE *fp))
 	sockets
  * More
 	sched_yield
+ 	mmap, munmap
+	abort
+	pread, pwrite
+	syslog
+	clock_gettime, clock_nanosleep, clock_settime
+	nanosleep
+	timer_create, timer_delete, timer_settime
+ 	ioctl
  */
 
-void* syscalls[] = { fork, execve, getpid, waitpid, exit,
+void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl,
 	mkdir, link, unlink, readdir, utime,
 	brk, sbrk,
@@ -116,7 +69,7 @@ void* syscalls[] = { fork, execve, getpid, waitpid, exit,
 	sleep,
 	sysconf,
 	getwd, chdir,
-	sys_errno,
+	sys_errno, ioctl,
 };
 
 
@@ -254,8 +207,10 @@ void general_protection(uint32_t code, uint32_t eip) {
 void page_fault(uint32_t code, uint32_t eip) {
 	// Get the address it happened at
 	uint32_t address = 0;
+#ifndef __APPLE__
 	asm volatile ("movl %%cr2, %0"
 				  : "=a"(address));
+#endif
 	
 	// Check if we were copying on write
 	if ((code & PAGE_PRESENT) && (code & WRITE_VIOLATON)) {

@@ -17,4 +17,7 @@ uint32_t sysconf(int name);
 // Get most recent error number
 uint32_t sys_errno();
 
+// Perform I/O Control
+int ioctl(int fd, int request, ...);
+
 #endif /* SYSMISC_H */

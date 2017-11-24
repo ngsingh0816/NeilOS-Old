@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/errno.h>
+#include <sys/resource.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,6 +21,7 @@ extern unsigned int sys_errno();
 extern unsigned int sys_fork();
 extern unsigned int sys_execve(char* filename, char** argv, char** envp);
 extern unsigned int sys_getpid();
+extern unsigned int sys_getppid();
 extern unsigned int sys_waitpid(unsigned int pid, int* status, int options);
 extern unsigned int sys_exit(int status);
 extern unsigned int sys_getwd(char* buf);
@@ -74,6 +76,13 @@ int getpid() {
 	return ret;
 }
 
+int getppid() {
+	int ret = sys_getppid();
+	if (ret == -1)
+		errno = sys_errno();
+	return ret;
+}
+
 int waitpid(unsigned int pid, int* status, int options) {
 	int ret = sys_waitpid(pid, status, options);
 	if (ret == -1)
@@ -81,8 +90,18 @@ int waitpid(unsigned int pid, int* status, int options) {
 	return ret;
 }
 
-int wait(int *status) {
+int wait(int* status) {
 	return waitpid(-1, status, 0);
+}
+
+pid_t wait3(int* status, int options, struct rusage* rusage) {
+	// TODO: implement the rusage part (most likely for "time command")
+	return waitpid(-1, status, options);
+}
+
+pid_t wait4(pid_t pid, int* status, int options, struct rusage* rusage) {
+	// TODO: implement the rusage part (most likely for "time command")
+	return waitpid(pid, status, options);
 }
 
 extern void (*__fini_array_start []) (void) __attribute__((weak));
@@ -112,7 +131,7 @@ char* getwd(char* buf) {
 	return buf;
 }
 
-/*char* getcwd(char* buf, size_t size) {
+char* getcwd(char* buf, size_t size) {
 	if (!buf || size == 0) {
 		buf = malloc(4096);	// PATH_MAX on linux
 		if (!buf)
@@ -124,7 +143,7 @@ char* getwd(char* buf) {
 		return NULL;
 	}
 	return buf;
-}*/
+}
 
 int chdir(const char* path) {
 	int ret = sys_chdir(path);

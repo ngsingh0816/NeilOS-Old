@@ -13,7 +13,7 @@
 
 // UNIX time struct
 typedef struct {
-	int32_t val;
+	uint32_t val;
 } time_t;
 
 // Date

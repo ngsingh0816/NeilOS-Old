@@ -147,6 +147,15 @@ uint32_t getpid() {
 	return current_pcb->task->pid;
 }
 
+// Get the pid of the parent process
+uint32_t getppid() {
+	LOG_DEBUG_INFO();
+	
+	if (!current_pcb->parent)
+		return current_pcb->task->pid;
+	return current_pcb->parent->task->pid;
+}
+
 // Options for waitpid
 #define WNOHANG					1
 #define WUNTRACED				2
@@ -240,5 +249,7 @@ uint32_t getwd(char* buf) {
 uint32_t chdir(const char* path) {
 	LOG_DEBUG_INFO_STR("(%s)", path);
 
+	// TOOD: implement
+	
 	return 0;
 }

@@ -200,3 +200,12 @@ uint32_t sysconf(int name) {
 uint32_t sys_errno() {
 	return errno;
 }
+
+// Perform I/O Control
+int ioctl(int fd, int request, ...) {
+	LOG_DEBUG_INFO_STR("(%d, %d)", fd, request);
+
+	// TODO: implement
+	
+	return -1;
+}
