@@ -323,6 +323,7 @@ pcb_t* duplicate_current_task() {
 	pcb->parent = current;
 	pcb->children = NULL;
 	pcb->state = SUSPENDED;
+	pcb->alarm.val = 0;
 	// Clear the current pending signals
 	pcb->signal_pending = 0;
 	pcb->in_syscall = false;
