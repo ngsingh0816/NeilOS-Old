@@ -105,3 +105,36 @@ char* path_append(const char* prefix, char* str) {
 	path[prefix_len + len] = 0;
 	return path;
 }
+
+// Get absolute path
+char* path_absolute(const char* path, const char* wd) {
+	if (path[0] == '/') {
+		uint32_t len = strlen(path);
+		char* ret = kmalloc(len + 1);
+		if (!ret)
+			return NULL;
+		memcpy(ret, path, len + 1);
+		return ret;
+	}
+	
+	const uint32_t prefix_len = strlen(wd);
+	uint32_t len = strlen(path);
+	char* ret = kmalloc(prefix_len + len + 2);
+	if (!ret)
+		return NULL;
+	memcpy(ret, wd, prefix_len);
+	ret[prefix_len] = '/';
+	memcpy(&ret[prefix_len + 1], path, len);
+	ret[prefix_len + len + 1] = 0;
+	return ret;
+}
+
+// Copy a path
+char* path_copy(const char* path) {
+	uint32_t len = strlen(path);
+	char* ret = kmalloc(len + 1);
+	if (!ret)
+		return NULL;
+	memcpy(ret, path, len + 1);
+	return ret;
+}

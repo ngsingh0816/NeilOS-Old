@@ -16,6 +16,7 @@ typedef struct {
 	uint8_t* buffer;
 	uint32_t pos;
 	file_descriptor_t* reader;
+	file_descriptor_t* writer;
 	semaphore_t lock;
 } pipe_info_t;
 
@@ -36,7 +37,7 @@ file_descriptor_t* pipe_open(const char* filename, uint32_t mode) {
 			return NULL;
 		}
 		
-		// The writer is the owner of the buffer
+		// The writer is the original owner of the buffer
 		info->buffer = (uint8_t*)kmalloc(PIPE_MAX_BUFFER_SIZE);
 		if (!info->buffer) {
 			kfree(info);
@@ -45,6 +46,7 @@ file_descriptor_t* pipe_open(const char* filename, uint32_t mode) {
 		}
 		info->pos = 0;
 		info->reader = NULL;
+		info->writer = f;
 		info->lock = MUTEX_UNLOCKED;
 		f->info = info;
 	}
@@ -134,7 +136,7 @@ uint32_t pipe_stat(int32_t fd, sys_stat_type* data) {
 	data->block_size = PIPE_MAX_BUFFER_SIZE;
 	if (info) {
 		data->size = info->pos;
-		data->num_links = info->reader ? 2 : 1;
+		data->num_links = (info->reader != NULL) + (info->writer != NULL);
 	}
 	data->num_512_blocks = data->size / 512;
 	data->mode = descriptors[fd]->mode;
@@ -149,14 +151,15 @@ uint32_t pipe_close(file_descriptor_t* fd) {
 		if (!info)
 			return 0;
 		
-		if (fd->mode & FILE_MODE_WRITE) {
-			if (info->reader)
-				info->reader->info = NULL;
+		if (fd->mode & FILE_MODE_WRITE)
+			info->writer = NULL;
+		else
+			info->reader = NULL;
+		
+		if (!info->reader && !info->writer) {
 			if (info->buffer)
 				kfree(info->buffer);
 			kfree(info);
-		} else {
-			info->reader = NULL;
 		}
 	}
 	

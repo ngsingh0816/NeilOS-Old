@@ -26,4 +26,11 @@ const char* path_get_parent(const char* path, uint32_t* length_out);
 // Append a string to a path
 char* path_append(const char* prefix, char* str);
 
+// Get absolute path
+char* path_absolute(const char* path, const char* wd);
+
+// TODO: replace generic instances with this
+// Copy a path
+char* path_copy(const char* path);
+
 #endif

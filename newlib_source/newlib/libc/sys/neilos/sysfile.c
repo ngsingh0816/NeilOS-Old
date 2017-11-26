@@ -182,7 +182,9 @@ int mkfifo(const char* filename, unsigned int mode) {
 }
 
 int fcntl(int fd, int cmd, ...) {
-	int ret = sys_fcntl(fd, cmd);
-	errno = sys_errno();
+	uint32_t* esp = ((uint32_t*)&cmd) + 1;
+	int ret = sys_fcntl(fd, cmd, *esp, *(esp + 1));
+	if (ret != 0)
+		errno = sys_errno();
 	return ret;
 }

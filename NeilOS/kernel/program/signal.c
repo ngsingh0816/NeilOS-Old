@@ -43,20 +43,26 @@ void (*signal_defaults[NUMBER_OF_SIGNALS])(pcb_t*) = {
 	signal_terminate, // SIGILL (implemented)
 	signal_terminate, // SIGTRAP (implemented)
 	signal_terminate, // SIGIOT (implemented)
-	signal_terminate, // SIGBUS
+	signal_terminate, // SIGEMT
 	signal_terminate, // SIGFPE (implemented)
 	signal_terminate, // SIGKILL (implemented)
-	signal_terminate, // SIGUSR1 (implemented)
+	signal_terminate, // SIGBUS (implemented)
 	signal_terminate, // SIGSEGV (implemented)
-	signal_terminate, // SIGUSR2 (implemented)
+	signal_terminate, // SIGSYS
 	signal_terminate, // SIGPIPE
 	signal_terminate, // SIGALARM
 	signal_terminate, // SIGTERM
-	signal_terminate, // SIGSTKFLT (implemented)
-	signal_ignore,	  // SIGCHILD (implemented - TODO: only signals on termination for right now)
-	signal_continue,  // SIGCONT
+	signal_terminate, // SIGURG
 	signal_suspend,   // SIGSTOP
 	signal_suspend,   // SIGTSTP
+	signal_continue,  // SIGCONT
+	signal_ignore,	  // SIGCHILD (implemented - TODO: only signals on termination for right now)
+	signal_terminate, // SIGTTIN
+	signal_terminate, // SIGTTOU
+	signal_terminate, // SIGIO
+	signal_terminate, // SIGWINCH
+	signal_terminate, // SIGUSR1
+	signal_terminate, // SIGUSR2
 };
 
 // Pending signals
@@ -140,7 +146,7 @@ void signal_handle(pcb_t* pcb) {
 	// Check for alarms
 	if (pcb->alarm.val != 0 && pcb->alarm.val >= get_current_time().val) {
 		pcb->alarm.val = 0;
-		signal_send(pcb, SIGALARM);
+		signal_send(pcb, SIGALRM);
 	}
 	
 	if (!signal_pending(pcb))

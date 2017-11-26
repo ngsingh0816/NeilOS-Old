@@ -97,6 +97,7 @@ date_t get_current_date() {
 		// Needed special case to preserve format
 		ret[0].hour = bcd_to_binary(ret[0].hour & 0x7F) | (ret[0].hour & 0x80);
 		ret[0].day = bcd_to_binary(ret[0].day);
+		ret[0].month = bcd_to_binary(ret[0].month);
 		ret[0].year = bcd_to_binary(ret[0].year);
 		century[0] = bcd_to_binary(century[0]);
 	}

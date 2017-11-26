@@ -16,7 +16,7 @@
 uint32_t kill(uint32_t pid, uint32_t signum) {
 	LOG_DEBUG_INFO_STR("(%d, %d)", pid, signum);
 
-	if (signum > NUMBER_OF_SIGNALS || signum == 0)
+	if (signum >= NUMBER_OF_SIGNALS || signum == 0)
 		return -1;
 	
 	pcb_t* pcb = pcb_from_pid(pid);
@@ -31,7 +31,7 @@ uint32_t kill(uint32_t pid, uint32_t signum) {
 uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
 	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", signum, act, oldact);
 
-	if (signum > NUMBER_OF_SIGNALS || signum == 0)
+	if (signum >= NUMBER_OF_SIGNALS || signum == 0)
 		return -1;
 	
 	if (oldact)

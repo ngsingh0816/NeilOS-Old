@@ -8,6 +8,7 @@
 #include <drivers/pic/i8259.h>
 #include <program/loader/elf.h>
 #include <syscalls/impl/sysproc.h>
+#include <drivers/filesystem/path.h>
 
 #define PIT_IRQ						0
 
@@ -252,6 +253,10 @@ bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename) {
 bool copy_pcb(pcb_t* in, pcb_t* out) {
 	memcpy(out, in, USER_KERNEL_STACK_SIZE);
 	
+	out->working_dir = path_copy(in->working_dir);
+	if (!out->working_dir)
+		return false;
+	
 	// Copy over descriptors
 	uint32_t z;
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
@@ -274,8 +279,11 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 			}
 			// Otherwise, duplicate it
 			out->descriptors[z] = (file_descriptor_t*)in->descriptors[z]->duplicate((void*)in->descriptors[z]);
-			if (!out->descriptors[z])
+			if (!out->descriptors[z]) {
+				kfree(out->working_dir);
+				out->working_dir = NULL;
 				return false;
+			}
 		}
 	}
 	
@@ -289,6 +297,9 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 
 // Helper for error function
 void pcb_error(pcb_t* pcb, task_list_t* task) {
+	if (pcb->working_dir)
+		kfree(pcb->working_dir);
+	
 	// Memory map
 	page_list_dealloc(pcb->page_list);
 	
@@ -402,6 +413,22 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	pcb->parent = parent;
 	pcb->sse_registers = (uint8_t*)((uint32_t)pcb->sse_registers_unaligned + 16 -
 									((uint32_t)pcb->sse_registers_unaligned % 16));
+	
+	// Get parent path but ensure we have a leading "/"
+	uint32_t wd_len = 0;
+	const char* path = path_get_parent(filename, &wd_len);
+	int start_path = 0;
+	if (path[0] != '/')
+		start_path = 1;
+	pcb->working_dir = kmalloc(wd_len + 1 + start_path);
+	if (!pcb->working_dir) {
+		pcb_error(pcb, task);
+		return NULL;
+	}
+	memcpy(&pcb->working_dir[start_path], path, wd_len);
+	pcb->working_dir[start_path + wd_len] = 0;
+	if (start_path != 0)
+		pcb->working_dir[0] = '/';
 	
 	if (parent) {
 		if (!add_child_task(parent, task->pid, pcb)) {
@@ -547,6 +574,10 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	pcb.page_list = NULL;
 	pcb.dylibs = NULL;
 	pcb.stack_address = 0;
+	pcb.signal_pending = 0;
+	pcb.signal_mask = 0;
+	pcb.signal_waiting = false;
+	memset(pcb.signal_handlers, 0, sizeof(sigaction_t) * NUMBER_OF_SIGNALS);
 	
 	if (!load_task_into_memory(&pcb, current, kfile)) {
 		set_multitasking_enabled(flags);
@@ -638,8 +669,8 @@ void terminate_task(uint32_t ret) {
 		}
 		
 		// Send the child finish signal
-		if (!(parent->signal_handlers[SIGCHILD].flags & SA_NOCLDSTOP))
-			signal_send(parent, SIGCHILD);
+		if (!(parent->signal_handlers[SIGCHLD].flags & SA_NOCLDSTOP))
+			signal_send(parent, SIGCHLD);
 	}
 	
 	// Delete the children
@@ -653,6 +684,9 @@ void terminate_task(uint32_t ret) {
 		
 		kfree(prev);
 	}
+	
+	if (current->working_dir)
+		kfree(current->working_dir);
 	
 	// Free the task memory and dylibsallocated by the deleted task
 	page_list_t* page_list = current->page_list;

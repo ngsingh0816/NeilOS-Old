@@ -40,6 +40,7 @@
  * Grub2
  * Higher Half Kernel
  * Ported GCC
+ * Ported Dash
  */
 
 /* TODO (could be improved):
@@ -50,9 +51,11 @@
 	give them more time next quantum (to a limit), otherwise give them less.
  * Signals - make the signal execute in user space, not kernel space (same with dylib init's)
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
+ * Disk Scheduling / Improvements
  */
 
-/* TODO (bugs)
+/* TODO (bugs) 
+ * make all fd's uint32_t instead of int32_t
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
  * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
@@ -447,7 +450,7 @@ entry (unsigned long magic, unsigned long addr)
 			if (res == 0) {
 				p->parent = tasks->pcb;
 				run(p);
-				signal_set_pending(tasks->pcb, SIGCHILD, false);
+				signal_set_pending(tasks->pcb, SIGCHLD, false);
 			}
 			else
 				printf("Command not found.\n");

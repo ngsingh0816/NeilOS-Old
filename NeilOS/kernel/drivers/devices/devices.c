@@ -39,7 +39,12 @@ bool devices_init() {
 			fclose(&file);
 			return false;
 		}
-		unlink(path);
+		file_descriptor_t f;
+		if (!fopen(path, FILE_MODE_READ | FILE_MODE_DELETE_ON_CLOSE, &f)) {
+			kfree(path);
+			return false;
+		}
+		fclose(&f);
 		kfree(path);
 		num = fseek(&file, uint64_make(0, 2), SEEK_SET).low;
 	}
@@ -52,6 +57,8 @@ bool devices_init() {
 	if (!device_file_add("stdout", terminal_open))
 		return false;
 	if (!device_file_add("stderr", terminal_open))
+		return false;
+	if (!device_file_add("tty", terminal_open))
 		return false;
 	if (!device_file_add("rtc", rtc_open))
 		return false;

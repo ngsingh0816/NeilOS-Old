@@ -166,87 +166,46 @@ void terminal_init() {
 //inputs: the filename
 //outputs: -1 if failed or stdout if success
 file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
-	// Check which one we are opening
-	if (strncmp(filename, "stdin", strlen(filename)) == 0) {
-		// Don't allow this to be opened more than once
-		if (descriptors && descriptors[STDIN]) {
-			descriptors[STDIN]->ref_count++;
-			return descriptors[STDIN];
-		}
-		
-		// Reset some variables
-		pos = 0;
-		
-		file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
-		if (!d)
-			return NULL;
-		memset(d, 0, sizeof(file_descriptor_t));
-		// Mark in use
-		d->type = STANDARD_INOUT_TYPE;
-		d->mode = FILE_MODE_READ | FILE_TYPE_CHARACTER;
-		d->filename = "stdin";
-		
-		// Assign the functions
-		d->read = terminal_read;
-		d->write = terminal_write;
-		d->stat = terminal_stat;
-		d->duplicate = terminal_duplicate;
-		d->close = terminal_close;
-		
-		return d;
-	}
-	else if (strncmp(filename, "stdout", strlen(filename)) == 0) {
-		// Don't allow this to be opened more than once
-		if (descriptors && descriptors[STDOUT]) {
-			descriptors[STDOUT]->ref_count++;
-			return descriptors[STDOUT];
-		}
-		
-		file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
-		if (!d)
-			return NULL;
-		memset(d, 0, sizeof(file_descriptor_t));
-		// Mark in use
-		d->type = STANDARD_INOUT_TYPE;
-		d->mode = FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
-		d->filename = "stdout";
-		
-		// Assign the functions
-		d->read = terminal_read;
-		d->write = terminal_write;
-		d->stat = terminal_stat;
-		d->duplicate = terminal_duplicate;
-		d->close = terminal_close;
-		
-		return d;
-	} else if (strncmp(filename, "stderr", strlen(filename)) == 0) {
-		// Don't allow this to be opened more than once
-		if (descriptors && descriptors[STDERR]) {
-			descriptors[STDERR]->ref_count++;
-			return descriptors[STDERR];
-		}
-		
-		file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
-		if (!d)
-			return NULL;
-		memset(d, 0, sizeof(file_descriptor_t));
-		// Mark in use
-		d->type = STANDARD_INOUT_TYPE;
-		d->mode = FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
-		d->filename = "stderr";
-		
-		// Assign the functions
-		d->read = terminal_read;
-		d->write = terminal_write;
-		d->stat = terminal_stat;
-		d->duplicate = terminal_duplicate;
-		d->close = terminal_close;
-		
-		return d;
+	int type = 0;
+	if (strncmp(filename, "stdin", strlen(filename)) == 0)
+		type = STDIN;
+	else if (strncmp(filename, "stdout", strlen(filename)) == 0)
+		type = STDOUT;
+	else if (strncmp(filename, "stderr", strlen(filename)) == 0)
+		type = STDERR;
+	// Don't allow this to be opened more than once
+	if (type != 0 && descriptors && descriptors[type]) {
+		descriptors[type]->ref_count++;
+		return descriptors[type];
 	}
 	
-	// Otherwise we have failed
-	return NULL;
+	// Actually perform initialization if this is the first time we are initializing
+	if (type != 0)
+		pos = 0;
+	
+	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
+	if (!d)
+		return NULL;
+	memset(d, 0, sizeof(file_descriptor_t));
+	// Mark in use
+	d->type = STANDARD_INOUT_TYPE;
+	d->mode = FILE_MODE_READ | FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
+	int namelen = strlen(filename);
+	d->filename = kmalloc(namelen + 1);
+	if (!d->filename) {
+		kfree(d);
+		return NULL;
+	}
+	memcpy(d->filename, filename, namelen + 1);
+	
+	// Assign the functions
+	d->read = terminal_read;
+	d->write = terminal_write;
+	d->stat = terminal_stat;
+	d->duplicate = terminal_duplicate;
+	d->close = terminal_close;
+	
+	return d;
 }
 
 // Stores a buffered string of input (blocks until enter is pressed).

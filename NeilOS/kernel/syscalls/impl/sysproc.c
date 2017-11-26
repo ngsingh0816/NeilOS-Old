@@ -10,6 +10,8 @@
 #include <common/types.h>
 #include <program/task.h>
 #include <common/log.h>
+#include <syscalls/interrupt.h>
+#include <drivers/filesystem/path.h>
 
 // Returns to a user space program
 extern void return_to_user(pcb_t* pcb, pcb_t* parent);
@@ -131,10 +133,15 @@ uint32_t fork() {
 uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 	LOG_DEBUG_INFO_STR("(%s, 0x%x, 0x%x)", filename, argv, envp);
 	
+	char* path = path_absolute(filename, current_pcb->working_dir);
+	
 	// Load the task
 	pcb_t* pcb = NULL;
-	if (queue_task(filename, argv, envp, &pcb) != 0)
+	if (queue_task(path, argv, envp, &pcb) != 0) {
+		kfree(path);
 		return -1;
+	}
+	kfree(path);
 	
 	run_with_fake_parent(pcb, NULL);
 	return 0;
@@ -166,6 +173,12 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 
 	pcb_t* pcb = current_pcb;
 	
+	// If there are no children, return that
+	if (!pcb->children) {
+		errno = ECHILD;
+		return -1;
+	}
+	
 	// Wait until the child has finished
 	while (!pcb->should_terminate) {
 		bool found = false;
@@ -177,6 +190,7 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 				if (!child->pcb) {
 					// Remove child
 					uint32_t ret = child->return_value;
+					uint32_t cpid = child->pid;
 					if (child->prev)
 						child->prev->next = child->next;
 					if (child->next)
@@ -191,7 +205,7 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 						*status = ((ret & 0xFF) << 8);
 					}
 					
-					return ret;
+					return cpid;
 				}
 			}
 			child = child->next;
@@ -238,10 +252,9 @@ uint32_t exit(int status) {
 uint32_t getwd(char* buf) {
 	LOG_DEBUG_INFO_STR("(0x%x)", buf);
 
-	// TODO: implement working directories
 	if (!buf)
 		return -1;
-	memcpy(buf, "/", strlen("/") + 1);
+	memcpy(buf, current_pcb->working_dir, strlen(current_pcb->working_dir) + 1);
 	return 0;
 }
 
@@ -249,7 +262,13 @@ uint32_t getwd(char* buf) {
 uint32_t chdir(const char* path) {
 	LOG_DEBUG_INFO_STR("(%s)", path);
 
-	// TOOD: implement
+	pcb_t* pcb = current_pcb;
+	char* p = path_absolute(path, pcb->working_dir);
+	if (pcb->working_dir)
+		kfree(pcb->working_dir);
+	pcb->working_dir = p;
+	if (!pcb->working_dir)
+		return -1;
 	
 	return 0;
 }

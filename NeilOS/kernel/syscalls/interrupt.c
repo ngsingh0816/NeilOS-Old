@@ -18,30 +18,6 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 unsigned int errno = 0;
 
 /* More system Calls
- * Needed for Dash:
-	wait3 - done
- 	tcsetpgrp - done
- 	getpgrp - done
- 	setpgid - done
- 	geteuid - done
- 	getgid - done
- 	getegid - done
- 	getgroups - done
- 	getuid - done
- 	getcwd
- 	getppid - done
- * For GCC (need binutils ones as well):
-	mkdir - done
-	pipe - done
-	dup2 - done
-    sleep - done
-	alarm - done
-	execvp - done
-	closedir - done
-	opendir - done
-	readdir - done
-	chdir
-	execv - done
  * For vi:
 	need terimos.h - (stubbed)
  * For coreutils:
@@ -57,6 +33,8 @@ unsigned int errno = 0;
 	nanosleep
 	timer_create, timer_delete, timer_settime
  	ioctl
+ 	select (stubbed), pselect,
+ 	sockets stuff
  */
 
 void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
@@ -180,7 +158,6 @@ void segment_not_present(uint32_t code, uint32_t eip) {
 
 // Interrupt 12
 void stack_segment_fault(uint32_t code, uint32_t eip) {
-	signal_send(current_pcb, SIGSTKFLT);
 	
 #if DEBUG
 	blue_screen("Stack segment fault");

@@ -52,7 +52,12 @@ bool device_file_add(char* name, file_descriptor_t* (*open)(const char*, uint32_
 	
 	device_file_t* t = kmalloc(sizeof(device_file_t));
 	if (!t) {
-		unlink(path);
+		file_descriptor_t f;
+		if (!fopen(path, FILE_MODE_READ | FILE_MODE_DELETE_ON_CLOSE, &f)) {
+			kfree(path);
+			return false;
+		}
+		fclose(&f);
 		kfree(path);
 		return false;
 	}

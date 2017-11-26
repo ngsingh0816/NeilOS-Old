@@ -77,6 +77,9 @@ typedef struct pcb {
 	char** argv;
 	char** envp;
 	
+	// Working directory
+	char* working_dir;
+	
 	// Associated task
 	task_list_t* task;
 	

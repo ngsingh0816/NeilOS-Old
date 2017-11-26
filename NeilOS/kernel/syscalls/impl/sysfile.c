@@ -11,6 +11,7 @@
 #include <memory/allocation/heap.h>
 #include <program/task.h>
 #include <drivers/filesystem/filesystem.h>
+#include <drivers/filesystem/path.h>
 #include <drivers/ATA/ata.h>
 #include <drivers/rtc/rtc.h>
 #include <drivers/pipe/pipe.h>
@@ -69,7 +70,10 @@ uint32_t open(const char* filename, uint32_t mode) {
 	}
 	
 	pcb_t* pcb = current_pcb;
-	pcb->descriptors[current_fd] = open_handle(filename, mode);
+	char* path = path_absolute(filename, pcb->working_dir);
+
+	pcb->descriptors[current_fd] = open_handle(path, mode);
+	kfree(path);
 	if (!pcb->descriptors[current_fd]) {
 		errno = ENOENT;
 		return -1;
@@ -223,6 +227,19 @@ uint32_t dup(int32_t fd) {
 	return dup2(fd, current_fd);
 }
 
+// Duplicate a file descripter into the first available fd after the argument
+uint32_t dup2_greater(int32_t fd, int32_t new_fd) {
+	LOG_DEBUG_INFO_STR("(%d, %d)", fd, new_fd);
+	
+	while (new_fd < NUMBER_OF_DESCRIPTORS && current_pcb->descriptors[new_fd])
+		new_fd++;
+	
+	if (new_fd >= NUMBER_OF_DESCRIPTORS)
+		return -1;
+	
+	return dup2(fd, new_fd);
+}
+
 // Duplicate a file descriptor into the specific file descriptor
 uint32_t dup2(int32_t fd, int32_t new_fd) {
 	LOG_DEBUG_INFO_STR("(%d, %d)", fd, new_fd);
@@ -324,7 +341,7 @@ int fcntl(int32_t fd, int32_t cmd, ...) {
 	uint32_t* esp = ((uint32_t*)&cmd) + 1;
 	switch (cmd) {
 		case F_DUPFD:
-			return dup(*esp);
+			return dup2_greater(fd, *esp);
 		case F_GETFD:
 			// TODO: implement CLOSE_ON_EXEC
 			return 0;
