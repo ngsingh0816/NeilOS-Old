@@ -17,12 +17,89 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 
 unsigned int errno = 0;
 
-/* More system Calls
+/* More system calls
  * For vi:
-	need terimos.h - (stubbed)
- * For coreutils:
-	need mount stuff (mntent.h which provides _PATH_MNTTAB and _PATH_MOUNTED, as well as getmntent(FILE *fp))
-	sockets
+	sigjump_buf??
+ * For coreutils: (most suffer from same write error as grep)
+	 cp - works but says error closing file
+	 dircolors - "no SHELL environment variable"
+	 du - "cannot read directory ., not a directory"
+	 env - Doesn't work when specifiying variable (ex: bin/env PATH)
+	 expr
+	 factor
+	 fmt
+	 fold
+	 groups
+	 head
+	 id
+	 install
+	 join
+	 kill
+	 link
+	 ln
+	 logname
+	 md5sum
+	 mkdir
+	 mkfifo
+	 mknod
+	 mktemp
+	 mv
+	 nice
+	 nl
+	 nohup
+	 nproc
+	 numfmt
+	 od
+	 paste
+	 pathchk
+	 pr
+	 printenv
+	 printf
+	 ptx
+	 readlink
+	 realpath
+	 rm
+	 rmdir
+	 runcon
+	 seq
+	 sha1sum
+	 sha224sum
+	 sha256sum
+	 sha384sum
+	 sha512sum
+	 shred
+	 shuf
+	 sleep - needs select()
+	 sort
+	 split
+	 stat
+	 stdbuf
+	 stty
+	 sum
+	 sync
+	 tac
+	 tail - works but "Error reading"
+	 tee
+	 test
+	 timeout
+	 touch
+	 tr
+	 truncate
+	 tsort
+	 tty
+	 unexpand
+	 uniq
+	 unlink
+	 vdir
+	 wc
+	 whoami - "unable to get name for uid 0"
+	 yes - yes
+ * For awk:
+ 	* usleep (implemented using sleep)
+ 	* popen / pclose
+ * For grep:
+ 	* standard input doesn't work
+ 	* write error at end?
  * More
 	sched_yield
  	mmap, munmap
@@ -45,7 +122,7 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	times, gettimeofday,
 	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend, alarm,
 	sleep,
-	sysconf,
+	sysconf, fpathconf,
 	getwd, chdir,
 	sys_errno, ioctl,
 };

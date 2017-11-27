@@ -75,3 +75,6 @@ Software libraries
 * mpfr: (mpfr).                 Multiple Precision Floating-Point Reliable 
                                   Library.
 .
+
+Text creation and manipulation
+* grep: (grep).                 Print lines matching a pattern.

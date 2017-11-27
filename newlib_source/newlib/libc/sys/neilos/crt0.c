@@ -11,6 +11,7 @@ extern void _init();
 
 static char* initial_environ[] = { (char*)0 };
 char** environ = &initial_environ[0];
+char** __argv = (char**)0;
 
 extern void (*__preinit_array_start []) (void) __attribute__((weak));
 extern void (*__preinit_array_end []) (void) __attribute__((weak));
@@ -31,6 +32,7 @@ void _init_arrays() {
 
 void _load_environment(int argc, char** argv, char** envp) {
 	environ = envp;
+	__argv = argv;
 }
 
 asm(".globl _start\n"

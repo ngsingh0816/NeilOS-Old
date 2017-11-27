@@ -11,6 +11,7 @@
 #include <sys/fcntl.h>
 #include <sys/errno.h>
 #include <sys/resource.h>
+#include <sys/vfs.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,7 +20,7 @@ extern char** environ;
 extern unsigned int sys_errno();
 
 extern unsigned int sys_fork();
-extern unsigned int sys_execve(char* filename, char** argv, char** envp);
+extern unsigned int sys_execve(const char* filename, char* const argv[], char** envp);
 extern unsigned int sys_getpid();
 extern unsigned int sys_getppid();
 extern unsigned int sys_waitpid(unsigned int pid, int* status, int options);
@@ -34,39 +35,101 @@ int fork() {
 	return ret;
 }
 
-int execve(char *name, char **argv, char **env) {
+int execve(const char *name, char **argv, char **env) {
 	int ret = sys_execve(name, argv, env);
 	if (ret == -1)
 		errno = sys_errno();
 	return ret;
 }
 
-int execv(char* name, char **argv) {
+int execv(const char* name, char **argv) {
 	return execve(name, argv, environ);
 }
 
-int execvp(char* name, char **argv) {
-	// Hardcode bin and usr/bin in for now
+int execl(const char* path, const char* arg, ...) {
+	int num = 1;
+	char** esp = (char**)&arg;
+	while (*esp != NULL) {
+		esp++;
+		num++;
+	}
+	char** list = malloc(sizeof(char*) * num);
+	if (!list) {
+		errno = ENOMEM;
+		return -1;
+	}
+	esp = (char**)&arg;
+	for (int z = 0; z < num; z++)
+		list[z] = *(esp++);
+	
+	int ret = execv(path, list);
+	free(list);
+	
+	return ret;
+}
+
+int execvp(const char* name, char* const argv[]) {
+	char* pathc = getenv("PATH");
+	if (!pathc) {
+		errno = ENOENT;
+		return -1;
+	}
+	int psize = strlen(pathc);
+	char* path = malloc(psize + 1);
+	if (!path) {
+		errno = ENOMEM;
+		return -1;
+	}
+	memcpy(path, pathc, psize + 1);
+	
 	int ret = sys_execve(name, argv, environ);
 	if (ret != -1)
 		return ret;
-	char* strs[] = { "/bin/", "/usr/bin/" };
+	char* str = NULL;
 	uint32_t name_len = strlen(name);
-	for (int z = 0; z < sizeof(strs) / sizeof(char*); z++) {
-		uint32_t len = strlen(strs[z]);
-		char* buffer = malloc(len + name_len + 1);
-		if (!buffer)
+	while ((str = strsep(&path, ":")) != NULL) {
+		uint32_t len = strlen(str);
+		char* buffer = malloc(len + name_len + 2);
+		if (!buffer) {
+			free(path);
 			return ENOMEM;
-		memcpy(buffer, strs, len);
-		memcpy(&buffer[len], name, name_len);
-		buffer[len + name_len] = 0;
+		}
+		memcpy(buffer, str, len);
+		buffer[len] = '/';
+		memcpy(&buffer[len + 1], name, name_len);
+		buffer[len + name_len + 1] = 0;
 		ret = sys_execve(buffer, argv, environ);
 		free(buffer);
-		if (ret != -1)
+		if (ret != -1) {
+			free(path);
 			return ret;
+		}
 	}
 	
+	free(path);
 	return ENOENT;
+}
+
+int execlp(const char* path, const char* arg, ...) {
+	int num = 1;
+	char** esp = (char**)&arg;
+	while (*esp != NULL) {
+		esp++;
+		num++;
+	}
+	char** list = malloc(sizeof(char*) * num);
+	if (!list) {
+		errno = ENOMEM;
+		return -1;
+	}
+	esp = (char**)&arg;
+	for (int z = 0; z < num; z++)
+		list[z] = *(esp++);
+	
+	int ret = execvp(path, list);
+	free(list);
+	
+	return ret;
 }
 
 int getpid() {
@@ -151,5 +214,3 @@ int chdir(const char* path) {
 		errno = sys_errno();
 	return ret;
 }
-
-

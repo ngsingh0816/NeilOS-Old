@@ -348,6 +348,14 @@ int fcntl(int32_t fd, int32_t cmd, ...) {
 		case F_SETFD:
 			// TODO: implement CLOSE_ON_EXEC
 			return 0;
+		case F_GETFL:
+			if (!descriptors[fd]) {
+				errno = ENOENT;
+				return -1;
+			}
+			return descriptors[fd]->mode;
+		case F_SETFL:
+			return 0;
 		default:
 #if DEBUG
 			blue_screen("Unimplemented fctnl %d", cmd);

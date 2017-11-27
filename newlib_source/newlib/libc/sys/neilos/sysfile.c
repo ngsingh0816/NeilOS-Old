@@ -42,6 +42,7 @@ extern unsigned int sys_dup(unsigned int fd);
 extern unsigned int sys_dup2(unsigned int fd, unsigned int new_fd);
 extern unsigned int sys_pipe(int pipefd[2]);
 extern unsigned int sys_fcntl(int fd, int cmd, ...);
+extern unsigned int sys_ioctl(int fd, int cmd, ...);
 
 int open(const char* name, int mode, ...) {
 	int ret = sys_open(name, mode + 1);
@@ -71,10 +72,28 @@ int lseek(int file, int ptr, int dir) {
 	return ret;
 }
 
-int truncate(int fd, unsigned int length) {
+int ftruncate(int fd, unsigned int length) {
 	int ret = sys_truncate(fd, 0, length);
 	if (ret == -1)
 		errno = sys_errno();
+	return ret;
+}
+
+int truncate(const char* path, unsigned int length) {
+	int fd = sys_open(path, O_RDONLY + 1);
+	if (fd == -1) {
+		errno = sys_errno();
+		return -1;
+	}
+	int ret = ftruncate(fd, length);
+	if (ret == -1)
+		errno = sys_errno();
+	
+	if (sys_close(fd) != 0) {
+		errno = sys_errno();
+		return -1;
+	}
+	
 	return ret;
 }
 
@@ -123,6 +142,16 @@ int fstat(int file, struct stat *st) {
 	st->st_blocks = data.num_512_blocks;
 	
 	return ret;
+}
+
+int fsync(int fd) {
+	// TOOD: come back to this if we ever buffer anything
+	return 0;
+}
+
+int fdatasync(int fd) {
+	// TOOD: come back to this if we ever buffer anything
+	return 0;
 }
 
 int lstat(const char* file, struct stat* st) {
@@ -184,6 +213,14 @@ int mkfifo(const char* filename, unsigned int mode) {
 int fcntl(int fd, int cmd, ...) {
 	uint32_t* esp = ((uint32_t*)&cmd) + 1;
 	int ret = sys_fcntl(fd, cmd, *esp, *(esp + 1));
+	if (ret != 0)
+		errno = sys_errno();
+	return ret;
+}
+
+int ioctl(int fd, int request, ...) {
+	uint32_t* esp = ((uint32_t*)&request) + 1;
+	int ret = sys_ioctl(fd, request, *esp, *(esp + 1));
 	if (ret != 0)
 		errno = sys_errno();
 	return ret;

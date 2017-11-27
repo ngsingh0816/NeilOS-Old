@@ -174,7 +174,7 @@
 #define _SC_POSIX_26_VERSION            140
 
 // Get some info about a limit
-uint32_t sysconf(int name) {
+uint32_t sysconf(uint32_t name) {
 	LOG_DEBUG_INFO_STR("(%d)", name);
 
 	switch (name) {
@@ -187,6 +187,20 @@ uint32_t sysconf(int name) {
 		case _SC_VERSION: return 200801;
 		// TODO: actually calculate this
 		case _SC_PHYS_PAGES: return (FOUR_MB_SIZE / FOUR_KB_SIZE);
+		default: {
+#if DEBUG
+			blue_screen("Unimplemented sysconf variable %d.", name);
+#endif
+			return -1;
+		}
+	}
+}
+
+// Get some info about a file limit
+uint32_t fpathconf(uint32_t fd, uint32_t name) {
+	LOG_DEBUG_INFO_STR("(%d, %d)", fd, name);
+
+	switch (name) {
 		default: {
 #if DEBUG
 			blue_screen("Unimplemented sysconf variable %d.", name);

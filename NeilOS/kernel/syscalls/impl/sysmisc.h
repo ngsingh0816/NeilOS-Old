@@ -12,7 +12,10 @@
 #include <common/types.h>
 
 // Get some info about a limit
-uint32_t sysconf(int name);
+uint32_t sysconf(uint32_t name);
+
+// Get some info about a file limit
+uint32_t fpathconf(uint32_t fd, uint32_t name);
 
 // Get most recent error number
 uint32_t sys_errno();

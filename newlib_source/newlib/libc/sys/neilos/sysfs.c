@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "include/mntent.h"
 
 extern unsigned int sys_errno();
 
@@ -225,3 +226,44 @@ int closedir(DIR * dir) {
 	free(dir);
 	return ret;
 }
+
+// Mount things
+FILE* setmntent(const char* filename, const char* type) {
+	return NULL;
+}
+
+struct mntent* getmntent(FILE* fp) {
+	return NULL;
+}
+
+int endmntent(FILE* filep) {
+	if (filep)
+		fclose(filep);
+	return 1;
+}
+
+int statfs(const char* path , struct statfs* buf) {
+	errno = ENOSYS;
+	return -1;
+	/*int fd = sys_open(file, O_RDONLY + 1);
+	if (fd == -1) {
+		errno = sys_errno();
+		return -1;
+	}
+	int ret = fstatfs(fd, buf);
+	if (ret == -1)
+		errno = sys_errno();
+	
+	if (sys_close(fd) != 0) {
+		errno = sys_errno();
+		return -1;
+	}
+	
+	return ret;*/
+}
+
+int fstatfs(int fd, struct statfs* buf) {
+	errno = ENOSYS;
+	return -1;
+}
+

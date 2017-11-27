@@ -54,7 +54,8 @@
  * Disk Scheduling / Improvements
  */
 
-/* TODO (bugs) 
+/* TODO (bugs)
+ * Get rid of sys_errno and actually implement error codes
  * make all fd's uint32_t instead of int32_t
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
@@ -70,18 +71,16 @@
  */
 
 /* TODO:
- * Get libtool working?
- * More system calls - sleep (nanosleep), mmap
-	* Listed in syscalls.c
-	* Sockets stub
- * Dylib Lazy Linking?
- * (Kernel?) Threads (pthread?)
+ * More system calls - interrupt.c
+ * (Kernel?) Threads (pthread?, gcd?)
 	* Potential multitasking issues:
 		* file locks
 		* reading in one thread while closing in another (file descriptor lock)
 		* Need a memory lock for all vm_get_next_unmapped_page
 		* Probably should use locks instead of cli or set_multitasking(false) in most cases
 		* Also definitely missing locks for just about everything (especially linked lists)
+ * SMP?
+ * Scheduler Rework
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
@@ -90,14 +89,13 @@
  * Graphics (QEMU VBE) Driver?
  * GUI (Compositing Window Manager)
 	* Interacts through message queues?
- * Improved Scheduler
  * Ethernet Driver
- * DMA for large memory transfers?
- * Sockets?
+ * Sockets
  * Message Queues?
+ * Get libtool working?
+ * Dylib Lazy Linking?
  * Page files on disk?
 	* Could make loading a program only load entry point page and then lazy load the rest?
- * SMP?
  * Module support?
  * OpenGL (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?
  * USB Driver?

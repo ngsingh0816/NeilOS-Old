@@ -169,7 +169,7 @@ bool load_argv_and_envp(pcb_t* pcb, const char** argv, const char** envp, uint32
 	for (z = 0; z < envc; z++) {
 		const char* str = "";
 		if (!has_path && z == envc - 1)
-			str = "PATH=/bin:/usr/bin";
+			str = "PATH=/bin:/usr/bin:/usr/local/bin";
 		else
 			str = envp[z];
 		uint32_t len = strlen(str);

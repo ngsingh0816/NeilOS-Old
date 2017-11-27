@@ -32,6 +32,8 @@
 
 _BEGIN_STD_C
 
+extern char** __argv;
+
 typedef struct 
 {
   int quot; /* quotient */

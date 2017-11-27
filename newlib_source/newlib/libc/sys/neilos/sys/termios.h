@@ -39,6 +39,8 @@
 #define IXOFF	0x00010000
 #define IXON	0x00020000
 #define PARMRK	0x00040000
+#define	IXANY		0x00080000	/* any char will restart after stop */
+#define IMAXBEL		0x00100000	/* ring bell on input queue full */
 
 #define OPOST	0x00000100
 
