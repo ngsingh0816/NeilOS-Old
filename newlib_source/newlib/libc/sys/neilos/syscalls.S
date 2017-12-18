@@ -61,6 +61,5 @@ DO_CALL(sys_sysconf, 35)
 DO_CALL(sys_fpathconf, 36)
 DO_CALL(sys_getwd, 37)
 DO_CALL(sys_chdir, 38)
-DO_CALL(sys_errno, 39)
-DO_CALL(sys_ioctl, 40)
+DO_CALL(sys_ioctl, 39)
 

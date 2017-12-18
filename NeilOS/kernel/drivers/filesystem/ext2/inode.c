@@ -113,7 +113,7 @@ uint32_t ext2_allocate_inode(bool directory) {
 					// Get which inode this corresponds to
 					uint32_t ret = ext2_superblock()->inodes_per_group * group +
 						(bitmap_block - desc.inode_bitmap) * inodes_per_bitmap_group +
-						blocks * sizeof(uint32_t) * 8 + z + ext2_superblock()->first_data_block;
+						blocks * sizeof(uint32_t) * 8 + z + 1;
 					
 					// Mark this inode as used
 					bitmap[blocks] |= 1 << z;

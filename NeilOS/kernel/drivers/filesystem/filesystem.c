@@ -5,6 +5,7 @@
 #include <drivers/pipe/fifo.h>
 #include "ext2/ext2.h"
 #include "path.h"
+#include <syscalls/interrupt.h>
 
 // Internal information for a file
 typedef struct {
@@ -145,7 +146,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		} else
 			return false;
 	}
-	if ((inode.info.mode & EXT2_INODE_MODE_FIFO) && !(mode & FILE_MODE_DELETE_ON_CLOSE)) {
+	if ((inode.info.mode & EXT2_INODE_MODE_FIFO)) {
 		file_descriptor_t* fifo = fifo_open(filename, mode);
 		if (!fifo)
 			return false;
@@ -190,7 +191,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->write = filesystem_write_directory;
 		desc->llseek = filesystem_llseek_directory;
 		desc->truncate = NULL;
-		desc->mode |= FILE_TYPE_DIRECTORY;
+		desc->mode = (desc->mode & ~FILE_TYPE_ALL) | FILE_TYPE_DIRECTORY;
 	} else {
 		// Set up a file
 		desc->info = (file_info_t*)kmalloc(sizeof(file_info_t));
@@ -206,6 +207,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->write = filesystem_write_file;
 		desc->llseek = filesystem_llseek_file;
 		desc->truncate = filesystem_truncate;
+		desc->mode = desc->mode & ~FILE_TYPE_ALL;
 		if (inode.info.mode & EXT2_INODE_MODE_FIFO)
 			desc->mode |= FILE_TYPE_PIPE;
 		else
@@ -291,14 +293,14 @@ uint32_t fread_directory(void* buffer, uint32_t size, uint32_t count, file_descr
 // Read a file object
 uint32_t fread(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file) {
 	if (!(file->mode & FILE_MODE_READ))
-		return -1;
+		return -EACCES;
 	
 	if (file->mode & FILE_TYPE_REGULAR)
 		return fread_file(buffer, size, count, file);
 	if (file->mode & FILE_TYPE_DIRECTORY)
 		return fread_directory(buffer, size, count, file, NULL);
 	
-	return -1;
+	return -ENOENT;
 }
 
 // Write to a file
@@ -325,7 +327,7 @@ uint32_t fwrite_directory(const void* buffer, uint32_t size, uint32_t count, fil
 // Write to a file object
 uint32_t fwrite(const void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file) {
 	if (!(file->mode & FILE_MODE_WRITE) && !(file->mode & FILE_MODE_APPEND))
-		return -1;
+		return -EACCES;
 	
 	if (file->mode & FILE_MODE_APPEND)
 		fseek(file, uint64_make(0, 0), SEEK_END);
@@ -335,7 +337,7 @@ uint32_t fwrite(const void* buffer, uint32_t size, uint32_t count, file_descript
 	else if (file->mode & FILE_TYPE_DIRECTORY)
 		return fwrite_directory(buffer, size, count, file);
 	
-	return -1;
+	return -ENOENT;
 }
 
 // Seek a file
@@ -427,13 +429,13 @@ uint64_t fseek(file_descriptor_t* file, uint64_t offset, int whence) {
 	else if (file->mode & FILE_TYPE_DIRECTORY)
 		return fseek_directory(file, offset, whence);
 	
-	return uint64_make(-1, -1);
+	return uint64_make(-1, -ENOENT);
 }
 
 // Truncate a file to a specific size
 uint64_t ftruncate(file_descriptor_t* f, uint64_t size) {
 	if (!(f->mode & FILE_TYPE_REGULAR))
-		return uint64_make(-1, -1);
+		return uint64_make(-1, -EACCES);
 	
 	file_info_t* file = (file_info_t*)f->info;
 	
@@ -446,30 +448,32 @@ uint64_t filesystem_truncate(int32_t fd, uint64_t nsize) {
 }
 
 // Make a directory
-bool fmkdir(const char* filename) {
+int fmkdir(const char* filename) {
 	// If the inode already exists, don't do anything
 	if (ext2_open(filename).inode != EXT2_INODE_INVALID)
-		return false;
+		return -EEXIST;
 	
 	// Get the parent
 	ext_inode_t parent = ext2_get_parent_inode(filename);
 	if (parent.inode == EXT2_INODE_INVALID)
-		return false;
+		return -ENOENT;
 	
 	// Get the name
 	char* name = get_last_path_component(filename);
 	if (!name)
-		return false;
+		return -ENOMEM;
 	
 	// Create the directory
 	ext_inode_t inode = ext2_create(&parent, name, FILE_TYPE_DIRECTORY);
 	kfree(name);
 	
-	return (inode.inode != EXT2_INODE_INVALID);
+    if (inode.inode == EXT2_INODE_INVALID)
+		return -ENOSPC;
+	return 0;
 }
 
 // Hard link a file or directory
-bool flink(file_descriptor_t* file, const char* link_name) {
+int flink(file_descriptor_t* file, const char* link_name) {
 	ext_inode_t* inode = NULL;
 	if (file->mode & FILE_TYPE_DIRECTORY)
 		inode = &((directory_info_t*)file->info)->inode;
@@ -479,19 +483,66 @@ bool flink(file_descriptor_t* file, const char* link_name) {
 	// Get the parent
 	ext_inode_t parent = ext2_get_parent_inode(link_name);
 	if (parent.inode == EXT2_INODE_INVALID)
-		return false;
+		return -ENOENT;
 	
 	// Get the names
 	char* name = get_last_path_component(link_name);
 	if (!name)
-		return false;
+		return -ENOMEM;
 	
 	// Link
 	bool ret = ext2_link(inode, &parent, name);
 	
 	kfree(name);
 	
-	return ret;
+    return (ret ? -ENOSPC : 0);
+}
+
+// Helper to unlink
+int fsunlinkalways(const char* filename) {
+	// Get the parent directory
+	ext_inode_t parent = ext2_get_parent_inode(filename);
+	if (parent.inode == EXT2_INODE_INVALID)
+		return -ENOENT;
+	
+	// Get the name
+	char* name = get_last_path_component(filename);
+	if (!name)
+		return -ENOMEM;
+	
+	// Ensure that the name is not either "." or ".."
+	if (strncmp(name, ".", 2) == 0 || strncmp(name, "..", 3) == 0) {
+		kfree(name);
+		return -EINVAL;
+	}
+	
+	// Delete the file
+	bool ret = ext2_delete(&parent, name);
+	kfree(name);
+	
+    return (ret ? -ENOMEM : 0);
+}
+
+// Unlink
+int fsunlink(const char* filename) {
+	ext_inode_t inode = ext2_open(filename);
+	if (inode.inode == EXT2_INODE_INVALID)
+		return -ENOENT;
+	
+	if (inode.info.mode & FILE_TYPE_DIRECTORY) {
+		directory_info_t info;
+		info.inode = inode;
+		file_descriptor_t f;
+		memset(&f, 0, sizeof(f));
+		f.info = &info;
+		
+		// Check that the directory is empty
+		uint32_t num_entries = fseek_directory(&f, uint64_make(0, 0), SEEK_END).low;
+		if (num_entries > 2)		// . and .. are fine
+			return -ENOTEMPTY;
+	}
+	
+	return fsunlinkalways(filename);
 }
 
 // Helper to delete a file
@@ -503,25 +554,7 @@ bool fdelete(file_descriptor_t* file) {
 			return false;
 	}
 	
-	// Get the parent directory
-	ext_inode_t parent = ext2_get_parent_inode(file->filename);
-	if (parent.inode == EXT2_INODE_INVALID)
-		return false;
-	
-	// Get the name
-	char* name = get_last_path_component(file->filename);
-	if (!name)
-		return false;
-	
-	// Ensure that the name is not either "." or ".."
-	if (strncmp(name, ".", 2) == 0 || strncmp(name, "..", 3) == 0)
-		return false;
-	
-	// Delete the file
-	bool ret = ext2_delete(&parent, name);
-	kfree(name);
-	
-	return ret;
+	return fsunlinkalways(file->filename);
 }
 
 // Close a file object
@@ -541,6 +574,15 @@ bool fclose(file_descriptor_t* file) {
 	
 	kfree(file->info);
 	return ret;
+}
+
+// Returns true if path is directory
+bool fisdir(const char* filename) {
+	ext_inode_t inode = ext2_open(filename);
+	if (inode.inode == EXT2_INODE_INVALID)
+		return false;
+	
+	return (inode.info.mode & FILE_TYPE_DIRECTORY) != 0;
 }
 
 // Set times

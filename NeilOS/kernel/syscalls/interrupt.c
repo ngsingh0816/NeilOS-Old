@@ -15,91 +15,15 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 };
 
-unsigned int errno = 0;
-
 /* More system calls
  * For vi:
 	sigjump_buf??
- * For coreutils: (most suffer from same write error as grep)
-	 cp - works but says error closing file
-	 dircolors - "no SHELL environment variable"
+ * For coreutils:
 	 du - "cannot read directory ., not a directory"
-	 env - Doesn't work when specifiying variable (ex: bin/env PATH)
-	 expr
-	 factor
-	 fmt
-	 fold
-	 groups
-	 head
-	 id
-	 install
-	 join
-	 kill
-	 link
-	 ln
-	 logname
-	 md5sum
-	 mkdir
-	 mkfifo
-	 mknod
-	 mktemp
-	 mv
-	 nice
-	 nl
-	 nohup
-	 nproc
-	 numfmt
-	 od
-	 paste
-	 pathchk
-	 pr
-	 printenv
-	 printf
-	 ptx
-	 readlink
-	 realpath
-	 rm
-	 rmdir
-	 runcon
-	 seq
-	 sha1sum
-	 sha224sum
-	 sha256sum
-	 sha384sum
-	 sha512sum
-	 shred
-	 shuf
-	 sleep - needs select()
-	 sort
-	 split
-	 stat
-	 stdbuf
-	 stty
-	 sum
-	 sync
-	 tac
-	 tail - works but "Error reading"
-	 tee
-	 test
-	 timeout
-	 touch
-	 tr
-	 truncate
-	 tsort
-	 tty
-	 unexpand
-	 uniq
-	 unlink
-	 vdir
-	 wc
-	 whoami - "unable to get name for uid 0"
-	 yes - yes
+	 timeout - hangs
  * For awk:
  	* usleep (implemented using sleep)
  	* popen / pclose
- * For grep:
- 	* standard input doesn't work
- 	* write error at end?
  * More
 	sched_yield
  	mmap, munmap
@@ -110,7 +34,7 @@ unsigned int errno = 0;
 	nanosleep
 	timer_create, timer_delete, timer_settime
  	ioctl
- 	select (stubbed), pselect,
+ 	select (stubbed - test "tail -f"), pselect,
  	sockets stuff
  */
 
@@ -124,7 +48,7 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	sleep,
 	sysconf, fpathconf,
 	getwd, chdir,
-	sys_errno, ioctl,
+	ioctl,
 };
 
 

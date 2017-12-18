@@ -17,8 +17,10 @@ extern unsigned int sys_sleep(unsigned int seconds);
 
 unsigned int sleep(unsigned int seconds) {
 	int ret = sys_sleep(seconds);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 

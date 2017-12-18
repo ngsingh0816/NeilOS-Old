@@ -28,8 +28,6 @@ typedef struct {
 	time_t ctime;
 } __sys_stat_type;
 
-extern unsigned int sys_errno();
-
 extern unsigned int sys_open(const char* filename, unsigned int mode);
 extern unsigned int sys_read(int fd, void* buf, unsigned int nbytes);
 extern unsigned int sys_write(int fd, const void* buf, unsigned int nbytes);
@@ -46,85 +44,103 @@ extern unsigned int sys_ioctl(int fd, int cmd, ...);
 
 int open(const char* name, int mode, ...) {
 	int ret = sys_open(name, mode + 1);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int read(int file, char* ptr, int len) {
 	int ret = sys_read(file, ptr, len);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int write(int file, char* ptr, int len) {
 	int ret = sys_write(file, ptr, len);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int lseek(int file, int ptr, int dir) {
 	int ret = sys_llseek(file, (ptr < 0) ? -1 : 0, ptr, dir);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int ftruncate(int fd, unsigned int length) {
 	int ret = sys_truncate(fd, 0, length);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int truncate(const char* path, unsigned int length) {
 	int fd = sys_open(path, O_RDONLY + 1);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
+    if (fd < 0) {
+        errno = -fd;
+        return -1;
+    }
 	int ret = ftruncate(fd, length);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	
-	if (sys_close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
+    int ret2 = sys_close(fd);
+    if (ret2 < 0) {
+        errno = -ret2;
+        return -1;
+    }
 	
 	return ret;
 }
 
 int stat(const char* file, struct stat* st) {
-	int fd = sys_open(file, O_RDONLY + 1);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
+	int fd = sys_open(file, O_RDONLY | 0x1 | _FNONBLOCK);
+    if (fd < 0) {
+        errno = -fd;
+        return -1;
+    }
 	int ret = fstat(fd, st);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	
-	if (sys_close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
+    int ret2 = sys_close(fd);
+    if (ret2 < 0) {
+        errno = -ret2;
+        return -1;
+    }
 	
 	return ret;
 }
 
 int fstat(int file, struct stat *st) {
-	if (!st)
+    if (!st) {
+        errno = EFAULT;
 		return -1;
+    }
 	
 	__sys_stat_type data;
 	int ret = sys_stat(file, &data);
-	if (ret == -1) {
-		ret = sys_errno();
-		return ret;
-	}
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	
 	memset(st, 0, sizeof(struct stat));
 	st->st_dev = data.dev_id;
@@ -161,51 +177,62 @@ int lstat(const char* file, struct stat* st) {
 
 int close(int file) {
 	int ret = sys_close(file);
-	if (ret != 0)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int isatty(int file) {
 	int ret = sys_isatty(file);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int dup(int fd) {
-	int dup = sys_dup(fd);
-	if (dup == -1)
-		errno = sys_errno();
-	return dup;
+	int ret = sys_dup(fd);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int dup2(int fd, int new_fd) {
 	int ret = sys_dup2(fd, new_fd);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int pipe(int pipefd[2]) {
 	int ret = sys_pipe(pipefd);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int mkfifo(const char* filename, unsigned int mode) {
 	// Read = 0x1
 	int fd = sys_open(filename, 0x1 | _IFIFO | _FCREAT | _FNONBLOCK);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
+    if (fd < 0) {
+        errno = -fd;
+        return -1;
+    }
 	
-	if (close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
+    int ret2 = sys_close(fd);
+    if (ret2 < 0) {
+        errno = -ret2;
+        return -1;
+    }
 	
 	return 0;
 }
@@ -213,15 +240,19 @@ int mkfifo(const char* filename, unsigned int mode) {
 int fcntl(int fd, int cmd, ...) {
 	uint32_t* esp = ((uint32_t*)&cmd) + 1;
 	int ret = sys_fcntl(fd, cmd, *esp, *(esp + 1));
-	if (ret != 0)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int ioctl(int fd, int request, ...) {
 	uint32_t* esp = ((uint32_t*)&request) + 1;
 	int ret = sys_ioctl(fd, request, *esp, *(esp + 1));
-	if (ret != 0)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }

@@ -105,7 +105,7 @@ uint32_t fork() {
 
 	pcb_t* pcb = NULL;
 	if ((pcb = duplicate_current_task()) == NULL)
-		return -1;
+		return -ENOMEM;
 	
 	// Set the context to return to fork_return() with eax set to 0 so
 	// the child returns 0. Also move the esp from the current pcb kernel stack
@@ -139,7 +139,7 @@ uint32_t execve(const char* filename, const char* argv[], const char* envp[]) {
 	pcb_t* pcb = NULL;
 	if (queue_task(path, argv, envp, &pcb) != 0) {
 		kfree(path);
-		return -1;
+		return -ENOENT;
 	}
 	kfree(path);
 	
@@ -175,8 +175,7 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 	
 	// If there are no children, return that
 	if (!pcb->children) {
-		errno = ECHILD;
-		return -1;
+		return -ECHILD;
 	}
 	
 	// Wait until the child has finished
@@ -211,14 +210,16 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 			child = child->next;
 		}
 		// If the pid does not exist, return error
-		if (!found || (options & WNOHANG))
-			return -1;
+		if (!found)
+			return -ECHILD;
+		else if (options & WNOHANG)
+			return 0;
 		
 		schedule();
 	}
 	
 	// Should terminate
-	return -1;
+	return -ECHILD;
 }
 
 // Exit a program with a specific status
@@ -253,7 +254,7 @@ uint32_t getwd(char* buf) {
 	LOG_DEBUG_INFO_STR("(0x%x)", buf);
 
 	if (!buf)
-		return -1;
+		return -EFAULT;
 	memcpy(buf, current_pcb->working_dir, strlen(current_pcb->working_dir) + 1);
 	return 0;
 }
@@ -268,7 +269,7 @@ uint32_t chdir(const char* path) {
 		kfree(pcb->working_dir);
 	pcb->working_dir = p;
 	if (!pcb->working_dir)
-		return -1;
+		return -ENOMEM;
 	
 	return 0;
 }

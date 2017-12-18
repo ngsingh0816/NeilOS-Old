@@ -5,6 +5,7 @@
 #include <memory/allocation/heap.h>
 #include <drivers/filesystem/filesystem.h>
 #include <program/task.h>
+#include <syscalls/interrupt.h>
 
 #define ATA_COMMAND_SET_EXT_SUPPORTED		(1 << 26)
 
@@ -84,7 +85,7 @@ bool ata_init() {
 				uint32_t val = inl(ATA_DATA_PORT(i));
 				memcpy(&buffer[z * 4], &val, sizeof(uint32_t));
 			}
-			
+						
 			// Check for 48-bit LBA
 			uint32_t command_sets = 0;
 			memcpy(&command_sets, &buffer[ATA_IDENTIFY_COMMAND_SETS], sizeof(uint32_t));
@@ -188,7 +189,7 @@ file_descriptor_t* ata_open(const char* filename, uint32_t mode) {
 // Read data from the disk
 uint32_t ata_read(int32_t fd, void* buf, uint32_t bytes) {
 	if (!(descriptors[fd]->mode & FILE_MODE_READ))
-		return -1;
+		return -EACCES;
 	
 	return ata_partition_read(descriptors[fd]->info, buf, bytes);
 }
@@ -196,7 +197,7 @@ uint32_t ata_read(int32_t fd, void* buf, uint32_t bytes) {
 // Write data to the disk
 uint32_t ata_write(int32_t fd, const void* buf, uint32_t nbytes) {
 	if (!(descriptors[fd]->mode & FILE_MODE_WRITE))
-		return -1;
+		return -EACCES;
 	
 	if (descriptors[fd]->mode & FILE_MODE_APPEND)
 		ata_llseek(fd, uint64_make(0, 0), SEEK_END);
@@ -296,7 +297,7 @@ disk_info_t ata_open_partition(uint8_t disk, uint8_t partition) {
 // Read data from a partition
 uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 	if (!d)
-		return -1;
+		return -EFAULT;
 	
 	// Do nothing if we don't need to
 	if (bytes == 0)
@@ -336,7 +337,7 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 			size = bytes - copy_pos;
 			if (size > BLOCK_SIZE) {
 				// Something went wrong
-				return -1;
+				return -ENOMEM;
 			}
 		}
 		
@@ -366,7 +367,7 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 // Write data to a partition
 uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {	
 	if (!d)
-		return -1;
+		return -EFAULT;
 	
 	// Do nothing if we don't need to
 	if (bytes == 0)
@@ -392,7 +393,7 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 	// Have an intermediate cache
 	void* temp = kmalloc(BLOCK_SIZE);
 	if (!temp)
-		return -1;
+		return -ENOMEM;
 	
 	uint64_t end_addr = uint64_add(addr, uint64_make(0, bytes));
 	uint32_t num_blocks = uint64_sub(uint64_shr(end_addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK), uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK)).low + 1;
@@ -415,7 +416,7 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 			if (size > BLOCK_SIZE) {
 				// Something went wrong
 				kfree(temp);
-				return -1;
+				return -ENOMEM;
 			}
 			needs_read = true;
 		}

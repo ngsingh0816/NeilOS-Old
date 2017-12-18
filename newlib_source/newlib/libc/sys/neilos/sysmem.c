@@ -18,14 +18,18 @@ extern void*		sys_sbrk(int offset);
 
 unsigned int brk(void* b) {
 	int ret = sys_brk(b);
-	if (ret != 0)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 caddr_t sbrk(int incr) {
 	void* ret = sys_sbrk(incr);
-	if (ret == (void*)-1)
-		errno = sys_errno();
+    if ((int)ret == -1) {
+        errno = ENOMEM;
+        return NULL;
+    }
 	return ret;
 }

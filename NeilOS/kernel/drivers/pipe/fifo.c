@@ -14,6 +14,7 @@
 #include <drivers/pipe/pipe.h>
 #include <memory/allocation/heap.h>
 #include <program/task.h>
+#include <syscalls/interrupt.h>
 
 // Currently open fifo lists
 typedef struct fifo_list {
@@ -32,7 +33,7 @@ typedef struct fifo_list {
 fifo_list_t* open_fifos = NULL;
 semaphore_t open_fifos_lock = MUTEX_UNLOCKED;
 
-// Open a (unnamed) pipe (only called if file exists and is a fifo)
+// Open a fifo (only called if file exists and is a fifo)
 file_descriptor_t* fifo_open(const char* filename, uint32_t mode) {
 	file_descriptor_t* desc = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
 	if (!desc)
@@ -113,6 +114,7 @@ file_descriptor_t* fifo_open(const char* filename, uint32_t mode) {
 	if (mode & FILE_MODE_WRITE)
 		desc->write = fifo_write;
 	desc->stat = fifo_stat;
+	desc->llseek = fifo_llseek;
 	desc->duplicate = fifo_duplicate;
 	desc->close = fifo_close;
 	
@@ -127,7 +129,7 @@ file_descriptor_t* fifo_open(const char* filename, uint32_t mode) {
 	return desc;
 }
 
-// Read a pipe
+// Read a fifo
 uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
 	fifo_list_t* info = (fifo_list_t*)descriptors[fd]->info;
 	
@@ -156,7 +158,7 @@ uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
 	return min;
 }
 
-// Write to a pipe
+// Write to a fifo
 uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
 	fifo_list_t* info = (fifo_list_t*)descriptors[fd]->info;
 	
@@ -186,7 +188,7 @@ uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
 	return min;
 }
 
-// Get info about a pipe
+// Get info about a fifo
 uint32_t fifo_stat(int32_t fd, sys_stat_type* data) {
 	fifo_list_t* list = (fifo_list_t*)descriptors[fd]->info;
 	memset(data, 0, sizeof(sys_stat_type));
@@ -202,7 +204,7 @@ uint32_t fifo_stat(int32_t fd, sys_stat_type* data) {
 	return 0;
 }
 
-// Close a pipe
+// Close a fifo
 uint32_t fifo_close(file_descriptor_t* fd) {
 	down(&open_fifos_lock);
 	fifo_list_t* list = (fifo_list_t*)fd->info;
@@ -231,7 +233,12 @@ uint32_t fifo_close(file_descriptor_t* fd) {
 	return 0;
 }
 
-// Duplicate a pipe
+// Seek a pipe (returns error)
+uint64_t fifo_llseek(int32_t fd, uint64_t offset, int whence) {
+	return uint64_make(-1, -ESPIPE);
+}
+
+// Duplicate a fifo
 file_descriptor_t* fifo_duplicate(file_descriptor_t* fd) {
 	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
 	if (!d)

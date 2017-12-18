@@ -17,12 +17,13 @@
 #include <string.h>
 #include <unistd.h>
 #include "include/mntent.h"
+#include <sys/vfs.h>
 
 extern unsigned int sys_errno();
 
 extern unsigned int sys_mkdir(const char* name);
 extern unsigned int sys_link(const char* filename, const char* new_name);
-extern unsigned int sys_unlink(const char* filename);
+extern unsigned int sys_unlink(const char* filename, char dir);
 extern unsigned int sys_readdir(int fd, void* buf, int size, struct dirent* dirent);
 extern unsigned int sys_utime(const char* filename, unsigned int* times);
 
@@ -32,49 +33,37 @@ extern unsigned int sys_close(int fd);
 
 int mkdir(const char* name, mode_t mode) {
 	int ret = sys_mkdir(name);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int link(const char* old, const char* new) {
 	int ret = sys_link(old, new);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int unlink(const char* name) {
-	int ret = sys_unlink(name);
-	if (ret == -1)
-		errno = sys_errno();
+	int ret = sys_unlink(name, 0);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int rmdir(const char* path) {
-	int fd = sys_open(path, O_RDONLY + 1);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
-	
-	struct stat buf;
-	if (fstat(fd, &buf) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
-	if (!(buf.st_mode & _IFDIR)) {
-		errno = ENOTDIR;
-		return -1;
-	}
-	if (sys_close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
-	
-	int ret = sys_unlink(path);
-	if (ret != 0)
-		errno = sys_errno();
+	int ret = sys_unlink(path, 1);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
@@ -108,14 +97,15 @@ int access(const char* path, int mode) {
 	if (mode == 0)
 		return 0;
 	int fd = sys_open(path, O_RDONLY + 1);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
-	if (sys_close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
+    if (fd < 0) {
+        errno = -fd;
+        return -1;
+    }
+    int ret2 = sys_close(fd);
+    if (ret2 < 0) {
+        errno = -ret2;
+        return -1;
+    }
 	return 0;
 }
 
@@ -133,8 +123,10 @@ int utime(const char* filename, const struct utimbuf* times) {
 		ret = sys_utime(filename, buf);
 	} else
 		ret = sys_utime(filename, NULL);
-	if (ret != 0)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
@@ -157,9 +149,9 @@ DIR *opendir(const char* filename) {
 		return NULL;
 	}
 	ret->dd_size = 256;
-	
+		
 	int fd = sys_open(filename, O_RDONLY);
-	if (fd == -1) {
+	if (fd < 0) {
 		errno = ENOENT;
 		free(ret->dd_buf);
 		free(ret);
@@ -167,7 +159,7 @@ DIR *opendir(const char* filename) {
 	}
 	
 	struct stat st;
-	if (fstat(fd, &st) == -1 || !(st.st_mode & _IFDIR)) {
+	if (fstat(fd, &st) < 0 || !(st.st_mode & _IFDIR)) {
 		errno = ENOTDIR;
 		free(ret->dd_buf);
 		free(ret);
@@ -181,8 +173,8 @@ DIR *opendir(const char* filename) {
 struct dirent dirent_rd;
 struct dirent* readdir(DIR* dir) {
 	dir->dd_len = sys_readdir(dir->dd_fd, dir->dd_buf, dir->dd_size, &dirent_rd);
-	if (dir->dd_len == -1) {
-		errno = sys_errno();
+	if ((int)dir->dd_len < 0) {
+		errno = -(int)dir->dd_len;
 		return NULL;
 	} else if (dir->dd_len == 0)
 		return NULL;
@@ -218,9 +210,13 @@ int closedir(DIR * dir) {
 		return -1;
 	}
 	
-	int ret = close(dir->dd_fd);
-	if (ret == -1)
-		errno = sys_errno();
+	int ret = sys_close(dir->dd_fd);
+    if (ret < 0) {
+        errno = -ret;
+        free(dir->dd_buf);
+        free(dir);
+        return -1;
+    }
 	
 	free(dir->dd_buf);
 	free(dir);
@@ -246,18 +242,21 @@ int statfs(const char* path , struct statfs* buf) {
 	errno = ENOSYS;
 	return -1;
 	/*int fd = sys_open(file, O_RDONLY + 1);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
+    if (fd < 0) {
+        errno = -fd;
+        return -1;
+    }
 	int ret = fstatfs(fd, buf);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	
-	if (sys_close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
+    int ret2 = sys_close(fd)
+    if (ret2 < 0) {
+        errno = -ret2;
+        return -1;
+    }
 	
 	return ret;*/
 }

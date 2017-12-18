@@ -9,13 +9,14 @@
 #include "systime.h"
 #include <common/time.h>
 #include <common/log.h>
+#include <syscalls/interrupt.h>
 
 // Get the timing information for a process
 uint32_t times(sys_time_type* data) {
 	LOG_DEBUG_INFO_STR("(0x%x)", data);
 
 	if (!data)
-		return -1;
+		return -EFAULT;
 	
 	// TODO: fill these out
 	data->child_user_time.val = 0;

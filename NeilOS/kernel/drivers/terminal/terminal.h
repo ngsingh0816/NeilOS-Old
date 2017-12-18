@@ -30,6 +30,9 @@ uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes);
 // Get info
 uint32_t terminal_stat(int32_t fd, sys_stat_type* data);
 
+// Seek a terminal (returns error)
+uint64_t terminal_llseek(int32_t fd, uint64_t offset, int whence);
+
 // Duplicate the file handle
 file_descriptor_t* terminal_duplicate(file_descriptor_t* f);
 

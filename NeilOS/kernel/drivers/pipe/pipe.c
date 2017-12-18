@@ -11,6 +11,7 @@
 #include <memory/allocation/heap.h>
 #include <program/task.h>
 #include <common/concurrency/semaphore.h>
+#include <syscalls/interrupt.h>
 
 typedef struct {
 	uint8_t* buffer;
@@ -51,6 +52,7 @@ file_descriptor_t* pipe_open(const char* filename, uint32_t mode) {
 		f->info = info;
 	}
 	f->stat = pipe_stat;
+	f->llseek = pipe_llseek;
 	f->close = pipe_close;
 	f->duplicate = pipe_duplicate;
 	f->mode = mode | FILE_TYPE_PIPE;
@@ -73,13 +75,13 @@ bool pipe_connect(file_descriptor_t* input, file_descriptor_t* output) {
 uint32_t pipe_read(int32_t fd, void* buf, uint32_t bytes) {
 	pipe_info_t* info = (pipe_info_t*)descriptors[fd]->info;
 	
-	// Writer pipe was closed
-	if (!info)
+	// Writer pipe was closed and no data left
+	if (!info->writer && info->pos == 0)
 		return 0;
 	
-	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
 		info->pos == 0)
-		return -1;
+		return 0;
 	
 	// Block until there is data
 	while (info->pos == 0 && !current_pcb->should_terminate) {
@@ -105,12 +107,12 @@ uint32_t pipe_write(int32_t fd, const void* buf, uint32_t bytes) {
 	// Reader pipe has been closed
 	if (!info->reader) {
 		signal_send(current_pcb, SIGPIPE);
-		return -1;
+        return -EPIPE;
 	}
 	
-	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
 		info->pos == PIPE_MAX_BUFFER_SIZE)
-		return -1;
+		return 0;
 
 	// Block until the pipe isn't full
 	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate) {
@@ -142,6 +144,11 @@ uint32_t pipe_stat(int32_t fd, sys_stat_type* data) {
 	data->mode = descriptors[fd]->mode;
 	
 	return 0;
+}
+
+// Seek a pipe (returns error)
+uint64_t pipe_llseek(int32_t fd, uint64_t offset, int whence) {
+	return uint64_make(-1, -ESPIPE);
 }
 
 // Close a pipe

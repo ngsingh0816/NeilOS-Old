@@ -29,6 +29,9 @@ uint32_t pipe_write(int32_t fd, const void* buf, uint32_t bytes);
 // Get info about a pipe
 uint32_t pipe_stat(int32_t fd, sys_stat_type* data);
 
+// Seek a pipe (returns error)
+uint64_t pipe_llseek(int32_t fd, uint64_t offset, int whence);
+
 // Close a pipe
 uint32_t pipe_close(file_descriptor_t* fd);
 

@@ -142,9 +142,6 @@
 #define ESTRPIPE 143	/* Streams pipe error */
 #define EWOULDBLOCK EAGAIN	/* Operation would block */
 
-// Error number
-extern unsigned int errno;
-
 //loads the interrupt descriptor table
 void load_idt();
 

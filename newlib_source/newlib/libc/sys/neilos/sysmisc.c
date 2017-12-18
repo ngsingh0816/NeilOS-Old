@@ -50,33 +50,40 @@ extern unsigned int sys_fpathconf(int fd, int name);
 
 long sysconf(int name) {
 	long ret = sys_sysconf(name);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 long pathconf(const char* path, int name) {
 	int fd = sys_open(path, O_RDONLY + 1);
-	if (fd == -1) {
-		errno = sys_errno();
-		return -1;
-	}
+    if (fd < 0) {
+        errno = -fd;
+        return -1;
+    }
 	int ret = fpathconf(fd, name);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	
-	if (sys_close(fd) != 0) {
-		errno = sys_errno();
-		return -1;
-	}
+    int ret2 = sys_close(fd);
+    if (ret2 < 0) {
+        errno = -ret2;
+        return -1;
+    }
 	
 	return ret;
 }
 
 long fpathconf(int fd, int name) {
 	long ret = sys_fpathconf(fd, name);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 

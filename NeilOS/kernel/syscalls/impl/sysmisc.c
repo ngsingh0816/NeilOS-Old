@@ -185,8 +185,10 @@ uint32_t sysconf(uint32_t name) {
 		case _SC_OPEN_MAX: return NUMBER_OF_DESCRIPTORS;
 		case _SC_PAGESIZE: return FOUR_MB_SIZE;
 		case _SC_VERSION: return 200801;
-		// TODO: actually calculate this
+		// TODO: actually calculate these
 		case _SC_PHYS_PAGES: return (FOUR_MB_SIZE / FOUR_KB_SIZE);
+		case _SC_NPROCESSORS_ONLN: return 1;
+		case _SC_AVPHYS_PAGES: return 1024;
 		default: {
 #if DEBUG
 			blue_screen("Unimplemented sysconf variable %d.", name);
@@ -210,13 +212,8 @@ uint32_t fpathconf(uint32_t fd, uint32_t name) {
 	}
 }
 
-// Get most recent error number
-uint32_t sys_errno() {
-	return errno;
-}
-
 // Perform I/O Control
-int ioctl(int fd, int request, ...) {
+int ioctl(uint32_t fd, int request, ...) {
 	LOG_DEBUG_INFO_STR("(%d, %d)", fd, request);
 
 	// TODO: implement

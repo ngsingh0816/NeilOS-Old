@@ -20,8 +20,10 @@ extern unsigned int sys_gettimeofday();
 
 clock_t times(struct tms *buf) {
 	int ret = sys_times(buf);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 

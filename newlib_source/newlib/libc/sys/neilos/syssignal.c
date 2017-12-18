@@ -25,9 +25,11 @@ extern unsigned int sys_alarm(int seconds);
 
 int kill(int pid, int sig) {
 	int ret = sys_kill(pid, sig);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int killpg(int pgrp, int sig) {
@@ -44,49 +46,63 @@ _sig_func_ptr signal(int sig, _sig_func_ptr handler) {
 	struct sigaction old;
 	old.sa_handler = NULL;
 	int ret = sys_sigaction(sig, &act, &old);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return SIG_ERR;
+    }
 	return old.sa_handler;
 }
 
 int sigaction(int signum, const struct sigaction* act, struct sigaction* oldact) {
 	int ret = sys_sigaction(signum, act, oldact);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int sigsetmask(unsigned int signum, unsigned char masked) {
 	int ret = sys_sigsetmask(signum, masked);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int siggetmask(unsigned int signum) {
 	int ret = sys_siggetmask(signum);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
 	int ret = sys_sigprocmask(how, set, oldset);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int sigsuspend(const sigset_t* mask) {
 	int ret = sys_sigsuspend(mask);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }
 
 int alarm(unsigned int seconds) {
 	int ret = sys_alarm(seconds);
-	if (ret == -1)
-		errno = sys_errno();
-	return -1;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+	return ret;
 }

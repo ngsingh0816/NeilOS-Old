@@ -36,6 +36,7 @@
 #define		FILE_TYPE_SYMBOLIC		0120000
 #define		FILE_TYPE_SOCKET		0140000
 #define		FILE_TYPE_PIPE			0010000
+#define		FILE_TYPE_ALL			(~(0010000 - 1))
 
 // For llseek
 #define SEEK_SET		0

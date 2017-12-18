@@ -10,14 +10,14 @@
 #include <program/task.h>
 #include <common/log.h>
 #include <memory/page_list.h>
+#include <syscalls/interrupt.h>
 
 // Set the program break to a specific address
 uint32_t brk(uint32_t addr) {
 	LOG_DEBUG_INFO_STR("(0x%x)", addr);
 
 	if (addr < USER_ADDRESS)
-		return -1;
-	
+		return -ENOMEM;
 	
 	if (addr > current_pcb->brk) {
 		// Allocate new pages
@@ -26,7 +26,7 @@ uint32_t brk(uint32_t addr) {
 			page_list_t* t = page_list_get(&current_pcb->page_list, start, MEMORY_WRITE, true);
 			if (!t) {
 				brk(current_pcb->brk);
-				return -1;
+				return -ENOMEM;
 			}
 			
 			// Map this new page into memory

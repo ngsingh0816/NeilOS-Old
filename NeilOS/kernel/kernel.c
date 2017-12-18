@@ -55,8 +55,7 @@
  */
 
 /* TODO (bugs)
- * Get rid of sys_errno and actually implement error codes
- * make all fd's uint32_t instead of int32_t
+ * Caps lock can mess up dashes (-)
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler
  * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
@@ -278,14 +277,8 @@ entry (unsigned long magic, unsigned long addr)
 			}
 			fclose(&file);
 		} else if (strncmp(input, "rm ", strlen("rm ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[3], FILE_MODE_READ | FILE_MODE_DELETE_ON_CLOSE, &file)) {
+			if (!fsunlink(&input[3]))
 				printf("File not found.\n");
-				continue;
-			}
-			
-			if (!fclose(&file))
-				printf("Could not delete file.\n");
 		} else if (strncmp(input, "link ", strlen("link ")) == 0) {
 			file_descriptor_t file;
 			if (!fopen(&input[5], FILE_MODE_READ, &file)) {
@@ -297,30 +290,24 @@ entry (unsigned long magic, unsigned long addr)
 			num = terminal_read(STDIN, buffer, 128);
 			buffer[num - 1] = 0;
 			
-			if (!flink(&file, buffer))
+			if (flink(&file, buffer) < 0)
 				printf("Could not rename %s to %s", &input[5], buffer);
 			
 			fclose(&file);
 		} else if (strncmp(input, "mkdir ", strlen("mkdir ")) == 0) {
 			file_descriptor_t file;
-			if (fopen(&input[3], FILE_MODE_READ, &file)) {
+			if (fopen(&input[6], FILE_MODE_READ, &file)) {
 				printf("File or directory already exists.\n");
 				fclose(&file);
 				continue;
 			}
 			
-			bool ret = fmkdir(&input[6]);
-			if (!ret)
+			int ret = fmkdir(&input[6]);
+			if (ret < 0)
 				printf("Could not create directory\n");
 		} else if (strncmp(input, "rmdir ", strlen("rmdir ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[6], FILE_MODE_READ | FILE_MODE_DELETE_ON_CLOSE, &file)) {
+			if (!fsunlink(&input[6]))
 				printf("File not found.\n");
-				continue;
-			}
-			
-			if (!fclose(&file))
-				printf("Could not delete directory.\n");
 		} else if (strncmp(input, "truncate ", strlen("truncate ")) == 0) {
 			file_descriptor_t file;
 			if (!fopen(&input[9], FILE_MODE_READ_WRITE, &file)) {

@@ -27,10 +27,10 @@ uint32_t mkdir(const char* name);
 uint32_t link(const char* filename, const char* new_name);
 
 // Unlink a file (note: deletes the file if it is the last remaining link)
-uint32_t unlink(const char* filename);
+uint32_t unlink(const char* filename, bool dir);
 
 // Read a directory entry
-uint32_t readdir(int fd, void* buf, int size, dirent_t* dirent);
+uint32_t readdir(uint32_t fd, void* buf, int size, dirent_t* dirent);
 
 // Update a file's access and modification time
 uint32_t utime(const char* filename, uint32_t* times);

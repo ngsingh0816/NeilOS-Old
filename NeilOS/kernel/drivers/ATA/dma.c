@@ -153,10 +153,6 @@ uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 		outb(IDE_COMMAND_START_READ, base_port + IDE_COMMAND(bus));
 		
 		inb(base_port + IDE_STATUS(bus));
-		
-		// TODO: figure out why DMA doesn't work on VMWare (need to change BUSMASTER_ENABLE to 0x5)
-		// For some reason results in a IDE_STATUS bus error (bit 2)
-		// Also - the IRQ line for the IDE PCI is perminantly set to 0xFF
 	
 		// Wait for it to be ready
 		while (!dma_data_ready)  {}

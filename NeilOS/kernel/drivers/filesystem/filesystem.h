@@ -25,10 +25,16 @@ uint64_t fseek(file_descriptor_t* file, uint64_t offset, int whence);
 uint64_t ftruncate(file_descriptor_t* file, uint64_t size);
 
 // Make directory (delete directory is just delete on close)
-bool fmkdir(const char* filename);
+int fmkdir(const char* filename);
 
 // Hard link
-bool flink(file_descriptor_t* file, const char* link_name);
+int flink(file_descriptor_t* file, const char* link_name);
+
+// Unlink
+int fsunlink(const char* filename);
+
+// Returns true if path is directory
+bool fisdir(const char* filename);
 
 // Close
 bool fclose(file_descriptor_t* file);

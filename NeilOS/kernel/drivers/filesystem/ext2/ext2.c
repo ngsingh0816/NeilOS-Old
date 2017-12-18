@@ -126,7 +126,7 @@ ext_inode_t ext2_open(const char* path) {
 // Create an inode at a particular path (creates a new file no matter what,
 // so only call this when the file doesn't exist)
 ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode) {
-	bool directory = (mode & FILE_TYPE_DIRECTORY) == 1;
+	bool directory = (mode & FILE_TYPE_DIRECTORY) != 0;
 	// Allocate a new inode
 	uint32_t node = ext2_allocate_inode(directory);
 	if (node == EXT2_INODE_INVALID)

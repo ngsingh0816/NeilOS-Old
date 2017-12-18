@@ -30,15 +30,19 @@ extern unsigned int sys_chdir(const char* path);
 
 int fork() {
 	int ret = sys_fork();
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int execve(const char *name, char **argv, char **env) {
 	int ret = sys_execve(name, argv, env);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
@@ -83,8 +87,10 @@ int execvp(const char* name, char* const argv[]) {
 	memcpy(path, pathc, psize + 1);
 	
 	int ret = sys_execve(name, argv, environ);
-	if (ret != -1)
-		return ret;
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	char* str = NULL;
 	uint32_t name_len = strlen(name);
 	while ((str = strsep(&path, ":")) != NULL) {
@@ -100,10 +106,6 @@ int execvp(const char* name, char* const argv[]) {
 		buffer[len + name_len + 1] = 0;
 		ret = sys_execve(buffer, argv, environ);
 		free(buffer);
-		if (ret != -1) {
-			free(path);
-			return ret;
-		}
 	}
 	
 	free(path);
@@ -134,22 +136,28 @@ int execlp(const char* path, const char* arg, ...) {
 
 int getpid() {
 	int ret = sys_getpid();
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int getppid() {
 	int ret = sys_getppid();
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
 int waitpid(unsigned int pid, int* status, int options) {
 	int ret = sys_waitpid(pid, status, options);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }
 
@@ -187,10 +195,11 @@ char* getwd(char* buf) {
 	if (!buf)
 		return NULL;
 	
-	if (sys_getwd(buf) == -1) {
-		errno = sys_errno();
-		return NULL;
-	}
+    int ret = sys_getwd(buf);
+    if (ret < 0) {
+        errno = -ret;
+        return NULL;
+    }
 	return buf;
 }
 
@@ -201,16 +210,19 @@ char* getcwd(char* buf, size_t size) {
 			return NULL;
 	}
 	
-	if (sys_getwd(buf) == -1) {
-		errno = sys_errno();
-		return NULL;
-	}
+    int ret = sys_getwd(buf);
+    if (ret < 0) {
+        errno = -ret;
+        return NULL;
+    }
 	return buf;
 }
 
 int chdir(const char* path) {
 	int ret = sys_chdir(path);
-	if (ret == -1)
-		errno = sys_errno();
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 	return ret;
 }

@@ -17,11 +17,11 @@ uint32_t kill(uint32_t pid, uint32_t signum) {
 	LOG_DEBUG_INFO_STR("(%d, %d)", pid, signum);
 
 	if (signum >= NUMBER_OF_SIGNALS || signum == 0)
-		return -1;
+		return -EINVAL;
 	
 	pcb_t* pcb = pcb_from_pid(pid);
 	if (!pcb)
-		return -1;
+		return -ENOMEM;
 	
 	signal_send(pcb, signum);
 	return 0;
@@ -32,7 +32,7 @@ uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
 	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", signum, act, oldact);
 
 	if (signum >= NUMBER_OF_SIGNALS || signum == 0)
-		return -1;
+		return -EINVAL;
 	
 	if (oldact)
 		*oldact = current_pcb->signal_handlers[signum];
@@ -68,10 +68,10 @@ uint32_t siggetmask(uint32_t signum) {
 
 // Set signal masks
 uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
-	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", how, *set, *oldset);
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", how, set ? *set : NULL, oldset ? *oldset : NULL);
 	
 	if (how < SIG_SETMASK || how > SIG_UNBLOCK)
-		return -1;
+		return -EINVAL;
 	
 	if (oldset)
 		*oldset = current_pcb->signal_mask >> 1;
@@ -89,14 +89,13 @@ uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
 
 // Suspend execution until signal
 uint32_t sigsuspend(const sigset_t* mask) {
-	LOG_DEBUG_INFO_STR("(%d)", *mask);
+	LOG_DEBUG_INFO_STR("(%d)", mask ? *mask : NULL);
 	
 	if (!mask)
-		return -1;
+		return -EFAULT;
 	
 	signal_wait(current_pcb, mask);
-	// errno = EINTR
-	return -1;
+	return -EINTR;
 }
 
 // Set up alarm

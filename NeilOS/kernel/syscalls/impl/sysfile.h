@@ -18,36 +18,36 @@ file_descriptor_t* open_handle(const char* filename, uint32_t mode);
 uint32_t open(const char* filename, uint32_t mode);
 
 // Read from a file descriptor
-uint32_t read(int32_t fd, void* buf, uint32_t nbytes);
+uint32_t read(uint32_t fd, void* buf, uint32_t nbytes);
 
 // Write to a file descriptor
-uint32_t write(int32_t fd, const void* buf, uint32_t nbytes);
+uint32_t write(uint32_t fd, const void* buf, uint32_t nbytes);
 
 // Seek to an offset
-uint32_t llseek(int32_t fd, uint32_t offset_high, uint32_t offset_low, int whence);
+uint32_t llseek(uint32_t fd, uint32_t offset_high, uint32_t offset_low, int whence);
 
 // Change the size of a file
-uint32_t truncate(int32_t fd, uint32_t length_high, uint32_t length_low);
+uint32_t truncate(uint32_t fd, uint32_t length_high, uint32_t length_low);
 
 // Get information about a file descriptor
-uint32_t stat(int32_t fd, sys_stat_type* data);
+uint32_t stat(uint32_t fd, sys_stat_type* data);
 
 // Close a file descriptor
-uint32_t close(int32_t fd);
+uint32_t close(uint32_t fd);
 
 // Is the file descriptor a terminal?
-uint32_t isatty(int32_t fd);
+uint32_t isatty(uint32_t fd);
 
 // Duplicate a file descriptor
-uint32_t dup(int32_t fd);
+uint32_t dup(uint32_t fd);
 
 // Duplicate a file descriptor into the specific file descriptor
-uint32_t dup2(int32_t fd, int32_t new_fd);
+uint32_t dup2(uint32_t fd, uint32_t new_fd);
 
 // Create a pipe
-uint32_t pipe(int32_t pipefd[2]);
+uint32_t pipe(uint32_t pipefd[2]);
 
 // Extensions
-int fcntl(int32_t fd, int32_t cmd, ...);
+int fcntl(uint32_t fd, int32_t cmd, ...);
 
 #endif /* SYSFILE_H */

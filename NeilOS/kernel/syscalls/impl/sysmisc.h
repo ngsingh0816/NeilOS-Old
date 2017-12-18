@@ -17,10 +17,7 @@ uint32_t sysconf(uint32_t name);
 // Get some info about a file limit
 uint32_t fpathconf(uint32_t fd, uint32_t name);
 
-// Get most recent error number
-uint32_t sys_errno();
-
 // Perform I/O Control
-int ioctl(int fd, int request, ...);
+int ioctl(uint32_t fd, int request, ...);
 
 #endif /* SYSMISC_H */

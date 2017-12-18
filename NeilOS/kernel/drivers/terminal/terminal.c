@@ -6,6 +6,7 @@
 #include <program/task.h>
 #include <memory/memory.h>
 #include <common/log.h>
+#include <syscalls/interrupt.h>
 
 #define SCREEN_WIDTH				80
 #define SCREEN_HEIGHT				25
@@ -202,6 +203,7 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 	d->read = terminal_read;
 	d->write = terminal_write;
 	d->stat = terminal_stat;
+	d->llseek = terminal_llseek;
 	d->duplicate = terminal_duplicate;
 	d->close = terminal_close;
 	
@@ -264,6 +266,11 @@ uint32_t terminal_stat(int32_t fd, sys_stat_type* data) {
 	return 0;
 }
 
+// Seek a terminal (not supported).
+uint64_t terminal_llseek(int32_t fd, uint64_t offset, int whence) {
+	return uint64_make(-1, -ESPIPE);
+}
+
 // Duplicate the file handle
 file_descriptor_t* terminal_duplicate(file_descriptor_t* f) {
 	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
@@ -274,7 +281,7 @@ file_descriptor_t* terminal_duplicate(file_descriptor_t* f) {
 	return d;
 }
 
-// Close the terminal. This operation is not supported
+// Close the terminal
 uint32_t terminal_close(file_descriptor_t* fd) {
-	return -1;
+	return 0;
 }
