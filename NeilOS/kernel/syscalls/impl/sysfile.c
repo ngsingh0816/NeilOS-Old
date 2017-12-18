@@ -88,8 +88,8 @@ uint32_t read(uint32_t fd, void* buf, uint32_t nbytes) {
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS)
 		return -EBADF;
-    if (!buf)
-        return -EFAULT;
+	if (!buf)
+		return -EFAULT;
 	
 	// If we are trying to use an invalid descriptor, return failure
 	if (!descriptors[fd] || !descriptors[fd]->read)
@@ -104,10 +104,10 @@ uint32_t write(uint32_t fd, const void* buf, uint32_t nbytes) {
 	LOG_DEBUG_INFO_STR("(%d, 0x%x, %d)", fd, buf, nbytes);
 
     // Check if the arguments are in range
-    if (fd >= NUMBER_OF_DESCRIPTORS)
+	if (fd >= NUMBER_OF_DESCRIPTORS)
         return -EBADF;
-    if (!buf)
-        return -EFAULT;
+	if (!buf)
+		return -EFAULT;
 	
 	// If we are trying to use an invalid descriptor, return failure
 	if (!descriptors[fd] || !descriptors[fd]->write)
@@ -122,10 +122,10 @@ uint32_t llseek(uint32_t fd, uint32_t offset_high, uint32_t offset_low, int when
 	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x, %d)", fd, offset_high, offset_low, whence);
 
 	// Check if the arguments are in range
-    if (fd >= NUMBER_OF_DESCRIPTORS)
+	if (fd >= NUMBER_OF_DESCRIPTORS)
         return -EBADF;
-    if (!(whence >= SEEK_SET && whence <= SEEK_END))
-        return -EINVAL;
+	if (!(whence >= SEEK_SET && whence <= SEEK_END))
+		return -EINVAL;
 	
 	// If we are trying to use an invalid descriptor, return failure
 	if (!descriptors[fd] || !descriptors[fd]->llseek)
@@ -142,7 +142,7 @@ uint32_t truncate(uint32_t fd, uint32_t length_high, uint32_t length_low) {
 
     // Check if the arguments are in range
     if (fd >= NUMBER_OF_DESCRIPTORS)
-        return -EBADF;
+		return -EBADF;
 	
 	// If we are trying to use an invalid descriptor, return failure
 	if (!descriptors[fd] || !descriptors[fd]->truncate)
@@ -159,7 +159,7 @@ uint32_t stat(uint32_t fd, sys_stat_type* data) {
 	
     // Check if the arguments are in range
     if (fd >= NUMBER_OF_DESCRIPTORS)
-        return -EBADF;
+		return -EBADF;
 	
 	// If we are trying to use an invalid descriptor, return failure
 	if (!descriptors[fd] || !descriptors[fd]->stat)
