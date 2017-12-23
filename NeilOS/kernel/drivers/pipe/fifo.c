@@ -141,7 +141,7 @@ uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
 		return 0;
 	}
 	
-	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
 		info->pos == 0) {
 		up(&info->lock);
 		return -1;
@@ -177,7 +177,7 @@ uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
 		return -1;
 	}
 	
-	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
 		info->pos == PIPE_MAX_BUFFER_SIZE) {
 		up(&info->lock);
 		return -1;

@@ -61,7 +61,6 @@
  * bin/dash -> ls followed by control-c immediately after hangs everything
  * bin/dash -> ls -Rla / crashes (ls -la /dev doesn't always work)
  * Not really a bug but ATA read (and probably write) pretty much always read 2 blocks per 4096 bytes because of the offset from the partition, even though DMA read can probably easily offset by sector rather than block
- * fifo_test not working
  * calc doesn't work
  * ls | grep cat in dash multiple times, eventually one will hang
  	(maybe due to set_multitasking_enabled(0) during load_task_replace while the other one has
