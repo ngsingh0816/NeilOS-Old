@@ -17,6 +17,7 @@ int8_t *strrev(int8_t* s);
 uint32_t strlen(const int8_t* s);
 void clear(void);
 void set_cursor_position(uint8_t x, uint8_t y);
+void refresh_cursor_position();
 void show_cursor(bool show);
 void blue_screen(char* message, ...);
 

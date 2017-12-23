@@ -28,6 +28,7 @@ file_descriptor_t* pipe_open(const char* filename, uint32_t mode) {
 		return NULL;
 	
 	memset(f, 0, sizeof(file_descriptor_t));
+	f->lock = MUTEX_UNLOCKED;
 	if (mode & FILE_MODE_READ) {
 		f->read = pipe_read;
 	} else if (mode & FILE_MODE_WRITE) {
@@ -76,20 +77,26 @@ uint32_t pipe_read(int32_t fd, void* buf, uint32_t bytes) {
 	pipe_info_t* info = (pipe_info_t*)descriptors[fd]->info;
 	
 	// Writer pipe was closed and no data left
-	if (!info->writer && info->pos == 0)
+	down(&info->lock);
+	if (!info->writer && info->pos == 0) {
+		up(&info->lock);
 		return 0;
+	}
 	
 	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
-		info->pos == 0)
+		info->pos == 0) {
+		up(&info->lock);
 		return 0;
+	}
 	
 	// Block until there is data
 	while (info->pos == 0 && !current_pcb->should_terminate) {
+		up(&info->lock);
 		schedule();
+		down(&info->lock);
 	}
 	
 	// Read the data in
-	down(&info->lock);
 	uint32_t min = (bytes < info->pos) ? bytes : info->pos;
 	memcpy(buf, info->buffer, min);
 	if (min < info->pos)
@@ -105,22 +112,27 @@ uint32_t pipe_write(int32_t fd, const void* buf, uint32_t bytes) {
 	pipe_info_t* info = (pipe_info_t*)descriptors[fd]->info;
 	
 	// Reader pipe has been closed
+	down(&info->lock);
 	if (!info->reader) {
+		up(&info->lock);
 		signal_send(current_pcb, SIGPIPE);
         return -EPIPE;
 	}
 	
 	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
-		info->pos == PIPE_MAX_BUFFER_SIZE)
+		info->pos == PIPE_MAX_BUFFER_SIZE) {
+		up(&info->lock);
 		return 0;
+	}
 
 	// Block until the pipe isn't full
 	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate) {
+		up(&info->lock);
 		schedule();
+		down(&info->lock);
 	}
 	
 	// Write the data
-	down(&info->lock);
 	uint32_t remaining = PIPE_MAX_BUFFER_SIZE - info->pos;
 	uint32_t min = (bytes > remaining) ? remaining : bytes;
 	memcpy(&info->buffer[info->pos], buf, min);
@@ -137,8 +149,10 @@ uint32_t pipe_stat(int32_t fd, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->block_size = PIPE_MAX_BUFFER_SIZE;
 	if (info) {
+		down(&info->lock);
 		data->size = info->pos;
 		data->num_links = (info->reader != NULL) + (info->writer != NULL);
+		up(&info->lock);
 	}
 	data->num_512_blocks = data->size / 512;
 	data->mode = descriptors[fd]->mode;

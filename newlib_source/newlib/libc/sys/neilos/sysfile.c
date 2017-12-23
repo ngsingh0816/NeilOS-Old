@@ -136,6 +136,7 @@ int fstat(int file, struct stat *st) {
     }
 	
 	__sys_stat_type data;
+	memset(&data, 0, sizeof(__sys_stat_type));
 	int ret = sys_stat(file, &data);
     if (ret < 0) {
         errno = -ret;

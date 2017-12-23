@@ -11,6 +11,7 @@
 #include <common/lib.h>
 #include "page_allocator.h"
 #include <memory/memory.h>
+#include <common/concurrency/semaphore.h>
 
 // (4 * 1024 * 1024) / (12 + 65  / 64 * (1024 * 1024 / 16))
 // for current implementation gives 63 heaps out of 63.007 possible
@@ -50,6 +51,7 @@ typedef struct heap_block_t {
 
 // The starting address of the heap
 heap_block_t* heap = NULL;
+mutex_t heap_lock = MUTEX_UNLOCKED;
 
 // Returns a pointer to newly allocated memory or NULL if it cannot be allocated
 void* kmalloc(uint32_t real_size) {
@@ -89,6 +91,8 @@ void* kmalloc(uint32_t real_size) {
 	level--;
 	
 	// Loop through all available heap blocks
+	// TODO: can make this locking better by having an individual lock for each heap block (and in kfree too)
+	down(&heap_lock);
 	heap_block_t* heap_block = heap;
 	heap_block_t* prev_block = NULL;
 	for (heap_block = heap; heap_block != NULL; heap_block = heap_block->next) {
@@ -133,6 +137,7 @@ void* kmalloc(uint32_t real_size) {
 			uint32_t* ret =  (uint32_t*)((uint32_t)heap_block + sizeof(heap_block_t) + node_index * node_size);
 			// Mark this as using kmalloc, not a page
 			*(ret++) = 0;
+			up(&heap_lock);
 			return (void*)ret;
 		}
 		
@@ -160,14 +165,17 @@ void* kmalloc(uint32_t real_size) {
 							buddy_get_index_of_node_at_level(left_node, level) * size);
 		// Mark as using kmalloc and not a page
 		*(ret++) = 0;
+		up(&heap_lock);
 		return (void*)ret;
 	}
 	
 	// None could be found, so try to allocate a new heap block in physical memory
 	heap_block_t* new_heap = (heap_block_t*)page_get_four_mb(1, VIRTUAL_MEMORY_KERNEL);
 	// If we couldn't get more memory, give up
-	if (!new_heap)
+	if (!new_heap) {
+		up(&heap_lock);
 		return NULL;
+	}
 	
 	// Set the heap starting point
 	new_heap->next = NULL;
@@ -204,6 +212,7 @@ void* kmalloc(uint32_t real_size) {
 	}
 	
 	// Try again (this isn't recursion because it will happen a max of one extra time)
+	up(&heap_lock);
 	return kmalloc(original_size);
 }
 
@@ -219,6 +228,7 @@ void kfree(void* addr) {
 	heap_block_t* heap_block;
 	uint32_t naddr = 0;
 	bool foundAddress = false;
+	down(&heap_lock);
 	for (heap_block = heap; heap_block != NULL; heap_block = heap_block->next) {
 		// Find the node address for this memory address
 		naddr = (uint32_t)addr - (uint32_t)heap_block - sizeof(heap_block_t);
@@ -231,6 +241,7 @@ void kfree(void* addr) {
 	
 	// It is not possible for an allocated pointer to not be aligned to our min node size
 	if (!foundAddress || (naddr % MIN_SIZE) != 0) {
+		up(&heap_lock);
 		printf("Error (1): pointer (0x%x) being freed was not allocated.\n", addr);
 		return;
 	}
@@ -243,6 +254,7 @@ void kfree(void* addr) {
 	
 	// If this node is not in use, then nothing could have been allocated to this spot
 	if (buddy_get_node_value(buddy, node) == NODE_FREE) {
+		up(&heap_lock);
 		printf("Error (2): pointer (0x%x) being freed was not allocated.\n", addr);
 		return;
 	}
@@ -272,10 +284,12 @@ void kfree(void* addr) {
 			heap_block->space_used -= MAX_SIZE;
 			
 			// We just released all the space in the heap node, so there shouldn't be anything to combine
+			up(&heap_lock);
 			return;
 		}
 		
 		// We couldn't find anything allocated
+		up(&heap_lock);
 		printf("Error (3): pointer (0x%x) being freed was not allocated.\n", addr);
 		return;
 	}
@@ -312,6 +326,7 @@ void kfree(void* addr) {
 			
 			// Free the heap memory
 			page_free(h);
+			up(&heap_lock);
 			return;
 		}
 	}
@@ -338,4 +353,5 @@ void kfree(void* addr) {
 			break;
 		}
 	}
+	up(&heap_lock);
 }

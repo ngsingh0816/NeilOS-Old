@@ -253,9 +253,7 @@ bool ext2_link(ext_inode_t* inode, ext_inode_t* link_parent, const char* link_na
 uint32_t ext2_read_data(ext_inode_t* inode, uint64_t offset, void* buffer, uint32_t length) {
 	if (inode->inode == EXT2_INODE_INVALID)
 		return -1;
-	
-	pcb_t* pcb = current_pcb;
-	
+		
 	// Calculate the starting and ending blocks
 	uint32_t block_size = 1 << (EXT2_BASE_BLOCK_SIZE_BITS + superblock.log_block_size);
 	uint32_t start_block = uint64_shr(offset, EXT2_BASE_BLOCK_SIZE_BITS + superblock.log_block_size).low;
@@ -301,9 +299,6 @@ uint32_t ext2_read_data(ext_inode_t* inode, uint64_t offset, void* buffer, uint3
 		copy_pos += ata_partition_read(&fs, buffer + copy_pos, size);
 		
 		ata_partition_unlock(&fs);
-		
-		if (pcb && signal_pending(pcb))
-			break;
 	}
 	
 	// Return bytes read

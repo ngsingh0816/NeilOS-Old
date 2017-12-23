@@ -72,8 +72,9 @@ void page_list_write_bitmap(uint32_t* bitmap, uint32_t index, bool value) {
 		bitmap[page] &= ~(1 << offset);
 }
 
-// Add a page to the list
-page_list_t* page_list_add(page_list_t** list, uint32_t vaddr, uint32_t permissions) {
+// Add a page to the list and return it (already allocated page)
+page_list_t* page_list_add_mapping_owner(page_list_t** list, uint32_t vaddr, uint32_t paddr,
+										 uint32_t permissions, bool owner) {
 	if (!list)
 		return NULL;
 	
@@ -82,21 +83,50 @@ page_list_t* page_list_add(page_list_t** list, uint32_t vaddr, uint32_t permissi
 		return NULL;
 	
 	memset(t, 0, sizeof(page_list_t));
+	t->lock = MUTEX_LOCKED;
 	t->vaddr = vaddr;
 	t->permissions = permissions;
-	t->paddr = (uint32_t)page_physical_get_four_mb(1);
-	if (!t->paddr) {
-		kfree(t);
-		return NULL;
-	}
-	t->owner = true;
+	t->paddr = paddr;
+	t->owner = owner;
 	
+	if (*list)
+		down(&((*list)->lock));
 	page_list_t* head = *list;
 	if (head) {
 		t->next = head;
 		head->prev = t;
 	}
 	*list = t;
+	if (head)
+		up(&head->lock);
+	up(&t->lock);
+	
+	return t;
+}
+
+// Add a page to the list
+page_list_t* page_list_add(page_list_t** list, uint32_t vaddr, uint32_t permissions) {
+	uint32_t paddr = (uint32_t)page_physical_get_four_mb(1);
+	if (!paddr)
+		return NULL;
+	
+	return page_list_add_mapping_owner(list, vaddr, paddr, permissions, true);
+}
+
+page_list_t* page_list_add_mapping(page_list_t** list, uint32_t vaddr, uint32_t paddr, uint32_t permissions) {
+	return page_list_add_mapping_owner(list, vaddr, paddr, permissions, false);
+}
+
+// Update (add if doesn't exist) a page to the list and return it (already allocated page)
+page_list_t* page_list_update_mapping(page_list_t** list, uint32_t vaddr, uint32_t paddr, uint32_t permissions) {
+	page_list_t* t = page_list_get(list, vaddr, permissions, false);
+	if (!t)
+		return page_list_add_mapping(list, vaddr, paddr, permissions);
+	
+	down(&t->lock);
+	t->paddr = paddr;
+	t->permissions = permissions;
+	up(&t->lock);
 	
 	return t;
 }
@@ -150,12 +180,14 @@ bool page_list_set_up_page_table(page_list_t* list) {
 
 // Add a page to the list and return it by copying another page entry
 page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p) {
-	bool flags = set_multitasking_enabled(false);
 	// Copy the list but point to the same address without write access
 	page_list_t* l = kmalloc(sizeof(page_list_t));
 	if (!l)
 		return NULL;
+
+	down(&p->lock);
 	memcpy(l, p, sizeof(page_list_t));
+	l->lock = MUTEX_LOCKED;
 	l->next = NULL;
 	l->prev = NULL;
 	l->owner = false;
@@ -180,6 +212,7 @@ page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p) {
 			if (!page_list_set_up_page_table(p)) {
 				page_cow_list_remove(&p->linked, l);
 				kfree(l);
+				up(&p->lock);
 				return NULL;
 			}
 		}
@@ -187,20 +220,25 @@ page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p) {
 		if (!page_list_copy_page_table(l, p)) {
 			page_cow_list_remove(&p->linked, l);
 			kfree(l);
+			up(&p->lock);
 			return NULL;
 		}
 		
-		page_list_map(p);
+		page_list_map(p, false);
 	}
+	up(&p->lock);
 	
+	if (*list)
+		down(&((*list)->lock));
 	page_list_t* head = *list;
 	if (head) {
 		l->next = head;
 		head->prev = l;
 	}
 	*list = l;
-	
-	set_multitasking_enabled(flags);
+	if (head)
+		up(&head->lock);
+	up(&l->lock);
 	
 	return l;
 }
@@ -210,6 +248,8 @@ bool page_list_remove(page_list_t** list, uint32_t vaddr) {
 	if (!list)
 		return NULL;
 	
+	if (*list)
+		down(&((*list)->lock));
 	page_list_t* t = *list;
 	while (t) {
 		if (t->vaddr == vaddr) {
@@ -220,9 +260,21 @@ bool page_list_remove(page_list_t** list, uint32_t vaddr) {
 			if (t->owner)
 				page_physical_free((void*)t->paddr);
 			kfree(t);
+			
+			if (t->prev)
+				up(&t->prev->lock);
+			up(&t->lock);
+			
 			return true;
 		}
+		if (t->prev)
+			up(&t->prev->lock);
+		page_list_t* prev = t;
 		t = t->next;
+		if (t)
+			down(&t->lock);
+		else
+			up(&prev->lock);
 	}
 	
 	return false;
@@ -239,11 +291,19 @@ page_list_t* page_list_get(page_list_t** list, uint32_t vaddr, uint32_t permissi
 	if (!list)
 		return NULL;
 	
+	if (*list)
+		down(&((*list)->lock));
 	page_list_t* t = *list;
 	while (t) {
-		if (t->vaddr == vaddr)
+		if (t->vaddr == vaddr) {
+			up(&t->lock);
 			return t;
+		}
+		page_list_t* prev = t;
 		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
 	}
 	
 	if (!allocate)
@@ -253,32 +313,67 @@ page_list_t* page_list_get(page_list_t** list, uint32_t vaddr, uint32_t permissi
 }
 
 // Map a page into memory
-void page_list_map(page_list_t* list) {
+void page_list_map(page_list_t* list, bool preserve_context) {
 	if (list->page_table) {
-		vm_map_page_table(list->vaddr, vm_virtual_to_physical((uint32_t)list->page_table->pages), list->permissions);
+		vm_map_page_table(list->vaddr, vm_virtual_to_physical((uint32_t)list->page_table->pages),
+						  list->page_table->pages, list->permissions);
 	} else {
 		vm_map_page(list->vaddr, list->paddr, (list->copy_on_write ?
-										   (list->permissions & ~MEMORY_WRITE) : list->permissions));
+										   (list->permissions & ~MEMORY_WRITE) : list->permissions), preserve_context);
+	}
+}
+
+void page_list_map_list(page_list_t* list, bool preserve_context) {
+	page_list_t* t = list;
+	while (t) {
+		page_list_map(t, preserve_context);
+		t = t->next;
+	}
+}
+
+// Unmap a page from memory (if preserve_context is set to true, then the page will be removed from being persistent
+// across context switches)
+void page_list_unmap(page_list_t* list, bool preserve_context) {
+	vm_unmap_page(list->vaddr, preserve_context);
+}
+
+// Unmap a page list
+void page_list_unmap_list(page_list_t* list, bool preserve_context) {
+	if (list)
+		down(&list->lock);
+	page_list_t* t = list;
+	while (t) {
+		page_list_unmap(t, preserve_context);
+		
+		page_list_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
 	}
 }
 
 // Perform a copy on write
 bool page_list_copy_on_write(page_list_t* list, uint32_t address) {
-	// Get a four kb page and map it in then copy it
-	bool flags = set_multitasking_enabled(false);
-	
 	// Make a 4kb copy of this page
 	void* copy = page_physical_get_aligned_four_kb(VIRTUAL_MEMORY_USER);
-	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
-	if (!vaddr) {
-		page_physical_free_aligned_four_kb(copy);
-		set_multitasking_enabled(flags);
+	if (!copy) {
 		return false;
 	}
+	vm_lock();
+	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
+	if (!vaddr) {
+		vm_unlock();
+		page_physical_free_aligned_four_kb(copy);
+		return false;
+	}
+
 	uint32_t offset = (uint32_t)copy & (FOUR_MB_SIZE - 1);
-	vm_map_page(vaddr, (uint32_t)copy - offset, MEMORY_WRITE | MEMORY_KERNEL);
+	vm_map_page(vaddr, (uint32_t)copy - offset, MEMORY_WRITE | MEMORY_KERNEL, false);
 	memcpy((void*)(vaddr + offset), (void*)(address & ~(FOUR_KB_SIZE - 1)), FOUR_KB_SIZE);
-	vm_unmap_page(vaddr);
+	vm_unmap_page(vaddr, false);
+	vm_unlock();
+	down(&list->lock);
 	uint32_t page = (address - list->vaddr) / FOUR_KB_SIZE;
 	uint32_t old_paddr = list->page_table->pages[page] & ~(FOUR_KB_SIZE - 1);
 	list->page_table->pages[page] = vm_create_page_table_entry((uint32_t)copy, list->permissions);
@@ -287,30 +382,41 @@ bool page_list_copy_on_write(page_list_t* list, uint32_t address) {
 		// If we already owned a page before this, look for a new owner for that page.
 		// If everybody else is already an owner, deallocate it
 		page_cow_list_t* t = list->linked;
+		if (t && t->entry)
+			down(&t->entry->lock);
+		up(&list->lock);
 		bool found = false;
-		while (t) {
+		while (t && t->entry) {
 			if ((t->entry->page_table->pages[page] & ~(FOUR_KB_SIZE - 1)) == old_paddr) {
 				found = true;
 				page_list_write_bitmap(t->entry->page_table->owners, page, true);
+				up(&t->entry->lock);
 				break;
 			}
+			
+			up(&t->entry->lock);
 			t = t->next;
+			if (t && t->entry)
+				down(&t->entry->lock);
 		}
 		if (!found)
 			page_physical_free_aligned_four_kb((void*)old_paddr);
+		
+		down(&list->lock);
 	}
 
 	page_list_write_bitmap(list->page_table->owners, page, true);
 	
-	page_list_map(list);
-	
-	set_multitasking_enabled(flags);
+	page_list_map(list, false);
+	up(&list->lock);
 	
 	return true;
 }
 
 // Dealloc a whole page list
 void page_list_dealloc(page_list_t* list) {
+	if (list)
+		down(&list->lock);
 	page_list_t* t = list;
 	while (t) {
 		page_list_t* next = t->next;
@@ -340,7 +446,10 @@ void page_list_dealloc(page_list_t* list) {
 			kfree(prev);
 		}
 		
+		up(&t->lock);
 		kfree(t);
 		t = next;
+		if (t)
+			down(&t->lock);
 	}
 }

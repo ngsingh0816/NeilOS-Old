@@ -120,9 +120,16 @@ char* get_last_path_component(const char* filename) {
 	return name;
 }
 
+// Get inode
+uint32_t filesystem_get_inode(const char* filename) {
+	ext_inode_t inode = ext2_open(filename);
+	return inode.inode;
+}
+
 // Open a file object
 bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 	memset(desc, 0, sizeof(file_descriptor_t));
+	desc->lock = MUTEX_UNLOCKED;
 	
 	// Open the file
 	ext_inode_t inode = ext2_open(filename);
@@ -151,6 +158,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		if (!fifo)
 			return false;
 		memcpy(desc, fifo, sizeof(file_descriptor_t));
+		desc->lock = MUTEX_UNLOCKED;
 		kfree(fifo);
 		return true;
 	}
@@ -163,6 +171,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 			return false;
 		
 		memcpy(desc, ret, sizeof(file_descriptor_t));
+		desc->lock = MUTEX_UNLOCKED;
 		kfree(ret);
 		return true;
 	}
@@ -690,6 +699,7 @@ file_descriptor_t* filesystem_duplicate(file_descriptor_t* f) {
 	if (!d)
 		return NULL;
 	memcpy(d, f, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	
 	uint32_t len = strlen(f->filename);
 	d->filename = kmalloc(len + 1);

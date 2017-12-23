@@ -36,6 +36,8 @@ typedef struct task_list {
 	uint32_t pid;
 	struct pcb* pcb;
 	uint32_t return_value;
+	
+	mutex_t lock;
 } task_list_t;
 
 // List for all the running tasks
@@ -62,9 +64,13 @@ typedef struct pcb {
 	// corresponding 4MB page starting at 0x8000000
 	page_list_t* page_list;
 	uint32_t brk;
+	// For use with preserving context mappings (see vm_map_page)
+	page_list_t* temporary_mappings;
 	
 	// The file descriptors for this task
 	file_descriptor_t* descriptors[NUMBER_OF_DESCRIPTORS];
+	mutex_t descriptor_lock;
+	mutex_t lock;
 	
 	// Parent and child process
 	struct pcb* parent;
@@ -141,7 +147,7 @@ void set_current_task(pcb_t* pcb);
 // Switch from one task to another
 void context_switch(pcb_t* from, pcb_t* to);
 
-// Run the scheduler (gets called up PIT interrupt)
+// Run the scheduler
 void schedule();
 
 // Alternative to cli/sti (for using files still)

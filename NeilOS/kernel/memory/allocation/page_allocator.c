@@ -11,6 +11,7 @@
 #include <common/lib.h>
 #include <memory/memory.h>
 #include <program/task.h>
+#include <common/concurrency/semaphore.h>
 
 #define MIN_PAGE_SIZE		(1024 * 1024 / 16)			// 64KB
 #define MAX_PAGE_SIZE		(1024 * 1024 * 1024)		// 1 GB
@@ -26,6 +27,7 @@
 #define PAGE_SIZE						(1024 * 1024 * 4)	// 4MB
 
 uint8_t buddy[BUDDY_SIZE];
+mutex_t buddy_lock = MUTEX_UNLOCKED;
 uint32_t space_used;
 
 typedef struct page_four_kb {
@@ -37,15 +39,16 @@ typedef struct page_four_kb {
 	struct page_four_kb* next;
 } page_four_kb_t;
 page_four_kb_t* four_kb_pages;
+mutex_t four_kb_lock = MUTEX_UNLOCKED;
 
 // Checks whether a virtual page of a specific type maps to a physical page
 bool page_mapping_exists(uint32_t paddr, uint32_t type, void** addr_out) {
 	// TODO: this is pretty bad probably
-	uint32_t z;
-	for (z = 0; z < NUMBER_OF_PAGES; z++) {
+	uint32_t start = (type == VIRTUAL_MEMORY_KERNEL) ? (VM_KERNEL_ADDRESS / FOUR_MB_SIZE) : 0;
+	uint32_t end = (type == VIRTUAL_MEMORY_KERNEL) ? NUMBER_OF_PAGES : (VM_KERNEL_ADDRESS / FOUR_MB_SIZE);
+	for (uint32_t z = start; z < end; z++) {
 		uint32_t vaddr = z * PAGE_SIZE;
-		if (vm_virtual_to_physical(vaddr) == (void*)paddr && vm_is_page_mapped(vaddr) &&
-			vm_get_virtual_page_type(vaddr) == type) {
+		if (vm_virtual_to_physical(vaddr) == (void*)paddr && vm_is_page_mapped(vaddr)) {
 			*addr_out = (void*)vaddr;
 			return true;
 		}
@@ -77,13 +80,15 @@ void* convert_physical_to_virtual(uint32_t paddr, uint32_t size, uint32_t type) 
 		// We need to map new virtual pages
 		uint32_t paddr_aligned = paddr - paddr_offset;
 		const uint32_t num_pages = (size - 1) / PAGE_SIZE + 1;
+		vm_lock();
 		uint32_t vaddr = vm_get_next_unmapped_pages(num_pages, type);
 		int z;
 		for (z = 0; z < num_pages; z++) {
 			vm_map_page(vaddr + z * PAGE_SIZE, paddr_aligned + z * PAGE_SIZE,
-						MEMORY_WRITE | ((type == VIRTUAL_MEMORY_KERNEL) ? MEMORY_KERNEL : 0x0));
+						MEMORY_WRITE | ((type == VIRTUAL_MEMORY_KERNEL) ? MEMORY_KERNEL : 0x0), false);
 			
 		}
+		vm_unlock();
 		addr = (void*)vaddr;
 	}
 	
@@ -103,16 +108,19 @@ void* page_get_aligned_four_kb() {
 // Gets a 4kb aligned 4kb page (must be freed with page_free_aligned_four_kb)
 void* page_physical_get_aligned_four_kb(uint32_t type) {
 	// Find an open page in the list
+	down(&four_kb_lock);
 	page_four_kb_t* t = four_kb_pages;
 	page_four_kb_t* prev = NULL;
-	bool flags = set_multitasking_enabled(false);
+
+	vm_lock();
 	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
 	if (!vaddr) {
-		set_multitasking_enabled(flags);
+		vm_unlock();
+		up(&four_kb_lock);
 		return NULL;
 	}
 	while (t) {
-		vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL);
+		vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL, false);
 		uint32_t paddr = (uint32_t)t;
 		t = (page_four_kb_t*)vaddr;
 		
@@ -121,8 +129,9 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 		for (uint32_t z = 0; z < FOUR_MB_SIZE / FOUR_KB_SIZE; z++) {
 			if (!t->entries[z]) {
 				t->entries[z] = 1;
-				vm_unmap_page(vaddr);
-				set_multitasking_enabled(flags);
+				vm_unmap_page(vaddr, false);
+				vm_unlock();
+				up(&four_kb_lock);
 				return (void*)(paddr + FOUR_KB_SIZE * z);
 			}
 		}
@@ -131,12 +140,13 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 		prev = (page_four_kb_t*)paddr;
 		t = t->next;
 	}
-	vm_unmap_page(vaddr);
+	vm_unmap_page(vaddr, true);
+	vm_unlock();
 	
 	// Allocate a new page if needed
 	t = page_get_four_mb(1, VIRTUAL_MEMORY_KERNEL);
 	if (!t) {
-		set_multitasking_enabled(flags);
+		up(&four_kb_lock);
 		return NULL;
 	}
 	
@@ -149,16 +159,17 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 	vaddr = (uint32_t)t;
 	t = vm_virtual_to_physical(vaddr);
 	if (prev) {
-		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL);
+		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL, false);
 		prev = (page_four_kb_t*)vaddr;
 		prev->next = t;
 	}
 	else
 		four_kb_pages = t;
 	
-	vm_unmap_page(vaddr);
-	set_multitasking_enabled(flags);
-
+	vm_unmap_page(vaddr, false);
+	
+	up(&four_kb_lock);
+	
 	return (void*)((uint32_t)t + FOUR_KB_SIZE);
 }
 
@@ -166,20 +177,25 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 void page_free_aligned_four_kb(void* addr) {
 	bool ret = page_physical_free_aligned_four_kb(vm_virtual_to_physical((uint32_t)addr));
 	if (ret)
-		vm_unmap_page((uint32_t)addr * ~(FOUR_MB_SIZE - 1));
+		vm_unmap_page((uint32_t)addr * ~(FOUR_MB_SIZE - 1), false);
 }
 
 // Frees a 4kb aligned 4kb page
 bool page_physical_free_aligned_four_kb(void* addr) {
 	// Get 4MB aligned journal
+	down(&four_kb_lock); // TODO: can make this more efficient by invidiualized locking in linked list
 	uint32_t paddr = ((uint32_t)addr & ~(FOUR_MB_SIZE - 1));
 	page_four_kb_t* t = (page_four_kb_t*)paddr;
 	uint32_t offset = ((uint32_t)addr - paddr) / FOUR_KB_SIZE;
 	
+	vm_lock();
 	uint32_t vaddr = vm_get_next_unmapped_page(VIRTUAL_MEMORY_KERNEL);
-	if (!vaddr)
+	if (!vaddr) {
+		vm_unlock();
+		up(&four_kb_lock);
 		return false;
-	vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL);
+	}
+	vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL, false);
 	t = (page_four_kb_t*)vaddr;
 	
 	if (!t->entries[offset])
@@ -196,23 +212,28 @@ bool page_physical_free_aligned_four_kb(void* addr) {
 		}
 	}
 	if (found) {
-		vm_unmap_page(vaddr);
+		vm_unmap_page(vaddr, false);
+		vm_unlock();
+		up(&four_kb_lock);
 		return false;
 	}
 	
 	// Remove this entry
 	page_four_kb_t* next = t->next, *prev = t->prev;
 	if (prev) {
-		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL);
+		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL, false);
 		((page_four_kb_t*)vaddr)->next = next;
 	}
 	if (next) {
-		vm_map_page(vaddr, (uint32_t)next, MEMORY_WRITE | MEMORY_KERNEL);
+		vm_map_page(vaddr, (uint32_t)next, MEMORY_WRITE | MEMORY_KERNEL, false);
 		((page_four_kb_t*)vaddr)->prev = prev;
 	}
 	if (t == four_kb_pages)
 		four_kb_pages = next;
-	vm_unmap_page(vaddr);
+	up(&four_kb_lock);
+	
+	vm_unmap_page(vaddr, false);
+	vm_unlock();
 	
 	page_physical_free((void*)paddr);
 	return true;
@@ -264,6 +285,7 @@ void* page_physical_get(uint32_t s) {
 	int32_t l;
 	uint32_t node = 0, node_index = 0;
 	bool found = false;
+	down(&buddy_lock);
 	for (l = level; l >= 0; l--) {
 		// Loop through all the nodes in this level
 		int z, num_nodes = buddy_get_number_of_nodes_in_level(l);
@@ -283,8 +305,10 @@ void* page_physical_get(uint32_t s) {
 	}
 	
 	// If we couldn't find a node, we don't have the available space
-	if (!found)
+	if (!found) {
+		up(&buddy_lock);
 		return NULL;
+	}
 	
 	space_used += size;
 	
@@ -296,6 +320,7 @@ void* page_physical_get(uint32_t s) {
 		buddy_set_node_value(buddy, node, NODE_USED);
 		
 		// We have the physical address
+		up(&buddy_lock);
 		return (void*)(node_index * node_size);
 	}
 	
@@ -319,7 +344,9 @@ void* page_physical_get(uint32_t s) {
 	buddy_set_node_value(buddy, node, NODE_USED_INDIRECT);
 	
 	// Return the memory location of this left most node
-	return (void*)(buddy_get_index_of_node_at_level(left_node, level) * size);
+	void* ret = (void*)(buddy_get_index_of_node_at_level(left_node, level) * size);
+	up(&buddy_lock);
+	return ret;
 }
 
 void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr);
@@ -344,7 +371,9 @@ void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr) {
 	uint32_t node = buddy_get_indexed_node_at_level(log2(MAX_PAGE_SIZE / MIN_PAGE_SIZE), (uint32_t)addr / MIN_PAGE_SIZE);
 	
 	// If this node is not in use, then nothing could have been allocated to this spot
+	down(&buddy_lock);
 	if (buddy_get_node_value(buddy, node) == NODE_FREE) {
+		up(&buddy_lock);
 		printf("Error (1): page (0x%x) being freed was not allocated.\n", addr);
 		return;
 	}
@@ -370,6 +399,7 @@ void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr) {
 	if (!found) {
 		if (!(buddy_get_node_value(buddy, 0) == NODE_USED && addr == 0)) {
 			// We couldn't find anything allocated
+			up(&buddy_lock);
 			printf("Error (2): page (0x%x) being freed was not allocated.\n", addr);
 			return;
 		}
@@ -407,7 +437,7 @@ void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr) {
 					for (z = 0; z < NUMBER_OF_PAGES; z++) {
 						uint32_t test_vaddr = z * PAGE_SIZE;
 						if (vm_is_page_mapped(test_vaddr) && vm_virtual_to_physical(test_vaddr))
-							vm_unmap_page((uint32_t)vaddr);
+							vm_unmap_page((uint32_t)vaddr, false);
 					}
 					unmapped = true;
 				}
@@ -419,4 +449,6 @@ void page_physical_free_impl(void* addr, void* vaddr, bool use_vadr) {
 			break;
 		}
 	}
+	
+	up(&buddy_lock);
 }

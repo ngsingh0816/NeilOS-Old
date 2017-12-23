@@ -10,6 +10,7 @@
 #define DYLIB_H
 
 #include <common/types.h>
+#include <common/concurrency/semaphore.h>
 #include <memory/page_list.h>
 
 struct pcb;
@@ -79,6 +80,8 @@ typedef struct dylib {
 	
 	// Init function
 	uint32_t init;
+	
+	mutex_t lock;
 } dylib_t;
 
 // Returns true whether a dylib is loaded

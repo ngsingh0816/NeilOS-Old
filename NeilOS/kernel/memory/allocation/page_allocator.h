@@ -18,6 +18,9 @@
 // Initialize the base memory
 void page_allocator_init();
 
+// Checks whether a virtual page of a specific type maps to a physical page
+bool page_mapping_exists(uint32_t paddr, uint32_t type, void** addr_out);
+
 // Gets a 4kb aligned 4kb virtual page
 void* page_get_aligned_four_kb();
 

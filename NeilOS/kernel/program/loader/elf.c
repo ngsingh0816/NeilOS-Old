@@ -247,8 +247,10 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 				return false;
 			
 			uint32_t num_symbols = section_header->size / sizeof(elf_symbol_table_t);
+			down(&dylib->lock);
 			dylib->symbols = (dylib_symbol*)kmalloc(num_symbols * sizeof(dylib_symbol));
 			if (!dylib->symbols) {
+				up(&dylib->lock);
 				kfree(dynsym);
 				return false;
 			}
@@ -259,6 +261,7 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 				kfree(dylib->symbols);
 				dylib->symbols = NULL;
 				kfree(dynsym);
+				up(&dylib->lock);
 				return false;
 			}
 			memcpy(dylib->symbol_names, strtab, str_len + 1);
@@ -270,6 +273,7 @@ bool elf_load_symbol_table(elf_section_header_t* sections, elf_header_t* header,
 				dylib->symbols[i].valid = dynsym[i].shindex != ELF_SYMBOL_UNDEFINED;
 				dylib->num_symbols++;
 			}
+			up(&dylib->lock);
 			
 			kfree(dynsym);
 			
@@ -305,11 +309,14 @@ bool elf_load_hash_table(elf_section_header_t* sections, elf_header_t* header,
 		if (!buffer)
 			return false;
 		
+		down(&dylib->lock);
+		
 		// Allocate
 		dylib->hash.nbuckets = buffer[0];
 		dylib->hash.nchains = buffer[1];
 		dylib->hash.buckets = kmalloc(buffer[0] * sizeof(uint32_t));
 		if (!dylib->hash.buckets) {
+			up(&dylib->lock);
 			kfree(buffer);
 			return false;
 		}
@@ -318,6 +325,7 @@ bool elf_load_hash_table(elf_section_header_t* sections, elf_header_t* header,
 			kfree(dylib->hash.buckets);
 			dylib->hash.buckets = NULL;
 			kfree(buffer);
+			up(&dylib->lock);
 			return false;
 		}
 		
@@ -325,6 +333,7 @@ bool elf_load_hash_table(elf_section_header_t* sections, elf_header_t* header,
 		memcpy(dylib->hash.buckets, &buffer[2], buffer[0] * sizeof(uint32_t));
 		memcpy(dylib->hash.chains, &buffer[2 + buffer[0]], buffer[1] * sizeof(uint32_t));
 		
+		up(&dylib->lock);
 		kfree(buffer);
 		break;
 	}
@@ -480,7 +489,6 @@ bool elf_load(char* filename, pcb_t* pcb) {
 		goto cleanup;
 	char* section_names = strtabs[header.section_header_name_index];
 	
-	
 	// Load program headers
 	uint16_t z;
 	for (z = 0; z < header.program_header_num_entries; z++) {
@@ -494,10 +502,12 @@ bool elf_load(char* filename, pcb_t* pcb) {
 		uint32_t real_size = program_header->mem_size > program_header->size ?
 			program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
+			down(&pcb->lock);
 			page_list_t* t = page_list_get(&pcb->page_list, pos, MEMORY_WRITE, true);
+			up(&pcb->lock);
 			if (!t)
 				return false;
-			page_list_map(t);
+			page_list_map(t, true);
 		}
 		
 		// Load the program segment into memory
@@ -550,10 +560,13 @@ bool elf_load(char* filename, pcb_t* pcb) {
 	}
 	
 	// Setup dylibs
+	down(&pcb->lock);
 	dylib_list_t* t = pcb->dylibs->next;
+	up(&pcb->lock);
 	while (t) {
 		if (!elf_load_dylib_for_task(t->dylib, pcb, t->offset))
 			goto cleanup;
+		
 		t = t->next;
 	}
 	
@@ -569,6 +582,9 @@ bool elf_load(char* filename, pcb_t* pcb) {
 	ret = true;
 	
 cleanup:
+	// Unmap program
+	page_list_unmap_list(pcb->page_list, true);
+	
 	fclose(&file);
 	if (program_headers)
 		kfree(program_headers);
@@ -617,7 +633,10 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 		uint32_t real_size = program_header->mem_size > program_header->size ?
 		program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
+			down(&dylib->lock);
 			page_list_t* t = page_list_get(&dylib->page_list, pos, MEMORY_WRITE, true);
+			up(&dylib->lock);
+			
 			if (!t)
 				return false;
 			num_pages++;
@@ -625,15 +644,17 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 	}
 	
 	// Offset these pages and map them
-	// TODO: might need a memory lock or something
-	bool flags = set_multitasking_enabled(false);
+	vm_lock();
 	uint32_t offset = vm_get_next_unmapped_pages(num_pages, VIRTUAL_MEMORY_USER);
+	down(&dylib->lock);
 	page_list_t* t = dylib->page_list;
 	while (t) {
 		t->vaddr += offset;
-		page_list_map(t);
+		page_list_map(t, true);
 		t = t->next;
 	}
+	up(&dylib->lock);
+	vm_unlock();
 	
 	// Acutally load the program segment
 	for (z = 0; z < header.program_header_num_entries; z++) {
@@ -651,7 +672,11 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 				   program_header->mem_size - program_header->size);
 		}
 	}
-	set_multitasking_enabled(flags);
+
+	// Unmap the pages
+	down(&dylib->lock);
+	page_list_unmap_list(dylib->page_list, true);
+	up(&dylib->lock);
 	
 	// Load the dynamic symbol table
 	if (!elf_load_symbol_table(section_headers, &header, &file, section_names, strtabs, dylib, 0, ".dynsym"))
@@ -664,10 +689,14 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 		if (section->type == ELF_SECTION_RELOCATION)
 			num_rel_sections++;
 	}
+	down(&dylib->lock);
 	dylib->rel_sections = kmalloc(sizeof(dylib_rel_section_t));
-	if (!dylib->rel_sections)
+	if (!dylib->rel_sections) {
+		up(&dylib->lock);
 		goto cleanup;
+	}
 	dylib->num_rel_sections = 0;
+	up(&dylib->lock);
 	
 	for (uint32_t z = 0; z < header.section_header_num_entries; z++) {
 		elf_section_header_t* section = &section_headers[z];
@@ -695,8 +724,10 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 			}
 			uint32_t strtab_index = section_headers[section->link].link;
 			uint32_t str_len = section_headers[strtab_index].size;
+			down(&dylib->lock);
 			dylib->rel_sections[dylib->num_rel_sections].rel_names = kmalloc(str_len);
 			if (!dylib->rel_sections[dylib->num_rel_sections].rel_names) {
+				up(&dylib->lock);
 				kfree(dylib_rels);
 				kfree(symtab);
 				kfree(rels);
@@ -718,6 +749,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 				dylib_num_rels++;
 				dylib->rel_sections[dylib->num_rel_sections - 1].num_rels++;
 			}
+			up(&dylib->lock);
 			
 			kfree(symtab);
 			kfree(rels);
@@ -751,7 +783,9 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 			
 			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
 				if (tags[i].tag == ELF_DYNAMIC_INIT) {
+					down(&dylib->lock);
 					dylib->init = tags[i].value;
+					up(&dylib->lock);
 				}
 			}
 			
@@ -784,9 +818,12 @@ bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb, uint32_t offset) {
 		return false;
 	
 	// Perform the initialization function
-	if (dylib->init) {
+	down(&dylib->lock);
+	uint32_t dinit = dylib->init;
+	up(&dylib->lock);
+	if (dinit) {
 		// TODO: do this in userspace
-		void (*init)() = (void (*)())(offset + dylib->init);
+		void (*init)() = (void (*)())(offset + dinit);
 		init();
 	}
 	

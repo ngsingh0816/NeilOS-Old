@@ -42,6 +42,8 @@
 
 #define DMA_IRQ						0x0E
 
+#define DMA_TIMEOUT					1000000
+
 // Base BAR4 port
 uint32_t base_port = 0;
 
@@ -155,7 +157,13 @@ uint32_t ata_dma_read_blocks(uint8_t bus, uint8_t drive, uint64_t address, void*
 		inb(base_port + IDE_STATUS(bus));
 	
 		// Wait for it to be ready
-		while (!dma_data_ready)  {}
+		while (!dma_data_ready)  {
+			uint8_t status = inb(ATA_ALT_STATUS_PORT(bus));
+			if (!(status & ATA_STATUS_BUSY)) {
+				ata_dma_handler();
+				break;
+			}
+		}
 		
 		// Copy over the data
 		uint32_t s_offset = (c_offset >= offset) ? 0 : (offset - c_offset);
@@ -245,6 +253,8 @@ uint32_t ata_dma_write_blocks(uint8_t bus, uint8_t drive, uint64_t address, cons
 			uint8_t status = inb(ATA_ALT_STATUS_PORT(bus));
 			if ((status & ATA_STATUS_ERROR))
 				return BLOCK_SIZE * z;
+			if (!(status & ATA_STATUS_BUSY))
+				break;
 		}
 		
 		// Get ready for the next address

@@ -24,12 +24,14 @@ extern void fork_return(context_state_t context);
 void init_descriptors(pcb_t* pcb) {
 	// Open default descriptors
 	descriptors = pcb->descriptors;
+	down(&pcb->descriptor_lock);
 	pcb->descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);
 	pcb->descriptors[STDIN]->ref_count = 1;
 	pcb->descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
 	pcb->descriptors[STDOUT]->ref_count = 1;
 	pcb->descriptors[STDERR] = terminal_open("stderr", FILE_MODE_WRITE);
 	pcb->descriptors[STDERR]->ref_count = 1;
+	up(&pcb->descriptor_lock);
 	
 	descriptors = pcb->descriptors;
 }
@@ -73,12 +75,9 @@ int32_t run(pcb_t* pcb) {
 
 // Run a program but save the state of this "parent" program
 int32_t run_with_fake_parent(pcb_t* pcb, pcb_t* parent) {
-	bool flags = set_multitasking_enabled(false);
-	set_current_task(pcb);
-	
 	// Critical section that ends with return to user
 	cli();
-	set_multitasking_enabled(flags);
+	set_current_task(pcb);
 	
 	pcb->state = RUNNING;
 	// Execute the program (and enable interrupts)
@@ -96,13 +95,15 @@ int32_t run_with_fake_parent(pcb_t* pcb, pcb_t* parent) {
 
 // Helper to save the current pcb context
 void pcb_set_context(context_state_t state) {
+	down(&current_pcb->lock);
 	current_pcb->context = state;
+	up(&current_pcb->lock);
 }
 
 // Duplicate a program and memory space
 uint32_t fork() {
 	LOG_DEBUG_INFO();
-
+	
 	pcb_t* pcb = NULL;
 	if ((pcb = duplicate_current_task()) == NULL)
 		return -ENOMEM;
@@ -125,6 +126,9 @@ uint32_t fork() {
 		
 	// Enable the child to be scheduled
 	pcb->state = READY;
+	
+	// Jump into the new task
+	context_switch(current_pcb, pcb);
 	
 	return pcb->task->pid;
 }
@@ -173,8 +177,11 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 
 	pcb_t* pcb = current_pcb;
 	
+	down(&pcb->lock);
+
 	// If there are no children, return that
 	if (!pcb->children) {
+		up(&pcb->lock);
 		return -ECHILD;
 	}
 	
@@ -204,11 +211,15 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 						*status = ((ret & 0xFF) << 8);
 					}
 					
+					up(&pcb->lock);
+					
 					return cpid;
 				}
 			}
 			child = child->next;
 		}
+		up(&pcb->lock);
+
 		// If the pid does not exist, return error
 		if (!found)
 			return -ECHILD;
@@ -216,7 +227,11 @@ uint32_t waitpid(uint32_t pid, int* status, int options) {
 			return 0;
 		
 		schedule();
+		
+		down(&pcb->lock);
 	}
+	
+	up(&pcb->lock);
 	
 	// Should terminate
 	return -ECHILD;
@@ -227,6 +242,8 @@ uint32_t exit(int status) {
 	LOG_DEBUG_INFO_STR("(%d)", status);
 
 	pcb_t* pcb = current_pcb;
+	
+	down(&pcb->descriptor_lock);
 	
 	// Close all open file handles
 	int z;
@@ -239,8 +256,7 @@ uint32_t exit(int status) {
 			pcb->descriptors[z] = NULL;
 		}
 	}
-	
-	descriptors = pcb->descriptors;
+	up(&pcb->descriptor_lock);
 	
 	// Terminate the task
 	pcb->in_syscall = false;
@@ -255,7 +271,10 @@ uint32_t getwd(char* buf) {
 
 	if (!buf)
 		return -EFAULT;
+	down(&current_pcb->lock);
 	memcpy(buf, current_pcb->working_dir, strlen(current_pcb->working_dir) + 1);
+	up(&current_pcb->lock);
+	
 	return 0;
 }
 
@@ -264,12 +283,16 @@ uint32_t chdir(const char* path) {
 	LOG_DEBUG_INFO_STR("(%s)", path);
 
 	pcb_t* pcb = current_pcb;
+	down(&pcb->lock);
 	char* p = path_absolute(path, pcb->working_dir);
 	if (pcb->working_dir)
 		kfree(pcb->working_dir);
 	pcb->working_dir = p;
-	if (!pcb->working_dir)
+	if (!pcb->working_dir) {
+		up(&pcb->lock);
 		return -ENOMEM;
+	}
+	up(&pcb->lock);
 	
 	return 0;
 }

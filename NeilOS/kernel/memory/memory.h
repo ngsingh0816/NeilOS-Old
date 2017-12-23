@@ -30,6 +30,10 @@
 // Number of kernel pages reserved
 extern uint32_t num_kernel_pages_reserved;
 
+// Lock / unlock page tables - for use with below functions
+void vm_lock();
+void vm_unlock();
+
 // Gets the address of the next unmapped 4MB page of the specific type
 uint32_t vm_get_next_unmapped_page(uint32_t type);
 
@@ -37,16 +41,21 @@ uint32_t vm_get_next_unmapped_page(uint32_t type);
 uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type);
 
 // Maps a virtual address (4MB aligned) to a physical address (4MB aligned)
-void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions);
+// If preserves context is set to true, the mapping will persist across context switches.
+// Do not set preserves context to true for kernel pages because they already are persistent.
+void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions, bool preserve_context);
 
 // Maps a virtual address (4MB aligned) to a physical page table (4kb aligned)
-void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permissions);
+void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t* page_table_vaddr, uint32_t permissions);
 
 // Create a page table entry
 uint32_t vm_create_page_table_entry(uint32_t paddr, uint32_t permissions);
 
 // Unmaps a virtual address and allows it to be used
-void vm_unmap_page(uint32_t vaddr);
+void vm_unmap_page(uint32_t vaddr, bool preserve_context);
+
+// Unmaps a range of virtual addresses from [start, end)
+void vm_unmap_pages(uint32_t start, uint32_t end);
 
 // Returns whether the 4MB page is mapped
 bool vm_is_page_mapped(uint32_t vaddr);
@@ -59,6 +68,9 @@ uint32_t vm_get_virtual_page_type(uint32_t vaddr);
 
 // Flush the TLB
 void flush_tlb();
+
+// Invalidate a page
+void invalidate_page_address(void* vaddr);
 
 //Sets-up paging and specific control registers to enable paging
 void setup_pages();

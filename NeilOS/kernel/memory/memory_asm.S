@@ -1,12 +1,14 @@
 .text
-.globl load_cr3, load_cr0_and_cr4
+.globl load_cr3, load_cr0_and_cr4, invalidate_page_address
 
 #ifdef __APPLE__
 .globl _load_cr3
 .globl _load_cr0_and_cr4
+.globl _invalidate_page_address
 
 _load_cr3:
 _load_cr0_and_cr4:
+_invalidate_page_address:
 #endif
 
 
@@ -54,4 +56,10 @@ load_cr0_and_cr4:
 	movl %ecx, %cr0
 
 	leave
+	ret
+
+// Invalidate a certain page
+invalidate_page_address:
+	movl 4(%esp), %eax
+	invlpg (%eax)
 	ret

@@ -17,13 +17,15 @@ void sema_init(semaphore_t* sema, uint32_t val) {
 // Gain access to a resource
 void down(semaphore_t* sema) {
 	for (;;) {
-		spin_lock(&sema->lock);
-		if (sema->val != 0) {
-			sema->val--;
+		if (spin_trylock(&sema->lock)) {
+			if (sema->val != 0) {
+				sema->owner = current_pcb;
+				sema->val--;
+				spin_unlock(&sema->lock);
+				break;
+			}
 			spin_unlock(&sema->lock);
-			break;
 		}
-		spin_unlock(&sema->lock);
 		
 		// Sleep if the resource is not available
 		schedule();
@@ -41,6 +43,7 @@ bool down_trylock(semaphore_t* sema) {
 	}
 	
 	sema->val--;
+	sema->owner = current_pcb;
 	spin_unlock(&sema->lock);
 	return true;
 }

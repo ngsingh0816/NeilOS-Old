@@ -11,7 +11,7 @@
 #include <common/lib.h>
 #include <common/time.h>
 
-file_descriptor_t log_file = { .ref_count = 0 };
+file_descriptor_t log_file = { .ref_count = 0, .lock = MUTEX_UNLOCKED };
 
 // Log a message to /var/log/syslog
 void log(int8_t* format, ...) {

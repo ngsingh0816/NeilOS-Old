@@ -126,6 +126,8 @@ void signal_unblock(struct pcb* pcb, sigset_t mask) {
 
 // Wait for a signal
 void signal_wait(struct pcb* pcb, const sigset_t* mask) {
+	down(&current_pcb->lock);
+
 	// Save the sigmask
 	pcb->signal_save_mask[0] = pcb->signal_mask;
 	pcb->signal_mask = *mask;
@@ -134,7 +136,12 @@ void signal_wait(struct pcb* pcb, const sigset_t* mask) {
 	// Wait for this to be changed
 	while (pcb->signal_waiting) {
 		schedule();
+		
+		up(&current_pcb->lock);
+		down(&current_pcb->lock);
 	}
+	
+	up(&current_pcb->lock);
 }
 
 // Send a signal

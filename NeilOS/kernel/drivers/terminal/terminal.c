@@ -189,6 +189,7 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 		return NULL;
 	memset(d, 0, sizeof(file_descriptor_t));
 	// Mark in use
+	d->lock = MUTEX_UNLOCKED;
 	d->type = STANDARD_INOUT_TYPE;
 	d->mode = FILE_MODE_READ | FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
 	int namelen = strlen(filename);
@@ -224,7 +225,8 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 	// Print the buffer that you have right now so that its
 	// shown at the end of the screen
 	for (i = 0; i < pos; i++)
-		printf("%c", buffer[i]);
+		putc(buffer[i]);
+	refresh_cursor_position();
 
 	pcb_t* pcb = current_pcb;
 	while (!enter_pressed && !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
@@ -252,7 +254,8 @@ uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes) {
 	
 	// Loop over and print all the characters
 	for(i = 0; i < nbytes; i++)
-		printf("%c", ((uint8_t*)buf)[i]);	
+		putc(((uint8_t*)buf)[i]);
+	refresh_cursor_position();
 	
 	// Return the number of bytes written
 	return nbytes;
@@ -277,6 +280,7 @@ file_descriptor_t* terminal_duplicate(file_descriptor_t* f) {
 	if (!d)
 		return NULL;
 	memcpy(d, f, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	
 	return d;
 }

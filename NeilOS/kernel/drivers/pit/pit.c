@@ -29,7 +29,7 @@ bool pit_init() {
 	// Turn on a rate generator for IRQ 0
 	outb(PIT_CHANNEL_0_RATE, PIT_COMMAND_PORT);
 	
-	// Set our default interval of 20ms
+	// Set our default interval
 	pit_set_interval(PIT_DEFAULT_INTERVAL);
 	
 	// Register our interrupt handler for PIC interrupt 0 (PIT)

@@ -54,6 +54,8 @@ uint32_t open(const char* filename, uint32_t mode) {
 	LOG_DEBUG_INFO_STR("(%s, %d)", filename, mode);
 	
 	// Find and open descriptor
+	pcb_t* pcb = current_pcb;
+	down(&pcb->descriptor_lock);
 	uint32_t current_fd = -1;
 	int z;								// Looping over descriptors
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
@@ -65,25 +67,27 @@ uint32_t open(const char* filename, uint32_t mode) {
 	
 	// We have no more descriptors available so we can't open anything
 	if (current_fd == -1) {
+		up(&pcb->descriptor_lock);
         return -ENFILE;
 	}
 	
-	pcb_t* pcb = current_pcb;
 	char* path = path_absolute(filename, pcb->working_dir);
 
 	pcb->descriptors[current_fd] = open_handle(path, mode);
 	kfree(path);
+	
 	if (!pcb->descriptors[current_fd]) {
+		up(&pcb->descriptor_lock);
         return -ENOENT;
 	}
 	
-	descriptors = pcb->descriptors;
+	up(&pcb->descriptor_lock);
 	return current_fd;
 }
 
 // Read from a file descriptor
 uint32_t read(uint32_t fd, void* buf, uint32_t nbytes) {
-	LOG_DEBUG_INFO_STR("(%d, 0x%x, %d)", fd, buf, nbytes);
+	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x)", fd, buf, nbytes);
 	
 	// Check if the arguments are in range
 	if (fd >= NUMBER_OF_DESCRIPTORS)
@@ -91,12 +95,23 @@ uint32_t read(uint32_t fd, void* buf, uint32_t nbytes) {
 	if (!buf)
 		return -EFAULT;
 	
+	down(&current_pcb->descriptor_lock);
+	
 	// If we are trying to use an invalid descriptor, return failure
-	if (!descriptors[fd] || !descriptors[fd]->read)
+	if (!descriptors[fd] || !descriptors[fd]->read) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
+	
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
-	return descriptors[fd]->read(fd, buf, nbytes);
+	uint32_t ret = d->read(fd, buf, nbytes);
+	
+	up(&d->lock);
+	return ret;
 }
 
 // Write to a file descriptor
@@ -109,12 +124,23 @@ uint32_t write(uint32_t fd, const void* buf, uint32_t nbytes) {
 	if (!buf)
 		return -EFAULT;
 	
+	down(&current_pcb->descriptor_lock);
+	
 	// If we are trying to use an invalid descriptor, return failure
-	if (!descriptors[fd] || !descriptors[fd]->write)
+	if (!descriptors[fd] || !descriptors[fd]->write) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
+	
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
-	return descriptors[fd]->write(fd, buf, nbytes);
+	uint32_t ret = d->write(fd, buf, nbytes);
+	
+	up(&d->lock);
+	return ret;
 }
 
 // Seek to an offset
@@ -127,13 +153,24 @@ uint32_t llseek(uint32_t fd, uint32_t offset_high, uint32_t offset_low, int when
 	if (!(whence >= SEEK_SET && whence <= SEEK_END))
 		return -EINVAL;
 	
+	down(&current_pcb->descriptor_lock);
+	
 	// If we are trying to use an invalid descriptor, return failure
-	if (!descriptors[fd] || !descriptors[fd]->llseek)
+	if (!descriptors[fd] || !descriptors[fd]->llseek) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
+	
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
 	// TODO: for now only return the lower 32 bits
-	return descriptors[fd]->llseek(fd, uint64_make(offset_high, offset_low), whence).low;
+	uint32_t ret = d->llseek(fd, uint64_make(offset_high, offset_low), whence).low;
+	
+	up(&d->lock);
+	return ret;
 }
 
 // Change the size of a file
@@ -144,13 +181,24 @@ uint32_t truncate(uint32_t fd, uint32_t length_high, uint32_t length_low) {
     if (fd >= NUMBER_OF_DESCRIPTORS)
 		return -EBADF;
 	
+	down(&current_pcb->descriptor_lock);
+	
 	// If we are trying to use an invalid descriptor, return failure
-	if (!descriptors[fd] || !descriptors[fd]->truncate)
+	if (!descriptors[fd] || !descriptors[fd]->truncate) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
+	
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
 	// TODO: for now just return the lower 32 bits
-	return descriptors[fd]->truncate(fd, uint64_make(length_high, length_low)).low;
+	uint32_t ret = d->truncate(fd, uint64_make(length_high, length_low)).low;
+	
+	up(&d->lock);
+	return ret;
 }
 
 // Get information about a file descriptor
@@ -161,11 +209,22 @@ uint32_t stat(uint32_t fd, sys_stat_type* data) {
     if (fd >= NUMBER_OF_DESCRIPTORS)
 		return -EBADF;
 	
+	down(&current_pcb->descriptor_lock);
+
 	// If we are trying to use an invalid descriptor, return failure
-	if (!descriptors[fd] || !descriptors[fd]->stat)
+	if (!descriptors[fd] || !descriptors[fd]->stat) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
 	
-	return descriptors[fd]->stat(fd, data);
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
+	
+	uint32_t ret = d->stat(fd, data);
+	
+	up(&d->lock);
+	return ret;
 }
 
 // Close a file descriptor
@@ -177,18 +236,23 @@ uint32_t close(uint32_t fd) {
 		return -EBADF;
 	
 	// If we are trying to close an invalid descriptor, return failure
-	if (!descriptors[fd])
+	down(&current_pcb->descriptor_lock);
+	if (!descriptors[fd]) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
 	
 	uint32_t ret = 0;
 	if ((--descriptors[fd]->ref_count) == 0) {
+		down(&descriptors[fd]->lock);
 		ret = descriptors[fd]->close((void*)descriptors[fd]);
+		up(&descriptors[fd]->lock);
 		kfree(descriptors[fd]);
 	}
 	pcb_t* pcb = current_pcb;
 	pcb->descriptors[fd] = NULL;
 	
-	descriptors = pcb->descriptors;
+	up(&current_pcb->descriptor_lock);
 	
 	return ret;
 }
@@ -201,17 +265,29 @@ uint32_t isatty(uint32_t fd) {
 	if (fd >= NUMBER_OF_DESCRIPTORS)
 		return -EBADF;
 	
+	down(&current_pcb->descriptor_lock);
 	// If we are trying to close an invalid descriptor, return failure
-	if (!descriptors[fd])
+	if (!descriptors[fd]) {
+		up(&current_pcb->descriptor_lock);
 		return -EBADF;
+	}
 	
-	return (descriptors[fd]->type == STANDARD_INOUT_TYPE);
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
+	
+	uint32_t ret = (d->type == STANDARD_INOUT_TYPE);
+	
+	up(&d->lock);
+	return ret;
 }
 
 // Duplicate a file descriptor
 uint32_t dup(uint32_t fd) {
 	LOG_DEBUG_INFO_STR("(%d)", fd);
 
+	down(&current_pcb->descriptor_lock);
+	
 	// Find and open descriptor
 	uint32_t current_fd = -1;
 	int z;								// Looping over descriptors
@@ -223,24 +299,41 @@ uint32_t dup(uint32_t fd) {
 	}
 	
 	// We have no more descriptors available so we can't open anything
-	if (current_fd == -1)
+	if (current_fd == -1) {
+		up(&current_pcb->descriptor_lock);
 		return -ENFILE;
+	}
 	
-	return dup2(fd, current_fd);
+	// Point the new file handle to the old one
+	descriptors[current_fd] = descriptors[fd];
+	descriptors[current_fd]->ref_count++;
+	
+	up(&current_pcb->descriptor_lock);
+	
+	return current_fd;
 }
 
 // Duplicate a file descripter into the first available fd after the argument
 uint32_t dup2_greater(int32_t fd, int32_t new_fd) {
 	LOG_DEBUG_INFO_STR("(%d, %d)", fd, new_fd);
 	
+	down(&current_pcb->descriptor_lock);
+
 	while (new_fd < NUMBER_OF_DESCRIPTORS && current_pcb->descriptors[new_fd] && new_fd >= 0)
 		new_fd++;
 	
     if (new_fd >= NUMBER_OF_DESCRIPTORS || new_fd < 0) {
+		up(&current_pcb->descriptor_lock);
 		return -EINVAL;
     }
 	
-	return dup2(fd, new_fd);
+	// Point the new file handle to the old one
+	descriptors[new_fd] = descriptors[fd];
+	descriptors[new_fd]->ref_count++;
+	
+	up(&current_pcb->descriptor_lock);
+	
+	return new_fd;
 }
 
 // Duplicate a file descriptor into the specific file descriptor
@@ -251,11 +344,14 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd) {
 	if (fd >= NUMBER_OF_DESCRIPTORS || new_fd >= NUMBER_OF_DESCRIPTORS)
 		return -EBADF;
 	
-	if (!descriptors[fd])
-		return -EBADF;
-	
-	bool flags = set_multitasking_enabled(false);
 	pcb_t* pcb = current_pcb;
+	
+	down(&pcb->descriptor_lock);
+	if (!descriptors[fd]) {
+		up(&pcb->descriptor_lock);
+		return -EBADF;
+	}
+	
 	// Close the file handle if opened
 	if (pcb->descriptors[new_fd]) {
 		pcb->descriptors[new_fd]->close(pcb->descriptors[new_fd]);
@@ -266,9 +362,7 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd) {
 	pcb->descriptors[new_fd] = pcb->descriptors[fd];
 	pcb->descriptors[new_fd]->ref_count++;
 	
-	descriptors = pcb->descriptors;
-	
-	set_multitasking_enabled(flags);
+	up(&pcb->descriptor_lock);
 	
 	return new_fd;
 }
@@ -281,6 +375,7 @@ uint32_t pipe(uint32_t pipefd[2]) {
 		return -EFAULT;
 
 	// Find and open descriptor
+	down(&current_pcb->descriptor_lock);
 	uint32_t current_fd[2] = { -1, -1 };
 	int z, i = 0;								// Looping over descriptors
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
@@ -292,8 +387,10 @@ uint32_t pipe(uint32_t pipefd[2]) {
 	}
 	
 	// We have no more descriptors available so we can't open anything
-	if (current_fd[0] == -1 || current_fd[1] == -1)
+	if (current_fd[0] == -1 || current_fd[1] == -1) {
+		up(&current_pcb->descriptor_lock);
 		return -ENFILE;
+	}
 	
 	pcb_t* pcb = current_pcb;
 	
@@ -322,6 +419,8 @@ uint32_t pipe(uint32_t pipefd[2]) {
 	pipefd[0] = current_fd[0];
 	pipefd[1] = current_fd[1];
 	descriptors = pcb->descriptors;
+	
+	up(&pcb->descriptor_lock);
 	
 	return 0;
 }

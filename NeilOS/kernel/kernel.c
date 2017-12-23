@@ -57,37 +57,40 @@
 /* TODO (bugs)
  * Caps lock can mess up dashes (-)
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
-	we go back to the scheduler
- * Get rid of all set_multitasking_enabled(false) because it can cause the disk spin lock to hang
-	because a task will be reading something, we context switch into another task, which disables
-	multitasking, and then tries to read but will just hang forever because the first task hasn't let go
-	of the lock
- * Making fork disable multitasking should make the pipe test freeze, but it doesn't, it just outputs nothing
- * Sometimes control+c doesn't work - has to do with somehow multitasking getting disabled
+	we go back to the scheduler (it doesn't though)
+ * bin/dash -> ls followed by control-c immediately after hangs everything
+ * bin/dash -> ls -Rla / crashes (ls -la /dev doesn't always work)
+ * Not really a bug but ATA read (and probably write) pretty much always read 2 blocks per 4096 bytes because of the offset from the partition, even though DMA read can probably easily offset by sector rather than block
+ * fifo_test not working
+ * calc doesn't work
+ * ls | grep cat in dash multiple times, eventually one will hang
+ 	(maybe due to set_multitasking_enabled(0) during load_task_replace while the other one has
+ 	ata_partition_lock() held so it tries to acquire the lock but can't)
  */
 
 /* Things to test
  */
 
 /* TODO:
- * More system calls - interrupt.c
+ * More system calls
  * (Kernel?) Threads (pthread?, gcd?)
 	* Potential multitasking issues:
-		* file locks
-		* reading in one thread while closing in another (file descriptor lock)
-		* Need a memory lock for all vm_get_next_unmapped_page
-		* Probably should use locks instead of cli or set_multitasking(false) in most cases
-		* Also definitely missing locks for just about everything (especially linked lists)
+ 		* Filesystem - multiple things writing to the same thing (i.e. fmkdir("/hi") and fmkdir("/bye") on different
+ 			threads may cause an issue because they both modify the "." inode's contents at the same time
+ 				* can probably be fixed by r/w lock per inode
  * SMP?
  * Scheduler Rework
  * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
+ 	* Read in blocking mode returns only when mouse is moved, read in non blocking mode returns current mouse position
+ 	* Have kernel interrupt handle moving of cursor
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
+ 	* Could work by writing to it, then reading will block until it is ready to accept data, then repeat
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
  * Software Graphics Driver
  * Graphics (QEMU VBE) Driver?
  * GUI (Compositing Window Manager)
-	* Interacts through message queues?
+	* Interacts through message queues (or maybe pipes + shared memory for big data transfers)?
  * Ethernet Driver
  * Sockets
  * Message Queues?

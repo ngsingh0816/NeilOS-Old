@@ -16,6 +16,9 @@ bool filesystem_init(char* filesystem);
 // For internal use
 bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc);
 
+// Get inode
+uint32_t filesystem_get_inode(const char* filename);
+
 // Read, write, seek
 uint32_t fread(void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file);
 uint32_t fwrite(const void* buffer, uint32_t size, uint32_t count, file_descriptor_t* file);

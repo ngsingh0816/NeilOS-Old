@@ -126,6 +126,7 @@ file_descriptor_t* rtc_open(const char* filename, uint32_t mode) {
 		return NULL;
 	// Assign this file descriptor
 	memset(d, 0, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	d->filename = "rtc";
 	d->info = kmalloc(sizeof(rtc_info_t));
 	if (!d->info)
@@ -255,6 +256,7 @@ file_descriptor_t* rtc_duplicate(file_descriptor_t* f) {
 	if (!d)
 		return NULL;
 	memcpy(d, f, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	
 	d->info = kmalloc(sizeof(rtc_info_t));
 	if (!d->info) {

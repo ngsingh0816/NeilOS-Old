@@ -17,8 +17,12 @@ uint32_t sleep(uint32_t seconds) {
 	
 	uint32_t end = get_current_time().val + seconds;
 	while (get_current_time().val < end) {
-		if (current_pcb->should_terminate)
+		down(&current_pcb->lock);
+		if (current_pcb->should_terminate) {
+			up(&current_pcb->lock);
 			return end - get_current_time().val;
+		}
+		up(&current_pcb->lock);
 		schedule();
 	}
 

@@ -10,6 +10,7 @@
 
 #include <common/lib.h>
 #include <memory/allocation/heap.h>
+#include <drivers/filesystem/filesystem.h>
 
 // Open a zero device
 file_descriptor_t* zero_open(const char* filename, uint32_t mode) {
@@ -18,6 +19,7 @@ file_descriptor_t* zero_open(const char* filename, uint32_t mode) {
 		return NULL;
 	memset(d, 0, sizeof(file_descriptor_t));
 	// Mark in use
+	d->lock = MUTEX_UNLOCKED;
 	d->type = FILE_FILE_TYPE;
 	d->mode = FILE_MODE_WRITE | FILE_TYPE_BLOCK;
 	d->filename = "zero";
@@ -48,6 +50,7 @@ uint32_t zero_stat(int32_t fd, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->size = 0;
 	data->mode = descriptors[fd]->mode;
+	data->inode = filesystem_get_inode("/dev/zero");
 	return 0;
 }
 
@@ -57,6 +60,7 @@ file_descriptor_t* zero_duplicate(file_descriptor_t* f) {
 	if (!d)
 		return NULL;
 	memcpy(d, f, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	
 	return d;
 }

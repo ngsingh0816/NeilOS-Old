@@ -34,6 +34,7 @@ uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
 	if (signum >= NUMBER_OF_SIGNALS || signum == 0)
 		return -EINVAL;
 	
+	down(&current_pcb->lock);
 	if (oldact)
 		*oldact = current_pcb->signal_handlers[signum];
 	if (act) {
@@ -44,6 +45,7 @@ uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
 		}
 		signal_set_handler(current_pcb, signum, *act);
 	}
+	up(&current_pcb->lock);
 	return 0;
 }
 
@@ -51,7 +53,10 @@ uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
 uint32_t sigsetmask(uint32_t signum, bool masked) {
 	LOG_DEBUG_INFO_STR("(%d, %d)", signum, masked);
 
+	down(&current_pcb->lock);
 	signal_set_masked(current_pcb, signum, masked);
+	up(&current_pcb->lock);
+	
 	return 0;
 }
 
@@ -59,7 +64,11 @@ uint32_t sigsetmask(uint32_t signum, bool masked) {
 uint32_t siggetmask(uint32_t signum) {
 	LOG_DEBUG_INFO_STR("(%d)", signum);
 
-	return signal_is_masked(current_pcb, signum);
+	down(&current_pcb->lock);
+	uint32_t ret = signal_is_masked(current_pcb, signum);
+	up(&current_pcb->lock);
+	
+	return ret;
 }
 
 #define SIG_SETMASK 0	/* set mask with sigprocmask() */
@@ -73,6 +82,7 @@ uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
 	if (how < SIG_SETMASK || how > SIG_UNBLOCK)
 		return -EINVAL;
 	
+	down(&current_pcb->lock);
 	if (oldset)
 		*oldset = current_pcb->signal_mask >> 1;
 	if (set) {
@@ -83,6 +93,7 @@ uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset) {
 		else
 			signal_set_mask(current_pcb, (*set) << 1);
 	}
+	up(&current_pcb->lock);
 
 	return 0;
 }
@@ -102,6 +113,7 @@ uint32_t sigsuspend(const sigset_t* mask) {
 uint32_t alarm(uint32_t seconds) {
 	LOG_DEBUG_INFO_STR("(%d)", seconds);
 	
+	down(&current_pcb->lock);
 	uint32_t prev = current_pcb->alarm.val;
 	uint32_t time = get_current_time().val;
 	
@@ -109,6 +121,7 @@ uint32_t alarm(uint32_t seconds) {
 		current_pcb->alarm.val = 0;
 	else
 		current_pcb->alarm.val = time + seconds;
+	up(&current_pcb->lock);
 	
 	return (prev == 0 ? 0 : (prev - time));
 }

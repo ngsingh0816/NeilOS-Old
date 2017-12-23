@@ -110,11 +110,13 @@ extern void enable_sse();
 // Most likely a SSE instruction error or FPU (they use the same registers)
 void device_not_available(uint32_t code, uint32_t eip) {
 	// Restore sse registers and enable sse
+	down(&current_pcb->lock);
 	enable_sse();
 	if (current_pcb->sse_init)
 		asm volatile(" fxrstor (%0); "::"r"(current_pcb->sse_registers));
 	current_pcb->sse_used = true;
 	current_pcb->sse_init = true;
+	up(&current_pcb->lock);
 }
 
 // Interrupt 8
@@ -189,20 +191,29 @@ void page_fault(uint32_t code, uint32_t eip) {
 	asm volatile ("movl %%cr2, %0"
 				  : "=a"(address));
 #endif
-	
+		
 	// Check if we were copying on write
 	if ((code & PAGE_PRESENT) && (code & WRITE_VIOLATON)) {
 		pcb_t* pcb = current_pcb;
 		uint32_t addr_aligned = address & ~(FOUR_MB_SIZE - 1);
 		// Find the page that deals with this
+		down(&pcb->lock);
 		page_list_t* t = pcb->page_list;
+		if (t)
+			down(&t->lock);
+		up(&pcb->lock);
 		while (t) {
 			if (t->vaddr == addr_aligned && t->copy_on_write) {
+				up(&t->lock);
 				if (!page_list_copy_on_write(t, address))
 					break;
 				return;
 			}
+			
+			up(&t->lock);
 			t = t->next;
+			if (t)
+				down(&t->lock);
 		}
 	}
 	

@@ -3,6 +3,8 @@
 #include <boot/x86_desc.h>
 #include <common/lib.h>
 #include <drivers/terminal/terminal.h>
+#include <program/task.h>
+#include "page_list.h"
 
 #define PAGE_DIRECTORY_NUM_ENTRIES	1024
 #define PAGE_TABLE_NUM_ENTRIES		1024
@@ -31,7 +33,7 @@
 #define PAGE_PRESENT_BIT			0x1
 #define PAGE_WRITE_BIT				0x2
 #define PAGE_USER_BIT				0x4
-#define PAGE_DIRECTORY_BIT			0x90;
+#define PAGE_DIRECTORY_BIT			0x90
 
 uint32_t num_kernel_pages_reserved = 0;
 
@@ -40,6 +42,8 @@ uint32_t num_kernel_pages_reserved = 0;
 uint32_t page_directory[PAGE_DIRECTORY_NUM_ENTRIES] __attribute__((aligned(FOUR_KB_SIZE)));
 //Page table holds 1024 4kb pages from 0-4mb in video memory
 uint32_t page_table[PAGE_TABLE_NUM_ENTRIES] __attribute__((aligned(FOUR_KB_SIZE)));
+// Page table mappings for invalidation of page tables
+uint16_t page_table_mappings[PAGE_DIRECTORY_NUM_ENTRIES];
 
 // Kernel starting and ending points
 extern uint32_t _kernel_start;
@@ -53,9 +57,23 @@ uint32_t _kernel_end = 0;
 extern void load_cr3(uint32_t* directory_address);
 //load cr0 to state paging is enabled and cr4 to state different sized pages
 extern void load_cr0_and_cr4();
+// Invalidate a particular page
+extern void invalidate_page_address(void* addr);
 
 // Bitmap for holding unmapped Virtual Memory locations
 uint32_t vm_bitmap[VM_BITMAP_SIZE];
+
+// Page directory lock
+mutex_t page_directory_lock = MUTEX_UNLOCKED;
+
+// Lock / unlock page tables - for use with below functions
+void vm_lock() {
+	down(&page_directory_lock);
+}
+
+void vm_unlock() {
+	up(&page_directory_lock);
+}
 
 // Gets the address of the next unmapped 4MB page of the specific type
 uint32_t vm_get_next_unmapped_page(uint32_t type) {
@@ -93,11 +111,22 @@ uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type) {
 }
 
 // Maps a virtual addresss (4MB aligned) to a physical address (4MB aligned)
-void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions) {
+void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions, bool preserve_context) {
+	// Add this page to the current pcb so that it gets mapped in upon context switch
+	if (preserve_context && current_pcb) {
+		down(&current_pcb->lock);
+		page_list_update_mapping(&current_pcb->temporary_mappings, vaddr, paddr, permissions);
+		up(&current_pcb->lock);
+	}
+	
 	// Set the page in the bitmap as mapped
 	uint32_t page = vaddr / FOUR_MB_SIZE;
 	uint32_t num_entries_per_bitmap = sizeof(uint32_t) * 8;
 	vm_bitmap[page / num_entries_per_bitmap] |= (1 << (page % num_entries_per_bitmap));
+	
+	// If previous mapping was a page table, invalidate the page table
+	if (!(page_directory[page] & PAGE_DIRECTORY_BIT))
+		invalidate_page_address((void*)(page_table_mappings[page] * FOUR_MB_SIZE));
 	
 	// Map the page
 	uint32_t data = PAGE_PRESENT_BIT | PAGE_DIRECTORY_BIT;
@@ -107,14 +136,18 @@ void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions) {
 		data |= PAGE_WRITE_BIT;
 	page_directory[page] = paddr | data;
 		
-	flush_tlb();
+	invalidate_page_address((void*)vaddr);
 }
 
 // Maps a virtual address (4MB aligned) to a physical page table (4kb aligned)
-void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permissions) {
+void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t* page_table_vaddr, uint32_t permissions) {
 	uint32_t page = vaddr / FOUR_MB_SIZE;
 	uint32_t num_entries_per_bitmap = sizeof(uint32_t) * 8;
 	vm_bitmap[page / num_entries_per_bitmap] |= (1 << (page % num_entries_per_bitmap));
+	
+	// If previous mapping was a page table, invalidate the page table
+	if (!(page_directory[page] & PAGE_DIRECTORY_BIT))
+		invalidate_page_address((void*)(page_table_mappings[page] * FOUR_MB_SIZE));
 	
 	uint32_t data = PAGE_PRESENT_BIT;
 	if (!(permissions & MEMORY_KERNEL))
@@ -122,8 +155,10 @@ void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t permission
 	if (permissions & MEMORY_WRITE)
 		data |= PAGE_WRITE_BIT;
 	page_directory[page] = (uint32_t)page_table | data;
+	page_table_mappings[page] = ((uint32_t)page_table_vaddr) / FOUR_MB_SIZE;
 	
-	flush_tlb();
+	invalidate_page_address((void*)vaddr);
+	invalidate_page_address((void*)page_table_vaddr);
 }
 
 // Create a page table entry (address must be 4kb aligned)
@@ -137,14 +172,55 @@ uint32_t vm_create_page_table_entry(uint32_t paddr, uint32_t permissions) {
 }
 
 // Unmaps a virtual address and allows it to be used
-void vm_unmap_page(uint32_t vaddr) {
+void vm_unmap_page(uint32_t vaddr, bool preserve_context) {
+	// Remove this page from the current pcb so that it gets unmapped upon context switch
+	if (preserve_context && current_pcb) {
+		down(&current_pcb->lock);
+		page_list_remove(&current_pcb->temporary_mappings, vaddr);
+		up(&current_pcb->lock);
+	}
+	
 	// Free it in the bitmap
 	uint32_t page = vaddr / FOUR_MB_SIZE;
 	uint32_t num_entries_per_bitmap = sizeof(uint32_t) * 8;
 	vm_bitmap[page / num_entries_per_bitmap] &= ~(1 << (page % num_entries_per_bitmap));
 	
+	// If previous mapping was a page table, invalidate the page table
+	if (!(page_directory[page] & PAGE_DIRECTORY_BIT))
+		invalidate_page_address((void*)(page_table_mappings[page] * FOUR_MB_SIZE));
+	
 	// Unmap it
 	page_directory[page] = UNUSED_PAGE;
+	
+	invalidate_page_address((void*)vaddr);
+}
+
+// Unmaps a virtual address range
+void vm_unmap_pages(uint32_t start, uint32_t end) {
+	// Free it in the bitmap
+	uint32_t start_page = start / FOUR_MB_SIZE;
+	uint32_t end_page = end / FOUR_MB_SIZE;
+	uint32_t num_entries_per_bitmap = sizeof(uint32_t) * 8;
+
+	// First and last, then inbetween
+	uint32_t sp = start_page / num_entries_per_bitmap;
+	uint32_t ep = end_page / num_entries_per_bitmap;
+	if (sp == ep) {
+		vm_bitmap[sp] &= ((1 << (start_page % num_entries_per_bitmap)) - 1) |
+			(-1 ^ ((1 << (end_page % num_entries_per_bitmap)) - 1));
+	} else {
+		vm_bitmap[start_page / num_entries_per_bitmap] &= ((1 << (start_page % num_entries_per_bitmap)) - 1);
+		vm_bitmap[end_page / num_entries_per_bitmap] &= -1 ^ ((1 << (end_page % num_entries_per_bitmap)) - 1);
+		if (ep - sp >= 2)
+			memset(&vm_bitmap[start_page / num_entries_per_bitmap + 1], 0, (ep - sp - 1) * sizeof(uint32_t));
+	}
+	
+	for (unsigned int z = start_page; z < end_page; z++) {
+		// If previous mapping was a page table, invalidate the page table
+		if (!(page_directory[z] & PAGE_DIRECTORY_BIT))
+			invalidate_page_address((void*)(page_table_mappings[z] * FOUR_MB_SIZE));
+		page_directory[z] = UNUSED_PAGE;
+	}
 	
 	flush_tlb();
 }
@@ -193,8 +269,7 @@ void complete_paging_setup() {
 	*((uint32_t*)ebp) += VM_KERNEL_ADDRESS;
 		
 	// Unmap lower half kernel
-	for (int z = 1; z < 4; z++)
-		vm_unmap_page(z * FOUR_MB_SIZE);
+	vm_unmap_pages(FOUR_MB_SIZE, 4 * FOUR_MB_SIZE);
 }
 
 // Set up paging
@@ -204,13 +279,16 @@ void setup_pages() {
 	
 	// We need physical addresses because paging haven't been set up
 	uint32_t* p_page_directory = (uint32_t*)((uint32_t)page_directory - VM_KERNEL_ADDRESS);
+	uint32_t* p_page_table_mappings = (uint32_t*)((uint32_t)page_table_mappings - VM_KERNEL_ADDRESS);
 	uint32_t* p_vm_bitmap = (uint32_t*)((uint32_t)vm_bitmap - VM_KERNEL_ADDRESS);
 	uint32_t* p_page_table = (uint32_t*)((uint32_t)page_table - VM_KERNEL_ADDRESS);
 	uint32_t* p_kernel_pages = (uint32_t*)((uint32_t)&num_kernel_pages_reserved - VM_KERNEL_ADDRESS);
 
 	// Set all pages to unused
-	for (i = 0; i < PAGE_DIRECTORY_NUM_ENTRIES; i++)
+	for (i = 0; i < PAGE_DIRECTORY_NUM_ENTRIES; i++) {
 		p_page_directory[i] = UNUSED_PAGE;
+		p_page_table_mappings[i] = 0;
+	}
 	// Set all VM entries to free
 	for (i = 0; i < VM_BITMAP_SIZE; i++)
 		p_vm_bitmap[i] = 0;
@@ -235,6 +313,7 @@ void setup_pages() {
 	
 	// Set this value in the the page directories to point to the page table
 	p_page_directory[0] = (uint32_t)p_page_table | KERNEL_PAGE_TABLE_ENTRY;
+	p_page_table_mappings[0] = ((uint32_t)page_table) / FOUR_MB_SIZE;
 	p_page_directory[VM_KERNEL_ADDRESS / FOUR_MB_SIZE] = (uint32_t)p_page_table | KERNEL_PAGE_TABLE_ENTRY;
 	// Reserve spacefor the kernel (mapped from 4MB in physical memory)
 	// We must keeped this mapped from 4MB in virtual memory until we jump to the higher address space.

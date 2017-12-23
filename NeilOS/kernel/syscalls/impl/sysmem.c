@@ -19,18 +19,20 @@ uint32_t brk(uint32_t addr) {
 	if (addr < USER_ADDRESS)
 		return -ENOMEM;
 	
+	down(&current_pcb->lock);
 	if (addr > current_pcb->brk) {
 		// Allocate new pages
 		uint32_t start = current_pcb->brk - (current_pcb->brk % FOUR_MB_SIZE) + FOUR_MB_SIZE;
 		for (; start < addr; start += FOUR_MB_SIZE) {
 			page_list_t* t = page_list_get(&current_pcb->page_list, start, MEMORY_WRITE, true);
 			if (!t) {
+				up(&current_pcb->lock);
 				brk(current_pcb->brk);
 				return -ENOMEM;
 			}
 			
 			// Map this new page into memory
-			page_list_map(t);
+			page_list_map(t, false);
 		}
 	} else if (addr < current_pcb->brk) {
 		uint32_t start = addr - (addr % FOUR_MB_SIZE) + FOUR_MB_SIZE;
@@ -40,6 +42,7 @@ uint32_t brk(uint32_t addr) {
 	
 	// Return the new break
 	current_pcb->brk = addr;
+	up(&current_pcb->lock);
 	return 0;
 }
 

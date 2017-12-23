@@ -117,7 +117,7 @@ void set_pixel(uint16_t x, uint16_t y, uint8_t red, uint8_t green, uint8_t blue)
 
 void set_rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
 				   uint8_t red, uint8_t green, uint8_t blue) {
-	return;
+	//return;
 	/*int sy;
 	int ey = y + height;
 	uint32_t addr = (x + RESOLUTION_X * y) * 3;
@@ -132,20 +132,20 @@ void set_rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
 		}
 	}*/
 	
-	int sy, sx;
+	/*int sy, sx;
 	for (sy = y; sy < y + height; sy++) {
 		for (sx = x; sx < x + width; sx++)
 			set_pixel(sx, sy, red, green, blue);
-	}
+	}*/
 }
 
 // Copies the screen over
 void update_screen() {
-	return;
+	/*return;
 	set_rectangle(8, 16, 8, 16, 255, 255, 255);
 	
-	int flags = 0;
-	cli_and_save(flags);
+	//int flags = 0;
+	//cli_and_save(flags);
 				 
 	// Figure out how many full banks to copy over
 	int bank;
@@ -163,5 +163,5 @@ void update_screen() {
 	vbe_write_data(VBE_INDEX_BANK, bank);
 	memcpy((uint8_t*)VRAM_ADDRESS, &screen[pos], RESOLUTION_X * RESOLUTION_Y * 3 - pos);
 	
-	restore_flags(flags);
+	//restore_flags(flags);*/
 }

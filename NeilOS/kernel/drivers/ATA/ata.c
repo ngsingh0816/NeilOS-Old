@@ -149,6 +149,7 @@ file_descriptor_t* ata_open(const char* filename, uint32_t mode) {
 		return NULL;
 	// Assign this file descriptor
 	memset(d, 0, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	d->filename = kmalloc(strlen(filename) + 1);
 	if (!d->filename)
 		return NULL;
@@ -223,6 +224,7 @@ file_descriptor_t* ata_duplicate(file_descriptor_t* f) {
 	memcpy(d, f, sizeof(file_descriptor_t));
 	
 	uint32_t len = strlen(f->filename);
+	d->lock = MUTEX_UNLOCKED;
 	d->filename = kmalloc(len + 1);
 	if (!d->filename) {
 		kfree(d);
@@ -302,9 +304,7 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 	// Do nothing if we don't need to
 	if (bytes == 0)
 		return 0;
-		
-	pcb_t* pcb = current_pcb;
-	
+			
 	// Calculate the correct address
 	uint64_t addr = uint64_add(d->partition_offset, d->seek_offset);
 	uint64_t sector_addr = uint64_shl(uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK),
@@ -352,9 +352,6 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 		// Increment our positions
 		sector_addr = uint64_add(sector_addr, uint64_make(0, BLOCK_SIZE / ATA_SECTOR_SIZE));
 		copy_pos += size;
-		
-		if (pcb && signal_pending(pcb))
-			break;
 	}
 	
 	// Update our new seek position

@@ -18,7 +18,8 @@ _spin_trylock:
 // Returns 1 if lock was obtained, otherwise 0
 spin_trylock:
 	// ebx = lock
-	movl 4(%esp), %ebx
+	pushl %ebx
+	movl 8(%esp), %ebx
 	mov $1, %al
 
 	// Atomically exchange the lock
@@ -30,9 +31,11 @@ spin_trylock:
 
 	// It was clear before, so we locked it
 	movl $1, %eax
+	popl %ebx
 	ret
 
 	// It was set before, so we did not lock it
 	is_one:
 		movl $0, %eax
+		popl %ebx
 		ret

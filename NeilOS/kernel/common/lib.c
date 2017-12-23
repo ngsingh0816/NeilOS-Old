@@ -92,6 +92,10 @@ void set_cursor_position(uint8_t x, uint8_t y) {
 	screen_y = y;
 }
 
+void refresh_cursor_position() {
+	set_cursor_position(screen_x, screen_y);
+}
+
 /*
  * show_cursor()
  * Inputs: show - shows the cursor if true, otherwise hides it
@@ -406,6 +410,7 @@ int32_t
 printf(int8_t *format, ...)
 {
 	// Critical section
+	// Needed to prevent freezes while executing a new probgram while writing (odn't know why)
 	uint32_t flags;
 	cli_and_save(flags);
 	

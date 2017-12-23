@@ -41,6 +41,7 @@ file_descriptor_t* fifo_open(const char* filename, uint32_t mode) {
 	
 	uint32_t name_len = strlen(filename);
 	memset(desc, 0, sizeof(file_descriptor_t));
+	desc->lock = MUTEX_UNLOCKED;
 	desc->filename = (char*)kmalloc(name_len + 1);
 	if (!desc->filename) {
 		kfree(desc);
@@ -134,20 +135,26 @@ uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
 	fifo_list_t* info = (fifo_list_t*)descriptors[fd]->info;
 	
 	// Writer pipe was closed
-	if (!info || (info->num_writers == 0 && info->pos == 0))
+	down(&info->lock);
+	if (!info || (info->num_writers == 0 && info->pos == 0)) {
+		up(&info->lock);
 		return 0;
+	}
 	
 	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
-		info->pos == 0)
+		info->pos == 0) {
+		up(&info->lock);
 		return -1;
+	}
 	
 	// Block until there is data
 	while (info->pos == 0 && !current_pcb->should_terminate) {
+		up(&info->lock);
 		schedule();
+		down(&info->lock);
 	}
 	
 	// Read the data in
-	down(&info->lock);
 	uint32_t min = (bytes < info->pos) ? bytes : info->pos;
 	memcpy(buf, info->buffer, min);
 	if (min < info->pos)
@@ -163,22 +170,27 @@ uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
 	fifo_list_t* info = (fifo_list_t*)descriptors[fd]->info;
 	
 	// Reader pipe has been closed
+	down(&info->lock);
 	if (!info || info->num_readers == 0) {
+		up(&info->lock);
 		signal_send(current_pcb, SIGPIPE);
 		return -1;
 	}
 	
 	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
-		info->pos == PIPE_MAX_BUFFER_SIZE)
+		info->pos == PIPE_MAX_BUFFER_SIZE) {
+		up(&info->lock);
 		return -1;
+	}
 	
 	// Block until the pipe isn't full
 	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate) {
+		up(&info->lock);
 		schedule();
+		down(&info->lock);
 	}
 	
 	// Write the data
-	down(&info->lock);
 	uint32_t remaining = PIPE_MAX_BUFFER_SIZE - info->pos;
 	uint32_t min = (bytes > remaining) ? remaining : bytes;
 	memcpy(&info->buffer[info->pos], buf, min);
@@ -195,8 +207,10 @@ uint32_t fifo_stat(int32_t fd, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->block_size = PIPE_MAX_BUFFER_SIZE;
 	if (list) {
+		down(&list->lock);
 		data->size = list->pos;
 		data->num_links = list->num_writers + list->num_readers;
+		up(&list->lock);
 	}
 	data->num_512_blocks = data->size / 512;
 	data->mode = descriptors[fd]->mode;
@@ -246,6 +260,7 @@ file_descriptor_t* fifo_duplicate(file_descriptor_t* fd) {
 	
 	down(&open_fifos_lock);
 	memcpy(d, fd, sizeof(file_descriptor_t));
+	d->lock = MUTEX_UNLOCKED;
 	
 	uint32_t len = strlen(fd->filename);
 	d->filename = kmalloc(len + 1);

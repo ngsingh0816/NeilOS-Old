@@ -10,6 +10,7 @@
 #define DESCRIPTOR_H
 
 #include <common/time.h>
+#include <common/concurrency/semaphore.h>
 
 // File types
 #define RTC_FILE_TYPE		0
@@ -94,6 +95,8 @@ typedef struct file_descriptor {
 	uint32_t (*stat)(int32_t fd, sys_stat_type* data);
 	struct file_descriptor* (*duplicate)(struct file_descriptor* f);
 	uint32_t (*close)(struct file_descriptor* f);	// Open allocates a file descriptor, but the syscall close frees it
+	
+	mutex_t lock;
 } file_descriptor_t;
 
 // Avaiable descriptors
