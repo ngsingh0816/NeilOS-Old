@@ -469,7 +469,7 @@ bool elf_perform_relocation(elf_section_header_t* sections, elf_header_t* header
 }
 
 // Load an elf into memory
-bool elf_load(char* filename, pcb_t* pcb) {
+bool elf_load(char* filename, pcb_t* pcb, pcb_t* parent) {
 	file_descriptor_t file;
 	elf_header_t header;
 	// Check it is valid
@@ -507,7 +507,7 @@ bool elf_load(char* filename, pcb_t* pcb) {
 			up(&pcb->lock);
 			if (!t)
 				return false;
-			page_list_map(t, true);
+			page_list_map(t, (parent ? true : false));
 		}
 		
 		// Load the program segment into memory
@@ -583,7 +583,7 @@ bool elf_load(char* filename, pcb_t* pcb) {
 	
 cleanup:
 	// Unmap program
-	page_list_unmap_list(pcb->page_list, true);
+	page_list_unmap_list(pcb->page_list, (parent ? true : false));
 	
 	fclose(&file);
 	if (program_headers)

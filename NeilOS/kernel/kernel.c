@@ -62,12 +62,15 @@
  * bin/dash -> ls -Rla / crashes (ls -la /dev doesn't always work)
  * Not really a bug but ATA read (and probably write) pretty much always read 2 blocks per 4096 bytes because of the offset from the partition, even though DMA read can probably easily offset by sector rather than block
  * calc doesn't work
- * ls | grep cat in dash multiple times, eventually one will hang
- 	(maybe due to set_multitasking_enabled(0) during load_task_replace while the other one has
- 	ata_partition_lock() held so it tries to acquire the lock but can't)
  */
 
 /* Things to test
+ Automated execution of
+ 	* ls
+ 	* bin/dash -> ls
+ 	* bin/dash -> ls | grep cat
+ 	* test 20 10000000 0
+ 	* bin/dash -> test 20 10000000 0
  */
 
 /* TODO:

@@ -255,19 +255,8 @@ bool add_child_task(pcb_t* parent, uint32_t pid, pcb_t* pcb) {
 
 // Copy a task into memory
 bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename) {
-	// Map the new pcb's pages into memory
-	page_list_map_list(pcb->page_list, true);
-	page_list_map_list(pcb->temporary_mappings, true);
-	
 	// Try different file formats
-	bool ret = elf_load(filename, pcb);
-	
-	// Unmap the pcb's pages
-	page_list_unmap_list(pcb->page_list, true);
-	page_list_unmap_list(pcb->temporary_mappings, true);
-	
-	if (parent)
-		set_current_task(parent);
+	bool ret = elf_load(filename, pcb, parent);
 	
 	return ret;
 }
@@ -450,6 +439,7 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	// Reserve a kernel stack and have the pcb be at the top of it
 	pcb_t* pcb = (pcb_t*)kmalloc(USER_KERNEL_STACK_SIZE);
 	memset(pcb, 0, sizeof(pcb_t));
+	set_current_task(pcb);
 	pcb->state = UNLOADED;
 	pcb->task = task;
 	pcb->parent = parent;
@@ -467,6 +457,7 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	pcb->working_dir = kmalloc(wd_len + 1 + start_path);
 	if (!pcb->working_dir) {
 		pcb_error(pcb, task);
+		set_current_task(parent);
 		return NULL;
 	}
 	memcpy(&pcb->working_dir[start_path], path, wd_len);
@@ -477,23 +468,27 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	if (parent) {
 		if (!add_child_task(parent, task->pid, pcb)) {
 			pcb_error(pcb, task);
+			set_current_task(parent);
 			return NULL;
 		}
 	}
 	
 	if (!load_task_into_memory(pcb, parent, filename)) {
 		pcb_error(pcb, task);
+		set_current_task(parent);
 		return NULL;
 	}
 	
 	uint32_t argc = 0;
 	if (!load_argv_and_envp(pcb, argv, envp, &argc)) {
 		pcb_error(pcb, task);
+		set_current_task(parent);
 		return NULL;
 	}
 	
 	if (!setup_stack_and_heap(pcb, argc)) {
 		pcb_error(pcb, task);
+		set_current_task(parent);
 		return NULL;
 	}
 	
@@ -605,8 +600,6 @@ bool copy_task_arguments(char* filename, const char** argv, const char** envp,
 
 // Load a task into memory, replacing the current task
 pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
-	bool flags = set_multitasking_enabled(false);
-
 	pcb_t* current = current_pcb;
 	
 	// Save the task arguments as they get lost when we map out the memory
@@ -615,48 +608,46 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	if (!copy_task_arguments(filename, argv, envp, &kfile, &kargv, &kenvp))
 		return NULL;
 	
-	pcb_t pcb = *current;
+	pcb_t backup = *current;
 	
-	pcb.page_list = NULL;
-	pcb.temporary_mappings = NULL;
-	pcb.dylibs = NULL;
-	pcb.stack_address = 0;
-	pcb.signal_pending = 0;
-	pcb.signal_mask = 0;
-	pcb.signal_waiting = false;
-	pcb.descriptor_lock = MUTEX_UNLOCKED;
-	pcb.lock = MUTEX_UNLOCKED;
-	memset(pcb.signal_handlers, 0, sizeof(sigaction_t) * NUMBER_OF_SIGNALS);
+	current->stack_address = 0;
+	current->signal_pending = 0;
+	current->signal_mask = 0;
+	current->signal_waiting = false;
+	current->descriptor_lock = MUTEX_UNLOCKED;
+	current->lock = MUTEX_UNLOCKED;
+	memset(current->signal_handlers, 0, sizeof(sigaction_t) * NUMBER_OF_SIGNALS);
+	page_list_t* list = current->page_list;
+	current->page_list = NULL;
+	page_list_t* tlist = current->temporary_mappings;
+	current->temporary_mappings = NULL;
+	dylib_list_t* dylibs = current->dylibs;
+	current->dylibs = NULL;
 	
-	if (!load_task_into_memory(&pcb, current, kfile)) {
-		set_multitasking_enabled(flags);
+	if (!load_task_into_memory(current, NULL, kfile)) {
+		*current = backup;
 		copy_task_arguments_free(kfile, kargv, kenvp);
 		return NULL;
 	}
 	
 	uint32_t argc = 0;
-	if (!load_argv_and_envp(&pcb, (const char**)kargv, (const char**)kenvp, &argc)) {
-		set_multitasking_enabled(flags);
+	if (!load_argv_and_envp(current, (const char**)kargv, (const char**)kenvp, &argc)) {
+		*current = backup;
 		copy_task_arguments_free(kfile, kargv, kenvp);
 		return NULL;
 	}
 	
 	copy_task_arguments_free(kfile, kargv, kenvp);
 	
-	if (!setup_stack_and_heap(&pcb, argc)) {
-		set_multitasking_enabled(flags);
+	if (!setup_stack_and_heap(current, argc)) {
+		*current = backup;
 		return NULL;
 	}
 	
-	// Free the task memory allocated by this task
-	set_current_task(current);
-	page_list_dealloc(current->page_list);
-	dylib_list_dealloc(current->dylibs);
-	
-	*current = pcb;
-	set_current_task(current);
-	
-	set_multitasking_enabled(flags);
+	// Free old memory
+	page_list_dealloc(list);
+	page_list_dealloc(tlist);
+	dylib_list_dealloc(dylibs);
 	
 	return current;
 }
@@ -829,11 +820,13 @@ void terminate_task(uint32_t ret) {
 
 // Maps memory so that this task is loaded
 void set_current_task(pcb_t* pcb) {
-	map_task_into_memory(pcb);
-	set_kernel_stack((uint32_t)pcb + USER_KERNEL_STACK_SIZE);
-	
 	current_pcb = pcb;
-	descriptors = pcb->descriptors;
+	
+	if (pcb) {
+		map_task_into_memory(pcb);
+		set_kernel_stack((uint32_t)pcb + USER_KERNEL_STACK_SIZE);
+		descriptors = pcb->descriptors;
+	}
 }
 
 extern void disable_sse();

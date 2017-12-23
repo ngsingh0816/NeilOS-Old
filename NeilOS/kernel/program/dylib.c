@@ -262,7 +262,8 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	up(&dylib->lock);
 	
 	// Restore pages
-	set_current_task(pcb);
+	page_list_map_list(pcb->page_list, false);
+	page_list_map_list(pcb->temporary_mappings, false);
 	
 	// Map these pages to a new offset
 	vm_lock();
