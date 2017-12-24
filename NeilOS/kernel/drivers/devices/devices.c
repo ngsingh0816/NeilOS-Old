@@ -60,8 +60,8 @@ bool devices_init() {
 		return false;
 	if (!device_file_add("tty", terminal_open))
 		return false;
-	if (!device_file_add("rtc", rtc_open))
-		return false;
+	/*if (!device_file_add("rtc", rtc_open))
+		return false;*/
 	if (!device_file_add("null", null_open))
 		return false;
 	if (!device_file_add("zero", zero_open))

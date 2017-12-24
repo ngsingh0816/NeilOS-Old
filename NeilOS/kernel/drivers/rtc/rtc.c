@@ -245,7 +245,9 @@ uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
 
 // Get info
 uint32_t rtc_stat(int32_t fd, sys_stat_type* data) {
-	// TODO: fill this out
+	data->dev_id = 1;
+	data->size = 0;
+	data->mode = descriptors[fd]->mode;
 	return 0;
 }
 
