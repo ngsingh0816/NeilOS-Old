@@ -353,6 +353,7 @@ pcb_t* duplicate_current_task() {
 	pcb->signal_pending = 0;
 	pcb->in_syscall = false;
 	pcb->should_terminate = false;
+	pcb->signal_occurred = false;
 	task->pcb = pcb;
 	
 	add_child_task(current, task->pid, pcb);
@@ -614,6 +615,7 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	current->signal_pending = 0;
 	current->signal_mask = 0;
 	current->signal_waiting = false;
+	current->signal_occurred = false;
 	current->descriptor_lock = MUTEX_UNLOCKED;
 	current->lock = MUTEX_UNLOCKED;
 	memset(current->signal_handlers, 0, sizeof(sigaction_t) * NUMBER_OF_SIGNALS);
@@ -648,6 +650,10 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	page_list_dealloc(list);
 	page_list_dealloc(tlist);
 	dylib_list_dealloc(dylibs);
+	
+	down(&current->lock);
+	current->in_syscall = false;
+	up(&current->lock);
 	
 	return current;
 }
@@ -895,7 +901,7 @@ void schedule() {
 	}
 	
 	task_list_t* hint = NULL;
-	if (current)
+	if (current && current->task)
 		hint = current->task->next;
 	pcb_t* next_pcb = get_next_runnable_task(hint);
 	

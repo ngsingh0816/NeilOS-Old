@@ -63,6 +63,8 @@ void signal_set_pending(struct pcb* pcb, uint32_t signum, bool pending);
 bool signal_is_pending(struct pcb* pcb, uint32_t signum);
 // Any signal pending?
 bool signal_pending(struct pcb* pcb);
+// Any signal pending or occurring (checks for valid pcb too)
+bool signal_occurring(struct pcb* pcb);
 
 // Signal handlers
 void signal_set_handler(struct pcb* pcb, uint32_t signum, sigaction_t handler);

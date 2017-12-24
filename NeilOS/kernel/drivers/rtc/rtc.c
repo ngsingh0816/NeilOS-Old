@@ -231,10 +231,9 @@ uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
 	// Wait for an interrupt to occur
 	info->waiting = true;
 	info->counter = 0;
-	pcb_t* pcb = current_pcb;
 	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
 		while (info->counter < (MAX_FREQUENCY / info->target_freq)) {
-			if (pcb && signal_pending(pcb))
+			if (signal_occurring(current_pcb))
 				return -EINTR;
 			// TODO: maybe not busy wait here?
 		}

@@ -156,16 +156,19 @@ done_parent_cs:
 sigjmp:
 	movl %esp, %eax
 
+	pushfl
 	pushl 12(%eax)
 	pushl 8(%eax)
 	pushl 4(%eax)
 
+	sti
 	ret
 
 // Restore the context
 sigreturn:
 	call sigreturn_impl
 	addl $4, %esp
+	popfl
 
 	ret
 
@@ -314,10 +317,19 @@ interrupt:
 		mov %cx, %gs
 		popl %ecx
 
-		// Say that the current task is in a syscall
+		// Check for signals
+		pusha
+		movl current_pcb, %eax
+		pushl %eax
+		call signal_handle
+		addl $4, %esp
+		popa
+
+		// Say that the current task is in a syscall and clear the signal occurred flag
 		pushl %eax
 		movl current_pcb, %eax
 		movb $1, 12(%eax)
+		movb $0, 14(%eax)
 		popl %eax
 
 		// Push the arguments

@@ -58,17 +58,22 @@
  * Caps lock can mess up dashes (-)
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler (it doesn't though)
- * bin/dash -> ls followed by control-c immediately after hangs everything
+ * bin/dash -> control-c -> ls crashes
+ 	* This is because the signal handler executes in kernel space for now, and dash does a longjmp to
+ 		get out of the signal, so it remains in kernel mode for dash execution so then calls to intx80
+ 		don't use the correct esp because there is no ring switch
  * bin/dash -> ls -Rla / crashes (ls -la /dev doesn't always work)
  * Not really a bug but ATA read (and probably write) pretty much always read 2 blocks per 4096 bytes because of the offset from the partition, even though DMA read can probably easily offset by sector rather than block
- * calc doesn't work
+ * calc hangs
  */
 
 /* Things to test
  Automated execution of
  	* ls
  	* bin/dash -> ls
- 	* bin/dash -> ls | grep cat
+ 	* bin/dash -> ls | grep cat (crashes with page fault - 0x2 at address 0x300600D (eip: 0xc040de74 - page_cow_list_add)
+ 		* also page_list_copy_table
+ 		* bunch of random places
  	* test 20 10000000 0
  	* bin/dash -> test 20 10000000 0
  */
@@ -202,7 +207,7 @@ entry (unsigned long magic, unsigned long addr)
 	descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);
 	descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
 	descriptors[STDERR] = terminal_open("stderr", FILE_MODE_WRITE);
-	
+		
 	char input[128];
 	for (;;) {
 		printf("NeilOS> ");
@@ -441,6 +446,7 @@ entry (unsigned long magic, unsigned long addr)
 				p->parent = tasks->pcb;
 				run(p);
 				signal_set_pending(tasks->pcb, SIGCHLD, false);
+				tasks->pcb->signal_occurred	= false;
 			}
 			else
 				printf("Command not found.\n");
@@ -452,7 +458,6 @@ entry (unsigned long magic, unsigned long addr)
 	
 	// Avoids error in Xcode
 #ifndef __APPLE__
-	// Spin (nicely, so we don't chew up cycles)
 	asm volatile(".1: hlt; jmp .1;");
 #endif
 }

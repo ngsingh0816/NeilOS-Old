@@ -83,6 +83,10 @@ bool signal_pending(pcb_t* pcb) {
 	return (pcb->signal_pending != 0 && pcb->signal_pending != pcb->signal_mask) || has_alarm;
 }
 
+bool signal_occurring(struct pcb* pcb) {
+	return (pcb && (signal_pending(pcb) || pcb->signal_occurred));
+}
+
 // Signal handlers
 void signal_set_handler(pcb_t* pcb, uint32_t signum, sigaction_t handler) {
 	// These signals cannot be caught or ignored
@@ -167,8 +171,9 @@ void signal_handle(pcb_t* pcb) {
 			break;
 	}
 	
-	// Mark this signal as no longer pending
+	// Mark this signal as no longer pending and mark as a signal occurring
 	signal_set_pending(pcb, signum, false);
+	pcb->signal_occurred = true;
 	
 	// Get the executable address
 	uint32_t exec_addr = (uint32_t)pcb->signal_handlers[signum].handler;

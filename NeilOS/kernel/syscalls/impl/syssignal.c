@@ -50,22 +50,22 @@ uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact) {
 }
 
 // Mask signals
-uint32_t sigsetmask(uint32_t signum, bool masked) {
-	LOG_DEBUG_INFO_STR("(%d, %d)", signum, masked);
+uint32_t sigsetmask(uint32_t mask) {
+	LOG_DEBUG_INFO_STR("(0x%x)", mask);
 
 	down(&current_pcb->lock);
-	signal_set_masked(current_pcb, signum, masked);
+	signal_set_mask(current_pcb, mask);
 	up(&current_pcb->lock);
 	
 	return 0;
 }
 
 // Get signal mask
-uint32_t siggetmask(uint32_t signum) {
-	LOG_DEBUG_INFO_STR("(%d)", signum);
+uint32_t siggetmask() {
+	LOG_DEBUG_INFO();
 
 	down(&current_pcb->lock);
-	uint32_t ret = signal_is_masked(current_pcb, signum);
+	uint32_t ret = current_pcb->signal_mask;
 	up(&current_pcb->lock);
 	
 	return ret;

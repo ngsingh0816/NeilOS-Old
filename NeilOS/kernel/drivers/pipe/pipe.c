@@ -127,6 +127,8 @@ uint32_t pipe_write(int32_t fd, const void* buf, uint32_t bytes) {
 
 	// Block until the pipe isn't full
 	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate) {
+		if (signal_occurring(current_pcb))
+			return -EINTR;
 		up(&info->lock);
 		schedule();
 		down(&info->lock);

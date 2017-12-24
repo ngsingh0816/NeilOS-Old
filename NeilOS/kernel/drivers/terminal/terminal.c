@@ -217,6 +217,18 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 // inputs: file descriptor, buffer pointer and the bytes
 // ouutputs: returns how many bytes were read
 uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
+	/*static int asdf = 0;
+	if (asdf == 0) {
+		memcpy(buf, "bin/dash\n", 9);
+		asdf = 1;
+		return 9;
+	} else {
+		//memcpy(buf, "ls|grep cat\n", 12);
+		//return 12;
+		memcpy(buf, "ls\n", 3);
+		return 3;
+	}*/
+	
 	int i;
 
 	// Reset variables
@@ -230,8 +242,13 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 
 	pcb_t* pcb = current_pcb;
 	while (!enter_pressed && !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
-		   !(pcb && pcb->should_terminate))
+		   !(pcb && pcb->should_terminate)) {
+		if (signal_occurring(pcb)) {
+			pos = 0;
+			return -EINTR;
+		}
 		schedule();
+	}
 	
 	// Copy buffer over now that enter is pressed
 	uint32_t min = (bytes < pos) ? bytes : pos;

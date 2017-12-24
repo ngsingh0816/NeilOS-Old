@@ -56,6 +56,8 @@ typedef struct pcb {
 	bool in_syscall;
 	// If this is set, the task will terminate next time it is loaded (fifth, 13)
 	bool should_terminate;
+	// Set if a signal has occurred (sixth, 14)
+	bool signal_occurred;
 	
 	// The saved context of the task
 	context_state_t	context;

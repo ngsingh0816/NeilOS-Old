@@ -21,10 +21,10 @@ typedef unsigned long sigset_t;
 uint32_t sigaction(uint32_t signum, sigaction_t* act, sigaction_t* oldact);
 
 // Mask signals
-uint32_t sigsetmask(uint32_t signum, bool masked);
+uint32_t sigsetmask(uint32_t mask);
 
 // Unmask signals
-uint32_t siggetmask(uint32_t signum);
+uint32_t siggetmask();
 
 // Set signal masks
 uint32_t sigprocmask(int how, const sigset_t* set, sigset_t* oldset);

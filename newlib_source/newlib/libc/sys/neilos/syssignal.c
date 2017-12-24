@@ -16,8 +16,8 @@
 extern unsigned int sys_errno();
 
 extern unsigned int sys_kill(int pid, unsigned int sig);
-extern unsigned int sys_sigsetmask(unsigned int signum, unsigned char masked);
-extern unsigned int sys_siggetmask(unsigned int signum);
+extern unsigned int sys_sigsetmask(unsigned int mask);
+extern unsigned int sys_siggetmask();
 extern unsigned int sys_sigprocmask(int how, const sigset_t* set, sigset_t* oldset);
 extern unsigned int sys_sigaction(int signum, const struct sigaction* act, struct sigaction* oldact);
 extern unsigned int sys_sigsuspend(const sigset_t* mask);
@@ -62,8 +62,8 @@ int sigaction(int signum, const struct sigaction* act, struct sigaction* oldact)
 	return ret;
 }
 
-int sigsetmask(unsigned int signum, unsigned char masked) {
-	int ret = sys_sigsetmask(signum, masked);
+int sigsetmask(unsigned int mask) {
+	int ret = sys_sigsetmask(mask);
     if (ret < 0) {
         errno = -ret;
         return -1;
@@ -71,8 +71,8 @@ int sigsetmask(unsigned int signum, unsigned char masked) {
 	return ret;
 }
 
-int siggetmask(unsigned int signum) {
-	int ret = sys_siggetmask(signum);
+int siggetmask() {
+	int ret = sys_siggetmask();
     if (ret < 0) {
         errno = -ret;
         return -1;
