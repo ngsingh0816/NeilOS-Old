@@ -62,7 +62,6 @@
  	* This is because the signal handler executes in kernel space for now, and dash does a longjmp to
  		get out of the signal, so it remains in kernel mode for dash execution so then calls to intx80
  		don't use the correct esp because there is no ring switch
- * bin/dash -> ls -Rla / crashes (ls -la /dev doesn't always work)
  * Not really a bug but ATA read (and probably write) pretty much always read 2 blocks per 4096 bytes because of the offset from the partition, even though DMA read can probably easily offset by sector rather than block
  * calc hangs
  */
@@ -207,7 +206,7 @@ entry (unsigned long magic, unsigned long addr)
 	descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);
 	descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
 	descriptors[STDERR] = terminal_open("stderr", FILE_MODE_WRITE);
-		
+	
 	char input[128];
 	for (;;) {
 		printf("NeilOS> ");

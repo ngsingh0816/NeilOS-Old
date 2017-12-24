@@ -167,23 +167,6 @@ void terminal_init() {
 //inputs: the filename
 //outputs: -1 if failed or stdout if success
 file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
-	int type = 0;
-	if (strncmp(filename, "stdin", strlen(filename)) == 0)
-		type = STDIN;
-	else if (strncmp(filename, "stdout", strlen(filename)) == 0)
-		type = STDOUT;
-	else if (strncmp(filename, "stderr", strlen(filename)) == 0)
-		type = STDERR;
-	// Don't allow this to be opened more than once
-	if (type != 0 && descriptors && descriptors[type]) {
-		descriptors[type]->ref_count++;
-		return descriptors[type];
-	}
-	
-	// Actually perform initialization if this is the first time we are initializing
-	if (type != 0)
-		pos = 0;
-	
 	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
 	if (!d)
 		return NULL;

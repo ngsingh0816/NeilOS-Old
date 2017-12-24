@@ -33,6 +33,10 @@
 
 .globl syscalls
 
+#if DEBUG
+.globl debug_save_context
+#endif
+
 #ifdef __APPLE__
 
 .globl _sigreturn
@@ -556,6 +560,12 @@ int13: // gpf
 	addl $4, %esp
 	iret
 int14:	// page fault
+#if DEBUG
+	pusha
+	call debug_save_context
+	popa
+#endif
+
 	pushl %ebx
 	pushl %edx
 

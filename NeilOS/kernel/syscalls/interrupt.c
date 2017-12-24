@@ -183,6 +183,13 @@ void general_protection(uint32_t code, uint32_t eip) {
 #define PAGE_PRESENT		0x1
 #define WRITE_VIOLATON		0x2
 
+#ifdef DEBUG
+context_state_t	page_fault_context;
+void debug_save_context(context_state_t	state) {
+	page_fault_context = state;
+}
+#endif
+
 // Interrupt 14
 void page_fault(uint32_t code, uint32_t eip) {
 	// Get the address it happened at
