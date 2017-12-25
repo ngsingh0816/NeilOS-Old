@@ -314,7 +314,7 @@ void dylib_unload_for_task(dylib_t* dylib) {
 	down(&dylib->lock);
 	if (--(dylib->num_instances) == 0) {
 		up(&dylib->lock);
-		dylib_dealloc(dylib);
+		dylib_unload(dylib->name);
 	} else
 		up(&dylib->lock);
 }

@@ -62,7 +62,6 @@
  	* This is because the signal handler executes in kernel space for now, and dash does a longjmp to
  		get out of the signal, so it remains in kernel mode for dash execution so then calls to intx80
  		don't use the correct esp because there is no ring switch
- * calc hangs
  */
 
 /* Things to test
@@ -201,6 +200,7 @@ entry (unsigned long magic, unsigned long addr)
 	queue_task_load("shell", shell_argv, NULL, NULL);
 	
 	descriptors = (file_descriptor_t**)kmalloc(sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
+	file_descriptor_t** descriptors_backup = descriptors;
 	memset(descriptors, 0, sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
 	descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);
 	descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
@@ -448,6 +448,8 @@ entry (unsigned long magic, unsigned long addr)
 			}
 			else
 				printf("Command not found.\n");
+			current_pcb = NULL;
+			descriptors = descriptors_backup;
 		}
 	}
 	
