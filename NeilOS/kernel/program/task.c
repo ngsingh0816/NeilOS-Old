@@ -253,7 +253,7 @@ bool add_child_task(pcb_t* parent, uint32_t pid, pcb_t* pcb) {
 	return true;
 }
 
-// Copy a task into memory
+// Copy a task into memory (warning: modifies current_pcb = pcb)
 bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename) {
 	// Try different file formats
 	bool ret = elf_load(filename, pcb, parent);
@@ -479,6 +479,7 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		set_current_task(parent);
 		return NULL;
 	}
+	current_pcb = parent;
 	
 	uint32_t argc = 0;
 	if (!load_argv_and_envp(pcb, argv, envp, &argc)) {
