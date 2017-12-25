@@ -307,8 +307,7 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 			
 	// Calculate the correct address
 	uint64_t addr = uint64_add(d->partition_offset, d->seek_offset);
-	uint64_t sector_addr = uint64_shl(uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK),
-									  NUMBER_OF_SHIFT_BITS_IN_BLOCK - NUMBER_OF_SHIFT_BITS_IN_SECTOR);
+	uint64_t sector_addr = uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_SECTOR);
 	
 	// If we will read past the end of the partition, adjust bytes accordingly
 	if (uint64_greater(uint64_add(d->seek_offset, uint64_make(0, bytes)), d->partition_size))
@@ -320,16 +319,18 @@ uint32_t ata_partition_read(disk_info_t* d, void* buf, uint32_t bytes) {
 		read = ata_dma_read_blocks;
 	
 	uint64_t end_addr = uint64_add(addr, uint64_make(0, bytes));
-	uint32_t num_blocks = uint64_sub(uint64_shr(end_addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK), uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK)).low + 1;
+	uint32_t num_sectors = uint64_sub(uint64_shr(uint64_sub(end_addr, uint64_make(0, 1)),
+				NUMBER_OF_SHIFT_BITS_IN_SECTOR), uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_SECTOR)).low + 1;
+	uint32_t num_blocks = (num_sectors - 1) / (BLOCK_SIZE / ATA_SECTOR_SIZE) + 1;
 	int z;							// For looping over the blocks
 	uint32_t copy_pos = 0;			// For keeping track where in buf we are writing
 	for (z = 0; z < num_blocks; z++) {
 		uint32_t size = BLOCK_SIZE;			// Amount of data to be copied this round
 		uint32_t b_offset = 0;				// Where to start in this block
 		
-		// Account for the offset into the first block
+		// Account for the offset into the first sector
 		if (z == 0) {
-			b_offset = addr.low % BLOCK_SIZE;
+			b_offset = addr.low % ATA_SECTOR_SIZE;
 			size -= b_offset;
 		}
 		// If we are on the last block, we only need to copy the remaining amount of data
@@ -372,8 +373,8 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 	
 	// Calculate the correct address
 	uint64_t addr = uint64_add(d->partition_offset, d->seek_offset);
-	uint64_t sector_addr = uint64_shl(uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK),
-									  NUMBER_OF_SHIFT_BITS_IN_BLOCK - NUMBER_OF_SHIFT_BITS_IN_SECTOR);
+	uint64_t sector_addr = uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_SECTOR);
+
 		
 	// If we will write past the end of the partition, adjust bytes accordingly
 	if (uint64_greater(uint64_add(d->seek_offset, uint64_make(0, bytes)), d->partition_size))
@@ -393,7 +394,9 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 		return -ENOMEM;
 	
 	uint64_t end_addr = uint64_add(addr, uint64_make(0, bytes));
-	uint32_t num_blocks = uint64_sub(uint64_shr(end_addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK), uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_BLOCK)).low + 1;
+	uint32_t num_sectors = uint64_sub(uint64_shr(uint64_sub(end_addr, uint64_make(0, 1)),
+					NUMBER_OF_SHIFT_BITS_IN_SECTOR), uint64_shr(addr, NUMBER_OF_SHIFT_BITS_IN_SECTOR)).low + 1;
+	uint32_t num_blocks = (num_sectors - 1) / (BLOCK_SIZE / ATA_SECTOR_SIZE) + 1;
 	int z;							// For looping over the blocks
 	uint32_t copy_pos = 0;			// For keeping track where in buf we are writing
 	for (z = 0; z < num_blocks; z++) {
@@ -403,7 +406,7 @@ uint32_t ata_partition_write(disk_info_t* d, const void* buf, uint32_t bytes) {
 		// Account for the offset into the first block
 		bool needs_read = false;
 		if (z == 0) {
-			b_offset = addr.low % BLOCK_SIZE;
+			b_offset = addr.low % ATA_SECTOR_SIZE;
 			size -= b_offset;
 			needs_read = true;
 		}
