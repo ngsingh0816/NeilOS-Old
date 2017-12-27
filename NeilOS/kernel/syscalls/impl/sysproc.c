@@ -249,10 +249,13 @@ uint32_t exit(int status) {
 	int z;
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
 		if (descriptors[z]) {
+			down(&descriptors[z]->lock);
 			if ((--descriptors[z]->ref_count) == 0) {
 				descriptors[z]->close(descriptors[z]);
+				up(&descriptors[z]->lock);
 				kfree(descriptors[z]);
-			}
+			} else
+				up(&descriptors[z]->lock);
 			pcb->descriptors[z] = NULL;
 		}
 	}

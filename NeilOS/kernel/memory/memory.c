@@ -114,9 +114,9 @@ uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type) {
 void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions, bool preserve_context) {
 	// Add this page to the current pcb so that it gets mapped in upon context switch
 	if (preserve_context && current_pcb) {
-		down(&current_pcb->lock);
+		//down(&current_pcb->lock);
 		page_list_update_mapping(&current_pcb->temporary_mappings, vaddr, paddr, permissions);
-		up(&current_pcb->lock);
+		//up(&current_pcb->lock);
 	}
 	
 	// Set the page in the bitmap as mapped
@@ -175,9 +175,9 @@ uint32_t vm_create_page_table_entry(uint32_t paddr, uint32_t permissions) {
 void vm_unmap_page(uint32_t vaddr, bool preserve_context) {
 	// Remove this page from the current pcb so that it gets unmapped upon context switch
 	if (preserve_context && current_pcb) {
-		down(&current_pcb->lock);
+		//down(&current_pcb->lock);
 		page_list_remove(&current_pcb->temporary_mappings, vaddr);
-		up(&current_pcb->lock);
+		//up(&current_pcb->lock);
 	}
 	
 	// Free it in the bitmap
@@ -215,12 +215,13 @@ void vm_unmap_pages(uint32_t start, uint32_t end) {
 			memset(&vm_bitmap[start_page / num_entries_per_bitmap + 1], 0, (ep - sp - 1) * sizeof(uint32_t));
 	}
 	
-	for (unsigned int z = start_page; z < end_page; z++) {
+	memset(&page_directory[start_page], UNUSED_PAGE, end_page - start_page);
+	/*for (unsigned int z = start_page; z < end_page; z++) {
 		// If previous mapping was a page table, invalidate the page table
 		if (!(page_directory[z] & PAGE_DIRECTORY_BIT))
 			invalidate_page_address((void*)(page_table_mappings[z] * FOUR_MB_SIZE));
 		page_directory[z] = UNUSED_PAGE;
-	}
+	}*/
 	
 	flush_tlb();
 }

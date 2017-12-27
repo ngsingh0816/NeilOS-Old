@@ -15,7 +15,6 @@
 
 // Start with no tasks
 task_list_t* tasks = NULL;
-task_list_t* delete_task_list = NULL;
 mutex_t task_lock = MUTEX_UNLOCKED;
 
 // Current pcb
@@ -134,8 +133,8 @@ void map_task_into_memory(pcb_t* pcb) {
 // Load the argv and envp portions of a pcb
 bool load_argv_and_envp(pcb_t* pcb, const char** argv, const char** envp, uint32_t* argc_out) {
 	// Map the new pcb's pages into memory
-	page_list_map_list(pcb->page_list, true);
-	page_list_map_list(pcb->temporary_mappings, true);
+	page_list_map_list(pcb->page_list, false);
+	page_list_map_list(pcb->temporary_mappings, false);
 	
 	// Copy over the arguments
 	uint32_t argc = 0;
@@ -199,11 +198,8 @@ bool load_argv_and_envp(pcb_t* pcb, const char** argv, const char** envp, uint32
 	}
 	
 	// Unmap the pcb's pages
-	page_list_unmap_list(pcb->page_list, true);
-	page_list_unmap_list(pcb->temporary_mappings, true);
-	
-	if (pcb->parent)
-		map_task_into_memory(pcb->parent);
+	page_list_unmap_list(pcb->page_list, false);
+	page_list_unmap_list(pcb->temporary_mappings, false);
 	
 	return true;
 }
@@ -254,9 +250,9 @@ bool add_child_task(pcb_t* parent, uint32_t pid, pcb_t* pcb) {
 }
 
 // Copy a task into memory (warning: modifies current_pcb = pcb)
-bool load_task_into_memory(pcb_t* pcb, pcb_t* parent, char* filename) {
+bool load_task_into_memory(pcb_t* pcb, char* filename) {
 	// Try different file formats
-	bool ret = elf_load(filename, pcb, parent);
+	bool ret = elf_load(filename, pcb);
 	
 	return ret;
 }
@@ -270,9 +266,11 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 		return false;
 	
 	// Copy over descriptors
+	down(&in->descriptor_lock);
 	uint32_t z;
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
 		if (in->descriptors[z]) {
+			down(&in->descriptors[z]->lock);
 			// Check if this is has already been duplicated
 			if (in->descriptors[z]->ref_count > 1) {
 				// Check if we've already seen it
@@ -286,18 +284,22 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 				}
 				if (found) {
 					out->descriptors[z] = out->descriptors[i];
+					up(&in->descriptors[z]->lock);
 					continue;
 				}
 			}
 			// Otherwise, duplicate it
 			out->descriptors[z] = (file_descriptor_t*)in->descriptors[z]->duplicate((void*)in->descriptors[z]);
+			up(&in->descriptors[z]->lock);
 			if (!out->descriptors[z]) {
 				kfree(out->working_dir);
 				out->working_dir = NULL;
+				up(&current_pcb->descriptor_lock);
 				return false;
 			}
 		}
 	}
+	up(&in->descriptor_lock);
 	
 	// Update sse registers pointer to be aligned to new registers
 	out->sse_registers = (uint8_t*)((uint32_t)out->sse_registers_unaligned + 16 -
@@ -388,13 +390,12 @@ pcb_t* duplicate_current_task() {
 	dylib_list_t* l = pcb->dylibs;
 	pcb->dylibs = NULL;
 	while (l) {
-		up(&current->lock);
 		if (!dylib_list_copy_for_pcb(l, pcb)) {
+			up(&current->lock);
 			pcb_error(pcb, task);
 			return NULL;
 		}
 		
-		down(&current->lock);
 		l = l->next;
 	}
 	up(&current->lock);
@@ -474,7 +475,7 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		}
 	}
 	
-	if (!load_task_into_memory(pcb, parent, filename)) {
+	if (!load_task_into_memory(pcb, filename)) {
 		pcb_error(pcb, task);
 		set_current_task(parent);
 		return NULL;
@@ -493,6 +494,9 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		set_current_task(parent);
 		return NULL;
 	}
+	
+	if (parent)
+		map_task_into_memory(pcb->parent);
 	
 	// Allow it to be used
 	task->pcb = pcb;
@@ -602,48 +606,50 @@ bool copy_task_arguments(char* filename, const char** argv, const char** envp,
 
 // Load a task into memory, replacing the current task
 pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
-	pcb_t* current = current_pcb;
-	
 	// Save the task arguments as they get lost when we map out the memory
 	char* kfile = NULL;
 	char** kargv = NULL, **kenvp = NULL;
 	if (!copy_task_arguments(filename, argv, envp, &kfile, &kargv, &kenvp))
 		return NULL;
 	
-	pcb_t backup = *current;
+	down(&current_pcb->lock);
+	pcb_t backup = *current_pcb;
 	
-	current->stack_address = 0;
-	current->signal_pending = 0;
-	current->signal_mask = 0;
-	current->signal_waiting = false;
-	current->signal_occurred = false;
-	current->descriptor_lock = MUTEX_UNLOCKED;
-	current->lock = MUTEX_UNLOCKED;
-	memset(current->signal_handlers, 0, sizeof(sigaction_t) * NUMBER_OF_SIGNALS);
-	page_list_t* list = current->page_list;
-	current->page_list = NULL;
-	page_list_t* tlist = current->temporary_mappings;
-	current->temporary_mappings = NULL;
-	dylib_list_t* dylibs = current->dylibs;
-	current->dylibs = NULL;
+	current_pcb->stack_address = 0;
+	current_pcb->signal_pending = 0;
+	current_pcb->signal_mask = 0;
+	current_pcb->signal_waiting = false;
+	current_pcb->signal_occurred = false;
+	current_pcb->descriptor_lock = MUTEX_UNLOCKED;
+	current_pcb->lock = MUTEX_LOCKED;
+	memset(current_pcb->signal_handlers, 0, sizeof(sigaction_t) * NUMBER_OF_SIGNALS);
+	page_list_t* list = current_pcb->page_list;
+	current_pcb->page_list = NULL;
+	page_list_t* tlist = current_pcb->temporary_mappings;
+	current_pcb->temporary_mappings = NULL;
+	dylib_list_t* dylibs = current_pcb->dylibs;
+	current_pcb->dylibs = NULL;
 	
-	if (!load_task_into_memory(current, NULL, kfile)) {
-		*current = backup;
+	if (!load_task_into_memory(current_pcb, kfile)) {
+		*current_pcb = backup;
 		copy_task_arguments_free(kfile, kargv, kenvp);
+		up(&current_pcb->lock);
 		return NULL;
 	}
 	
 	uint32_t argc = 0;
-	if (!load_argv_and_envp(current, (const char**)kargv, (const char**)kenvp, &argc)) {
-		*current = backup;
+	if (!load_argv_and_envp(current_pcb, (const char**)kargv, (const char**)kenvp, &argc)) {
+		*current_pcb = backup;
 		copy_task_arguments_free(kfile, kargv, kenvp);
+		up(&current_pcb->lock);
 		return NULL;
 	}
 	
 	copy_task_arguments_free(kfile, kargv, kenvp);
 	
-	if (!setup_stack_and_heap(current, argc)) {
-		*current = backup;
+	if (!setup_stack_and_heap(current_pcb, argc)) {
+		*current_pcb = backup;
+		up(&current_pcb->lock);
 		return NULL;
 	}
 	
@@ -652,11 +658,10 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	page_list_dealloc(tlist);
 	dylib_list_dealloc(dylibs);
 	
-	down(&current->lock);
-	current->in_syscall = false;
-	up(&current->lock);
+	current_pcb->in_syscall = false;
+	up(&current_pcb->lock);
 	
-	return current;
+	return current_pcb;
 }
 
 // Find the next runnable task
@@ -692,12 +697,10 @@ pcb_t* get_next_runnable_task(task_list_t* hint) {
 void terminate_task(uint32_t ret) {
 #if TERMINATE_TASK
 	pcb_t* current = current_pcb;
-	down(&current->lock);
 	
 	// We can't terminate a task in a syscall, so allow the syscall to finish
 	if (current->in_syscall) {
 		current->should_terminate = true;
-		up(&current->lock);
 		return;
 	}
 	current->should_terminate = false;
@@ -755,8 +758,6 @@ void terminate_task(uint32_t ret) {
 	current->argv = NULL;
 	current->envp = NULL;
 	
-	up(&current->lock);
-	
 	/*// Find next possible task to run
 	pcb_t* next_pcb = get_next_runnable_task(hint);
 	if (!next_pcb) {
@@ -782,6 +783,7 @@ void terminate_task(uint32_t ret) {
 	down(&task->lock);
 	if (task->next)
 		down(&task->next->lock);
+	heap_perform_lock();
 	cli();
 	if (task->prev)
 		task->prev->next = task->next;
@@ -795,12 +797,11 @@ void terminate_task(uint32_t ret) {
 	if (task->next)
 		up(&task->next->lock);
 	
-	// Queue this task to be deleted
-	task->next = delete_task_list;
-	task->prev = NULL;
-	if (delete_task_list)
-		delete_task_list->prev = task;
-	delete_task_list = task;
+	// Delete the task
+	heap_perform_unlock();
+	if (task->pcb)
+		kfree(task->pcb);
+	kfree(task);
 	
 	schedule();
 	
@@ -873,17 +874,6 @@ void schedule() {
 	// This whole function is a critical section
 	uint32_t flags;
 	cli_and_save(flags);
-
-	// Check for any tasks that need to be deallocated
-	task_list_t* d = delete_task_list;
-	while (d) {
-		if (d->pcb)
-			kfree(d->pcb);
-		task_list_t* next = d->next;
-		kfree(d);
-		d = next;
-	}
-	delete_task_list = NULL;
 	
 	// If we have disabled multitasking, don't do anything
 	if (!irq_enabled(PIT_IRQ)) {
@@ -896,8 +886,12 @@ void schedule() {
 	// If this task is supposed to terminate, terminate it
 	if (current && current->should_terminate) {
 		restore_flags(flags);
-		current->should_terminate = false;
-		terminate_task(1);
+		if (down_trylock(&current->lock)) {
+			current->should_terminate = false;
+			terminate_task(1);
+			// Will only return here if we failed
+			up(&current->lock);
+		}
 		return;
 	}
 	
@@ -917,8 +911,13 @@ void schedule() {
 	}
 	
 	// Swtich to the new task (automatically reenables interrupts)
-	if (next_pcb->state != UNLOADED)
+	if (next_pcb->state != UNLOADED) {
 		context_switch(current, next_pcb);
+		
+		// This is where we will get context switched into
+		// Handle signals if needed
+		signal_handle(current_pcb);
+	}
 	else {
 		if (current)
 			current->state = READY;

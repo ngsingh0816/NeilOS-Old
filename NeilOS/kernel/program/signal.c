@@ -19,10 +19,7 @@ void signal_ignore(pcb_t* pcb) {
 
 // Terminate the task
 void signal_terminate(pcb_t* pcb) {
-	if (pcb == current_pcb)
-		terminate_task(-1);
-	else
-		pcb->should_terminate = true;
+	pcb->should_terminate = true;
 }
 
 // Continue the task
@@ -169,6 +166,10 @@ void signal_handle(pcb_t* pcb) {
 	for (signum = 1; signum < NUMBER_OF_SIGNALS; signum++) {
 		if (signal_is_pending(pcb, signum) && !signal_is_masked(pcb, signum))
 			break;
+	}
+	if (signum == NUMBER_OF_SIGNALS) {
+		printf("Signal error.\n");
+		for (;;) {}
 	}
 	
 	// Mark this signal as no longer pending and mark as a signal occurring

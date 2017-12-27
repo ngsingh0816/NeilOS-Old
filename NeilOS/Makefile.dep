@@ -114,7 +114,7 @@ build/./kernel/memory/allocation/page_allocator.o: \
 build/./kernel/common/log.o: kernel/common/log.c kernel/common/log.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/log.o ./kernel/common/log.c
 build/./kernel/common/lib.o: kernel/common/lib.c kernel/common/lib.h \
- kernel/common/types.h
+ kernel/common/types.h kernel/common/debug.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/lib.o ./kernel/common/lib.c
 build/./kernel/common/concurrency/spinlock.o: \
  kernel/common/concurrency/spinlock.c \
@@ -135,10 +135,10 @@ build/./kernel/common/concurrency/rwsem.o: \
  kernel/common/concurrency/spinlock.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/concurrency/rwsem.o ./kernel/common/concurrency/rwsem.c
 build/./kernel/common/time.o: kernel/common/time.c kernel/common/time.h \
- kernel/common/types.h kernel/common/lib.h
+ kernel/common/types.h kernel/common/debug.h kernel/common/lib.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/time.o ./kernel/common/time.c
 build/./kernel/common/types.o: kernel/common/types.c \
- kernel/common/types.h
+ kernel/common/types.h kernel/common/debug.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/common/types.o ./kernel/common/types.c
 build/./kernel/program/dylib.o: kernel/program/dylib.c \
  kernel/program/dylib.h kernel/program/task.h

@@ -19,37 +19,83 @@ bool page_cow_list_add(page_cow_list_t** list, page_list_t* entry) {
 		return false;
 	
 	t->entry = entry;
+	t->lock = MUTEX_LOCKED;
 	t->next = NULL;
 	t->prev = NULL;
 	
-	page_cow_list_t* head = *list;
-	if (head) {
-		t->next = head;
-		head->prev = t;
+	page_cow_list_t* l = *list;
+	page_cow_list_t* prev = NULL;
+	while (l) {
+		down(&l->lock);
+		if (prev)
+			up(&prev->lock);
+		prev = l;
+		l = l->next;
 	}
-	*list = t;
+	if (!prev) {
+		*list = t;
+		up(&t->lock);
+	} else {
+		prev->next = t;
+		t->prev = prev;
+		up(&prev->lock);
+		up(&t->lock);
+	}
 	
 	return true;
 }
 
 // Remove an entry from the page cow list
 bool page_cow_list_remove(page_cow_list_t** list, page_list_t* l) {
+	if (*list)
+		down(&((*list)->lock));
 	page_cow_list_t* t = *list;
 	while (t) {
 		if (t->entry == l) {
 			if (t->prev)
 				t->prev->next = t->next;
-			if (t->next)
+			if (t->next) {
+				down(&t->next->lock);
 				t->next->prev = t->prev;
+				up(&t->next->lock);
+			}
 			
-			if (*list == t)
+			if (*list == t) {
 				*list = t->next;
+				// Update all mappings
+				page_cow_list_t* l = t->next;
+				down(&l->lock);
+				while (l) {
+					if (l->entry) {
+						down(&l->entry->lock);
+						l->entry->linked = t->next;
+						up(&l->entry->lock);
+					}
+					
+					page_cow_list_t* prev = l;
+					l = l->next;
+					if (l)
+						down(&l->lock);
+					up(&prev->lock);
+				}
+			}
+			
+			if (t->prev)
+				up(&t->prev->lock);
+			up(&t->lock);
 			
 			kfree(t);
 			
 			return true;
 		}
+		if (t->prev)
+			up(&t->prev->lock);
+		page_cow_list_t* prev = t;
 		t = t->next;
+		if (t)
+			down(&t->lock);
+		else
+			up(&prev->lock);
 	}
 	
 	return false;
@@ -156,24 +202,25 @@ bool page_list_copy_page_table(page_list_t* l, page_list_t* p) {
 
 // Sets up the page table
 bool page_list_set_up_page_table(page_list_t* list) {
-	list->page_table = kmalloc(sizeof(page_table_t));
-	if (!list->page_table)
+	page_table_t* page_table = kmalloc(sizeof(page_table_t));
+	if (!page_table)
 		return false;
 	
-	list->page_table->pages = page_get_aligned_four_kb();
-	if (!list->page_table->pages) {
-		kfree(list->page_table);
+	page_table->pages = page_get_aligned_four_kb();
+	if (!page_table->pages) {
+		kfree(page_table);
 		return false;
 	}
 	
 	// Set up to point to original adressses
 	for (uint32_t z = 0; z < NUM_PAGE_TABLE_ENTRIES; z++) {
-		list->page_table->pages[z] = vm_create_page_table_entry(list->paddr + z * FOUR_KB_SIZE,
+		page_table->pages[z] = vm_create_page_table_entry(list->paddr + z * FOUR_KB_SIZE,
 																(list->permissions & ~MEMORY_WRITE));
 	}
 	
 	// Set no pages as owners
-	memset(list->page_table->owners, 0, NUM_PAGE_TABLE_ENTRIES / 8);
+	memset(page_table->owners, 0, NUM_PAGE_TABLE_ENTRIES / 8);
+	list->page_table = page_table;
 	
 	return true;
 }
@@ -197,20 +244,9 @@ page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p) {
 		l->copy_on_write = true;
 		p->copy_on_write = true;
 		
-		// Set the linked page lists
-		page_cow_list_add(&l->linked, p);
-		page_cow_list_t* t = p->linked;
-		while (t) {
-			page_cow_list_add(&l->linked, t->entry);
-			page_cow_list_add(&t->entry->linked, l);
-			t = t->next;
-		}
-		page_cow_list_add(&p->linked, l);
-		
 		// Set up the page table for the old list
 		if (!p->page_table) {
 			if (!page_list_set_up_page_table(p)) {
-				page_cow_list_remove(&p->linked, l);
 				kfree(l);
 				up(&p->lock);
 				return NULL;
@@ -218,13 +254,16 @@ page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p) {
 		}
 		// Copy that page table to this new list
 		if (!page_list_copy_page_table(l, p)) {
-			page_cow_list_remove(&p->linked, l);
 			kfree(l);
 			up(&p->lock);
 			return NULL;
 		}
 		
-		page_list_map(p, false);
+		// Set the linked page lists
+		if (!p->linked)
+			page_cow_list_add(&p->linked, p);
+		page_cow_list_add(&p->linked, l);
+		l->linked = p->linked;
 	}
 	up(&p->lock);
 	
@@ -243,6 +282,24 @@ page_list_t* page_list_add_copy(page_list_t** list, page_list_t* p) {
 	return l;
 }
 
+void page_list_dealloc_mem(page_list_t* t) {
+	if (t->page_table) {
+		for (uint32_t z = 0; z < NUM_PAGE_TABLE_ENTRIES; z++) {
+			if (page_list_read_bitmap(t->page_table->owners, z)) {
+				void* addr = (void*)(t->page_table->pages[z] & ~(FOUR_KB_SIZE - 1));
+				// Only free it if this wasn't part of the original paddr
+				if (!((uint32_t)addr >= t->paddr && (uint32_t)addr < t->paddr + FOUR_MB_SIZE))
+					page_physical_free_aligned_four_kb(addr);
+			}
+		}
+		if (t->page_table->pages)
+			page_free_aligned_four_kb(t->page_table->pages);
+		kfree(t->page_table);
+	}
+	if (t->owner)
+		page_physical_free((void*)t->paddr);
+}
+
 // Remove a page from the list
 bool page_list_remove(page_list_t** list, uint32_t vaddr) {
 	if (!list)
@@ -257,13 +314,20 @@ bool page_list_remove(page_list_t** list, uint32_t vaddr) {
 				t->prev->next = t->next;
 			else
 				*list = t->next;
-			if (t->owner)
-				page_physical_free((void*)t->paddr);
-			kfree(t);
+			
+			if (t->linked) {
+				up(&t->lock);
+				page_cow_list_remove(&t->linked, t);
+				down(&t->lock);
+			}
+			
+			page_list_dealloc_mem(t);
 			
 			if (t->prev)
 				up(&t->prev->lock);
 			up(&t->lock);
+			
+			kfree(t);
 			
 			return true;
 		}
@@ -312,29 +376,41 @@ page_list_t* page_list_get(page_list_t** list, uint32_t vaddr, uint32_t permissi
 	return page_list_add(list, vaddr, permissions);
 }
 
-// Map a page into memory
-void page_list_map(page_list_t* list, bool preserve_context) {
+void page_list_map_internal(page_list_t* list, bool preserve_context) {
 	if (list->page_table) {
 		vm_map_page_table(list->vaddr, vm_virtual_to_physical((uint32_t)list->page_table->pages),
 						  list->page_table->pages, list->permissions);
 	} else {
 		vm_map_page(list->vaddr, list->paddr, (list->copy_on_write ?
-										   (list->permissions & ~MEMORY_WRITE) : list->permissions), preserve_context);
+											   (list->permissions & ~MEMORY_WRITE) : list->permissions), preserve_context);
 	}
+}
+
+// Map a page into memory
+void page_list_map(page_list_t* list, bool preserve_context) {
+	down(&list->lock);
+	page_list_map_internal(list, preserve_context);
+	up(&list->lock);
 }
 
 void page_list_map_list(page_list_t* list, bool preserve_context) {
 	page_list_t* t = list;
 	while (t) {
-		page_list_map(t, preserve_context);
+		page_list_map_internal(t, preserve_context);
 		t = t->next;
 	}
+}
+
+void page_list_unmap_internal(page_list_t* list, bool preserve_context) {
+	vm_unmap_page(list->vaddr, preserve_context);
 }
 
 // Unmap a page from memory (if preserve_context is set to true, then the page will be removed from being persistent
 // across context switches)
 void page_list_unmap(page_list_t* list, bool preserve_context) {
+	down(&list->lock);
 	vm_unmap_page(list->vaddr, preserve_context);
+	up(&list->lock);
 }
 
 // Unmap a page list
@@ -343,7 +419,7 @@ void page_list_unmap_list(page_list_t* list, bool preserve_context) {
 		down(&list->lock);
 	page_list_t* t = list;
 	while (t) {
-		page_list_unmap(t, preserve_context);
+		page_list_unmap_internal(t, preserve_context);
 		
 		page_list_t* prev = t;
 		t = t->next;
@@ -382,22 +458,23 @@ bool page_list_copy_on_write(page_list_t* list, uint32_t address) {
 		// If we already owned a page before this, look for a new owner for that page.
 		// If everybody else is already an owner, deallocate it
 		page_cow_list_t* t = list->linked;
-		if (t && t->entry)
-			down(&t->entry->lock);
 		up(&list->lock);
+		if (t && t->entry)
+			down(&t->lock);
 		bool found = false;
 		while (t && t->entry) {
-			if ((t->entry->page_table->pages[page] & ~(FOUR_KB_SIZE - 1)) == old_paddr) {
+			if (t->entry != list && (t->entry->page_table->pages[page] & ~(FOUR_KB_SIZE - 1)) == old_paddr) {
 				found = true;
 				page_list_write_bitmap(t->entry->page_table->owners, page, true);
-				up(&t->entry->lock);
+				up(&t->lock);
 				break;
 			}
 			
-			up(&t->entry->lock);
+			page_cow_list_t* prev = t;
 			t = t->next;
 			if (t && t->entry)
-				down(&t->entry->lock);
+				down(&t->lock);
+			up(&prev->lock);
 		}
 		if (!found)
 			page_physical_free_aligned_four_kb((void*)old_paddr);
@@ -407,49 +484,27 @@ bool page_list_copy_on_write(page_list_t* list, uint32_t address) {
 
 	page_list_write_bitmap(list->page_table->owners, page, true);
 	
-	page_list_map(list, false);
 	up(&list->lock);
+	page_list_map(list, false);
 	
 	return true;
 }
 
 // Dealloc a whole page list
 void page_list_dealloc(page_list_t* list) {
-	if (list)
-		down(&list->lock);
 	page_list_t* t = list;
 	while (t) {
-		page_list_t* next = t->next;
-		if (t->page_table) {
-			for (uint32_t z = 0; z < NUM_PAGE_TABLE_ENTRIES; z++) {
-				if (page_list_read_bitmap(t->page_table->owners, z)) {
-					void* addr = (void*)(t->page_table->pages[z] & ~(FOUR_KB_SIZE - 1));
-					// Only free it if this wasn't part of the original paddr
-					if (!((uint32_t)addr >= t->paddr && (uint32_t)addr < t->paddr + FOUR_MB_SIZE))
-						page_physical_free_aligned_four_kb(addr);
-				}
-			}
-			if (t->page_table->pages)
-				page_free_aligned_four_kb(t->page_table->pages);
-			kfree(t->page_table);
-		}
-		if (t->owner)
-			page_physical_free((void*)t->paddr);
+		// Remove this from the linked page list
+		if (t->linked)
+			page_cow_list_remove(&t->linked, t);
+		down(&t->lock);
+		t->linked = NULL;
 		
-		// Remove this from other's linked page list
-		page_cow_list_t* c = t->linked;
-		while (c) {
-			page_cow_list_remove(&c->entry->linked, t);
-			
-			page_cow_list_t* prev = c;
-			c = c->next;
-			kfree(prev);
-		}
+		page_list_dealloc_mem(t);
 		
-		up(&t->lock);
-		kfree(t);
-		t = next;
-		if (t)
-			down(&t->lock);
+		page_list_t* prev = t;
+		t = t->next;
+		up(&prev->lock);
+		kfree(prev);
 	}
 }

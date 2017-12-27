@@ -64,17 +64,6 @@
  		don't use the correct esp because there is no ring switch
  */
 
-/* Things to test
- Automated execution of
- 	* ls
- 	* bin/dash -> ls
- 	* bin/dash -> ls | grep cat (crashes with page fault - 0x2 at address 0x300600D (eip: 0xc040de74 - page_cow_list_add)
- 		* also page_list_copy_table
- 		* bunch of random places
- 	* test 20 10000000 0
- 	* bin/dash -> test 20 10000000 0
- */
-
 /* TODO:
  * More system calls
  * (Kernel?) Threads (pthread?, gcd?)

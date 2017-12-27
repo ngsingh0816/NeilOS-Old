@@ -7,6 +7,8 @@
 #ifndef _TYPES_H
 #define _TYPES_H
 
+#include "debug.h"
+
 #define NULL	0
 #define true	1
 #define false	0

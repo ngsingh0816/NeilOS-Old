@@ -14,7 +14,7 @@
 #include <program/dylib.h>
 
 // Load an elf into memory
-bool elf_load(char* filename, pcb_t* pcb, pcb_t* parent);
+bool elf_load(char* filename, pcb_t* pcb);
 
 // Load dynamic library
 bool elf_load_dylib(char* filename, dylib_t* dylib);

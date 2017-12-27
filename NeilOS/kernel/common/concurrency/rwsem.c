@@ -7,6 +7,7 @@
 //
 
 #include "rwsem.h"
+#include <program/task.h>
 
 // Initialize a reader/writer semaphore
 void init_rwsem(rw_semaphore_t* sema) {
@@ -46,6 +47,8 @@ void down_write(rw_semaphore_t* sema) {
 		if (sema->readers == 0)
 			break;
 		up(&sema->lock);
+		
+		schedule();
 	}
 }
 
@@ -66,7 +69,7 @@ void up_write(rw_semaphore_t* sema) {
 	up(&sema->lock);
 }
 
-// Converts a writer long into a reader lock
+// Converts a writer lock into a reader lock
 void downgrade_write(rw_semaphore_t* sema) {
 	sema->readers++;
 	up(&sema->lock);

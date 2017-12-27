@@ -74,14 +74,12 @@ uint32_t open(const char* filename, uint32_t mode) {
 	char* path = path_absolute(filename, pcb->working_dir);
 
 	pcb->descriptors[current_fd] = open_handle(path, mode);
+	up(&pcb->descriptor_lock);
 	kfree(path);
 	
-	if (!pcb->descriptors[current_fd]) {
-		up(&pcb->descriptor_lock);
+	if (!pcb->descriptors[current_fd])
         return -ENOENT;
-	}
 	
-	up(&pcb->descriptor_lock);
 	return current_fd;
 }
 
@@ -354,9 +352,13 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd) {
 	
 	// Close the file handle if opened
 	if (pcb->descriptors[new_fd]) {
+		down(&pcb->descriptors[new_fd]->lock);
 		pcb->descriptors[new_fd]->close(pcb->descriptors[new_fd]);
-		if ((--pcb->descriptors[new_fd]->ref_count) == 0)
+		if ((--pcb->descriptors[new_fd]->ref_count) == 0) {
+			up(&pcb->descriptors[new_fd]->lock);
 			kfree(pcb->descriptors[new_fd]);
+		} else
+			up(&pcb->descriptors[new_fd]->lock);
 	}
 	// Point the new file handle to the old one
 	pcb->descriptors[new_fd] = pcb->descriptors[fd];

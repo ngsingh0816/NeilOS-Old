@@ -18,6 +18,7 @@ struct page_list;
 typedef struct page_cow_list {
 	// Linked page_list
 	struct page_list* entry;
+	semaphore_t lock;
 	
 	struct page_cow_list* next;
 	struct page_cow_list* prev;

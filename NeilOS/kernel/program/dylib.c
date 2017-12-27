@@ -59,10 +59,11 @@ bool dylib_is_loaded(char* name) {
 			return true;
 		}
 		
-		up(&t->dylib->lock);
+		dylib_list_t* prev = t;
 		t = t->next;
 		if (t && t->dylib)
 			down(&t->dylib->lock);
+		up(&prev->dylib->lock);
 	}
 	
 	kfree(realname);
@@ -136,11 +137,9 @@ dylib_t* dylib_create_from_pcb(pcb_t* pcb) {
 	}
 	memset(list, 0, sizeof(dylib_list_t));
 	list->dylib = dylib;
-	down(&pcb->lock);
 	list->next = pcb->dylibs;
 	// Must be first to hide duplicate external symbols
 	pcb->dylibs = list;
-	up(&pcb->lock);
 	
 	return dylib;
 }
@@ -164,10 +163,11 @@ dylib_t* dylib_get(char* name, bool allocate) {
 			return t->dylib;
 		}
 		
-		up(&t->dylib->lock);
+		dylib_list_t* prev = t;
 		t = t->next;
 		if (t && t->dylib)
 			down(&t->dylib->lock);
+		up(&prev->dylib->lock);
 	}
 	
 	if (allocate) {
@@ -203,12 +203,14 @@ bool dylib_list_copy_for_pcb(dylib_list_t* list, pcb_t* pcb) {
 	
 	memset(l, 0, sizeof(dylib_list_t));
 	l->dylib = list->dylib;
+	if (!l->dylib) {
+		printf("Error\n");
+		for (;;);
+	}
 	l->dylib->num_instances++;
 	
 	// We must place this at the back because the order of linking is important for duplicate symbols
-	down(&pcb->lock);
 	dylib_list_push_back(&pcb->dylibs, l);
-	up(&pcb->lock);
 	
 	return true;
 }
@@ -227,9 +229,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	if (!list)
 		return false;
 	
-	// Map the original dylib in
 	down(&dylib->lock);
-	page_list_map_list(dylib->page_list, true);
 
 	// Copy over the dylib data
 	memset(list, 0, sizeof(dylib_list_t));
@@ -244,8 +244,6 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 			page_list_dealloc(pl);
 			kfree(list);
 			
-			// Unmap dylib pages
-			page_list_unmap_list(dylib->page_list, true);
 			up(&dylib->lock);
 			
 			return false;
@@ -256,14 +254,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 			offset = page->vaddr;
 		p = p->next;
 	}
-	
-	// Unmap dylib pages
-	page_list_unmap_list(dylib->page_list, true);
 	up(&dylib->lock);
-	
-	// Restore pages
-	page_list_map_list(pcb->page_list, false);
-	page_list_map_list(pcb->temporary_mappings, false);
 	
 	// Map these pages to a new offset
 	vm_lock();
@@ -283,28 +274,40 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	}
 	
 	// Add the dylib pages to the pcb pages
-	page_list_t* pl_end = pl;
-	while (pl_end && pl_end->next)
-		pl_end = pl_end->next;
-	pl_end->next = pcb->page_list;
-	if (pcb->page_list)
-		pcb->page_list->prev = pl_end;
-	pcb->page_list = pl;
+	page_list_t* t = pcb->page_list;
+	page_list_t* prev = NULL;
+	if (t)
+		down(&t->lock);
+	while (t) {
+		prev = t;
+		t = t->next;
+		
+		if (t) {
+			down(&t->lock);
+			up(&prev->lock);
+		}
+	}
+	if (prev) {
+		pl->prev = prev;
+		prev->next = pl;
+		up(&prev->lock);
+	} else
+		pcb->page_list = pl;
 	
 	// Map these pages in
 	p = pl;
-	while (p && p != pl_end->next) {
-		page_list_map(p, true);
+	while (p) {
+		page_list_map(p, false);
 		p = p->next;
 	}
 	vm_unlock();
 	
 	// We must place this at the back because the order of linking is important for duplicate symbols
-	down(&pcb->lock);
 	dylib_list_push_back(&pcb->dylibs, list);
-	up(&pcb->lock);
 	
+	down(&dylib->lock);
 	dylib->num_instances++;
+	up(&dylib->lock);
 		
 	return true;
 }
@@ -386,10 +389,11 @@ void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* foun
 			return (void*)((uint32_t)ret + t->offset);
 		}
 		
-		up(&t->dylib->lock);
+		dylib_list_t* prev = t;
 		t = t->next;
 		if (t && t->dylib)
 			down(&t->dylib->lock);
+		up(&prev->dylib->lock);
 	}
 	return NULL;
 }

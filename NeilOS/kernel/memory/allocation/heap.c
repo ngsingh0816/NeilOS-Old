@@ -53,6 +53,14 @@ typedef struct heap_block_t {
 heap_block_t* heap = NULL;
 mutex_t heap_lock = MUTEX_UNLOCKED;
 
+void heap_perform_lock() {
+	down(&heap_lock);
+}
+
+void heap_perform_unlock() {
+	up(&heap_lock);
+}
+
 // Returns a pointer to newly allocated memory or NULL if it cannot be allocated
 void* kmalloc(uint32_t real_size) {
 	// TODO: we are wasting a lot of memory, but doing this breaks things

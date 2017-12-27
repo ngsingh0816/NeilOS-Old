@@ -16,4 +16,7 @@ void heap_init();
 void* kmalloc(uint32_t size);
 void kfree(void* addr);
 
+void heap_perform_lock();
+void heap_perform_unlock();
+
 #endif /* heap_h */

@@ -204,11 +204,9 @@ void page_fault(uint32_t code, uint32_t eip) {
 		pcb_t* pcb = current_pcb;
 		uint32_t addr_aligned = address & ~(FOUR_MB_SIZE - 1);
 		// Find the page that deals with this
-		down(&pcb->lock);
 		page_list_t* t = pcb->page_list;
 		if (t)
 			down(&t->lock);
-		up(&pcb->lock);
 		while (t) {
 			if (t->vaddr == addr_aligned && t->copy_on_write) {
 				up(&t->lock);
@@ -217,10 +215,11 @@ void page_fault(uint32_t code, uint32_t eip) {
 				return;
 			}
 			
-			up(&t->lock);
+			page_list_t* prev = t;
 			t = t->next;
 			if (t)
 				down(&t->lock);
+			up(&prev->lock);
 		}
 	}
 	

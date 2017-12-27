@@ -13,6 +13,7 @@
 do {                           \
 	if(!(EXP)) {               \
 		printf(__FILE__ ":%u: Assertion `" #EXP "\' failed.\n", __LINE__);  \
+		for (;;) {} \
 	}                          \
 } while(0)
 

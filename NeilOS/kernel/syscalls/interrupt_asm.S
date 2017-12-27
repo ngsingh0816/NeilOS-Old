@@ -129,27 +129,24 @@ get_context:
 context_switch_asm:
 	cli
 
-	// eax = from, ebx = to
-	movl 4(%esp), %eax
-	movl 8(%esp), %ebx
+	// 4(%esp) = from
+	// 8(%esp) = to
 
-	cmp $0, %eax
+	movl 8(%esp), %eax
+	cmp $0, 4(%esp)
 	je done_parent_cs
 
 	// Prepare the first argument for a context switch by saving the stack
+	movl 4(%esp), %eax
 	pusha
 	movl %esp, (%eax)
+	movl 40(%esp), %eax
 
 done_parent_cs:
 
-	// Allow for signal handling
-	pushl %ebx
-	call signal_handle
-	addl $4, %esp
-
 	// Assume that we must have come from context switch or return_to_user
 	// so just restore the saved esp and return
-	movl (%ebx), %esp
+	movl (%eax), %esp
 
 	popa
 	sti

@@ -169,7 +169,7 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 	vm_unmap_page(vaddr, false);
 	
 	up(&four_kb_lock);
-	
+
 	return (void*)((uint32_t)t + FOUR_KB_SIZE);
 }
 

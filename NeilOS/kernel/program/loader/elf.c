@@ -469,7 +469,7 @@ bool elf_perform_relocation(elf_section_header_t* sections, elf_header_t* header
 }
 
 // Load an elf into memory
-bool elf_load(char* filename, pcb_t* pcb, pcb_t* parent) {
+bool elf_load(char* filename, pcb_t* pcb) {
 	file_descriptor_t file;
 	elf_header_t header;
 	// Check it is valid
@@ -502,12 +502,10 @@ bool elf_load(char* filename, pcb_t* pcb, pcb_t* parent) {
 		uint32_t real_size = program_header->mem_size > program_header->size ?
 			program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
-			down(&pcb->lock);
 			page_list_t* t = page_list_get(&pcb->page_list, pos, MEMORY_WRITE, true);
-			up(&pcb->lock);
 			if (!t)
 				return false;
-			page_list_map(t, (parent ? true : false));
+			page_list_map(t, false);
 		}
 		
 		// Load the program segment into memory
@@ -560,9 +558,7 @@ bool elf_load(char* filename, pcb_t* pcb, pcb_t* parent) {
 	}
 	
 	// Setup dylibs
-	down(&pcb->lock);
 	dylib_list_t* t = pcb->dylibs->next;
-	up(&pcb->lock);
 	while (t) {
 		if (!elf_load_dylib_for_task(t->dylib, pcb, t->offset))
 			goto cleanup;
@@ -583,7 +579,7 @@ bool elf_load(char* filename, pcb_t* pcb, pcb_t* parent) {
 	
 cleanup:
 	// Unmap program
-	page_list_unmap_list(pcb->page_list, (parent ? true : false));
+	page_list_unmap_list(pcb->page_list, false);
 	
 	fclose(&file);
 	if (program_headers)
