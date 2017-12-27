@@ -62,6 +62,8 @@
  	* This is because the signal handler executes in kernel space for now, and dash does a longjmp to
  		get out of the signal, so it remains in kernel mode for dash execution so then calls to intx80
  		don't use the correct esp because there is no ring switch
+ * Sometimes, ls | grep cat will crash during elf_perform_relocation_dylib because for some reason
+ 	the extra page_list entries from the dylibs do not get linked into pcb->page_list so there is a page fault
  */
 
 /* TODO:

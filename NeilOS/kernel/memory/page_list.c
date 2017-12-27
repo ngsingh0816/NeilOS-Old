@@ -64,7 +64,8 @@ bool page_cow_list_remove(page_cow_list_t** list, page_list_t* l) {
 				*list = t->next;
 				// Update all mappings
 				page_cow_list_t* l = t->next;
-				down(&l->lock);
+				if (l)
+					down(&l->lock);
 				while (l) {
 					if (l->entry) {
 						down(&l->entry->lock);

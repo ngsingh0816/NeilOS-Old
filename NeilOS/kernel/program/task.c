@@ -843,11 +843,10 @@ extern void disable_sse();
 void context_switch(pcb_t* from, pcb_t* to) {
 	// Don't bother switching if they are the same
 	if (from && from == to && !signal_pending(from)) {
+		enable_irq(PIT_IRQ);
 		sti();
 		return;
 	}
-	
-	cli();
 	
 	// Save SSE registers if needed
 	if (from && from->sse_used) {
@@ -866,32 +865,32 @@ void context_switch(pcb_t* from, pcb_t* to) {
 		to->state = RUNNING;
 	
 	// This part auto enables interrupts
+	cli();
+	enable_irq(PIT_IRQ);
 	context_switch_asm(from, to);
 }
 
 // Run the scheduler (gets called up PIT interrupt)
 void schedule() {
-	// This whole function is a critical section
-	uint32_t flags;
-	cli_and_save(flags);
-	
 	// If we have disabled multitasking, don't do anything
-	if (!irq_enabled(PIT_IRQ)) {
-		restore_flags(flags);
+	if (!irq_enabled(PIT_IRQ))
 		return;
-	}
+	disable_irq(PIT_IRQ);
 	
 	pcb_t* current = current_pcb;
 	
 	// If this task is supposed to terminate, terminate it
 	if (current && current->should_terminate) {
-		restore_flags(flags);
+		uint32_t flags = 0;
+		cli_and_save(flags);
+		enable_irq(PIT_IRQ);
 		if (down_trylock(&current->lock)) {
 			current->should_terminate = false;
 			terminate_task(1);
 			// Will only return here if we failed
 			up(&current->lock);
 		}
+		restore_flags(flags);
 		return;
 	}
 	
@@ -905,7 +904,7 @@ void schedule() {
 		if (current && signal_pending(current))
 			next_pcb = current;
 		else {
-			restore_flags(flags);
+			enable_irq(PIT_IRQ);
 			return;
 		}
 	}
@@ -921,6 +920,7 @@ void schedule() {
 	else {
 		if (current)
 			current->state = READY;
+		enable_irq(PIT_IRQ);
 		run_with_fake_parent(next_pcb, current);
 	}
 }
