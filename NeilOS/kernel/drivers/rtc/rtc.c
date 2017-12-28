@@ -79,7 +79,7 @@ void rtc_handler(int irq) {
 			// If something has just finished "read" switch to it
 			if (info->waiting && (info->counter >= (MAX_FREQUENCY / info->target_freq))) {
 				// Auto enables interrupts
-				context_switch(current_pcb, pcb);
+				// context_switch(current_pcb, pcb);
 				return;
 			}
 		}

@@ -49,6 +49,7 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	sysconf, fpathconf,
 	getwd, chdir,
 	ioctl,
+	thread_fork, gettid, thread_exit,
 };
 
 
@@ -110,13 +111,13 @@ extern void enable_sse();
 // Most likely a SSE instruction error or FPU (they use the same registers)
 void device_not_available(uint32_t code, uint32_t eip) {
 	// Restore sse registers and enable sse
-	down(&current_pcb->lock);
+	down(&current_thread->lock);
 	enable_sse();
-	if (current_pcb->sse_init)
-		asm volatile(" fxrstor (%0); "::"r"(current_pcb->sse_registers));
-	current_pcb->sse_used = true;
-	current_pcb->sse_init = true;
-	up(&current_pcb->lock);
+	if (current_thread->sse_init)
+		asm volatile(" fxrstor (%0); "::"r"(current_thread->sse_registers));
+	current_thread->sse_used = true;
+	current_thread->sse_init = true;
+	up(&current_thread->lock);
 }
 
 // Interrupt 8

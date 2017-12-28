@@ -434,6 +434,8 @@ entry (unsigned long magic, unsigned long addr)
 			if (res == 0) {
 				p->parent = tasks->pcb;
 				run(p);
+				tasks->pcb->threads->state = READY;
+				tasks->pcb->state = UNLOADED;
 				signal_set_pending(tasks->pcb, SIGCHLD, false);
 				tasks->pcb->signal_occurred	= false;
 			}

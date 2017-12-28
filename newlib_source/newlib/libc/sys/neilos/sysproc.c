@@ -27,6 +27,9 @@ extern unsigned int sys_waitpid(unsigned int pid, int* status, int options);
 extern unsigned int sys_exit(int status);
 extern unsigned int sys_getwd(char* buf);
 extern unsigned int sys_chdir(const char* path);
+extern unsigned int sys_thread_fork(void* user_stack);
+extern unsigned int sys_gettid();
+extern unsigned int sys_thread_exit();
 
 int fork() {
 	int ret = sys_fork();
@@ -224,5 +227,32 @@ int chdir(const char* path) {
         errno = -ret;
         return -1;
     }
+	return ret;
+}
+
+unsigned int thread_fork(void* user_stack) {
+	int ret = sys_thread_fork(user_stack);
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
+}
+
+pid_t gettid() {
+	int ret = sys_gettid();
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
+}
+
+unsigned int thread_exit() {
+	int ret = sys_thread_exit();
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
 	return ret;
 }

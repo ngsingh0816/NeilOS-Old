@@ -46,4 +46,13 @@ uint32_t getwd(char* buf);
 // Change the current working directory
 uint32_t chdir(const char* path);
 
+// Fork a new thread
+uint32_t thread_fork(void* user_stack);
+
+// Get current thread id
+uint32_t gettid();
+
+// Exit a thread
+uint32_t thread_exit();
+
 #endif /* SYSPROC_H */

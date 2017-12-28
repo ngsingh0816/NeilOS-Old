@@ -14,7 +14,7 @@
 #include <drivers/filesystem/path.h>
 
 // Returns to a user space program
-extern void return_to_user(pcb_t* pcb, pcb_t* parent);
+extern void return_to_user(thread_t* thread, pcb_t* pcb, thread_t* parent_thread);
 // Gets the context of the machine right before this function call is executed
 extern void get_context(context_state_t* context);
 // What to return to from a child forking
@@ -77,27 +77,22 @@ int32_t run(pcb_t* pcb) {
 int32_t run_with_fake_parent(pcb_t* pcb, pcb_t* parent) {
 	// Critical section that ends with return to user
 	cli();
-	set_current_task(pcb);
+	set_current_task(pcb, pcb->threads);
 	
 	pcb->state = RUNNING;
+	pcb->threads->state = RUNNING;
 	// Execute the program (and enable interrupts)
-	return_to_user(pcb, parent);
+	return_to_user(pcb->threads, pcb, parent ? parent->threads : NULL);
 	
-	// We return here when the program finishes executing
-	
-	// Get the value of eax as our return (passed from the halt command)
-	uint32_t ret = 0;
-	asm volatile ("movl %%eax, %0"
-				  : "=d"(ret));
-	
-	return ret;
+	// Should never get here
+	return 0;
 }
 
-// Helper to save the current pcb context
-void pcb_set_context(context_state_t state) {
-	down(&current_pcb->lock);
-	current_pcb->context = state;
-	up(&current_pcb->lock);
+// Helper to save the current thread context
+void thread_set_context(context_state_t state) {
+	down(&current_thread->lock);
+	current_thread->context = state;
+	up(&current_thread->lock);
 }
 
 // Duplicate a program and memory space
@@ -109,26 +104,39 @@ uint32_t fork() {
 		return -ENOMEM;
 	
 	// Set the context to return to fork_return() with eax set to 0 so
-	// the child returns 0. Also move the esp from the current pcb kernel stack
-	// to this new process's kernel stack and copy over the context for fork_return().
-	pcb->context.eax = 0;
-	// This points to where the iret info is
-	// We need info for the context switch (popa, ret)
-	// This ret should point to fork_return, which is just iret.
-	// So just add in a context state followed by fork_return's address
-	pcb->saved_esp = pcb->context.esp + (uint32_t)pcb - (uint32_t)current_pcb -
-						sizeof(uint32_t) - sizeof(context_state_t);
-	char* esp = (char*)pcb->saved_esp;
-	memcpy(esp, &pcb->context, sizeof(context_state_t));
-	uint32_t addr = (uint32_t)fork_return;
-	memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
-	pcb->in_syscall = false;
+	// the child returns 0. Also move the esp from the current threads' kernel stacks
+	// to this new threads' kernel stacks and copy over the context for fork_return().
+	
+	// Find the equivalent thread to the current thread in this new task
+	thread_t* t = pcb->threads;
+	thread_t* o = current_pcb->threads;
+	thread_t* thread = NULL;
+	while (t) {
+		t->saved_esp = t->context.esp + (uint32_t)t - (uint32_t)o;
+		if (t->tid == current_thread->tid) {
+			// This points to where the iret info is
+			// We need info for the context switch (popa, ret)
+			// This ret should point to fork_return, which is just iret.
+			// So just add in a context state followed by fork_return's address
+			t->context.eax = 0;
+			t->saved_esp -= sizeof(uint32_t) + sizeof(context_state_t);
+			char* esp = (char*)t->saved_esp;
+			memcpy(esp, &t->context, sizeof(context_state_t));
+			uint32_t addr = (uint32_t)fork_return;
+			memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
+			t->in_syscall = false;
+			t->state = READY;
+			thread = t;
+		}
+		t = t->next;
+		o = o->next;
+	}
 		
 	// Enable the child to be scheduled
 	pcb->state = READY;
 	
 	// Jump into the new task
-	context_switch(current_pcb, pcb);
+	context_switch(current_thread, thread);
 	
 	return pcb->task->pid;
 }
@@ -262,7 +270,7 @@ uint32_t exit(int status) {
 	up(&pcb->descriptor_lock);
 	
 	// Terminate the task
-	pcb->in_syscall = false;
+	current_thread->in_syscall = false;
 	terminate_task(status);
 	
 	return status;
@@ -297,5 +305,20 @@ uint32_t chdir(const char* path) {
 	}
 	up(&pcb->lock);
 	
+	return 0;
+}
+
+// Fork a new thread
+uint32_t thread_fork(void* user_stack) {
+	return 0;
+}
+
+// Get current thread id
+uint32_t gettid() {
+	return 0;
+}
+
+// Exit a thread
+uint32_t thread_exit() {
 	return 0;
 }

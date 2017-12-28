@@ -21,8 +21,8 @@ load_cr3:
 	movl %esp, %ebp
 
 	# Load the stack argument into CR3
-	movl 8(%esp), %ecx
-	movl %ecx, %cr3
+	movl 8(%esp), %eax
+	movl %eax, %cr3
 
 	leave
 	ret
@@ -36,24 +36,24 @@ load_cr0_and_cr4:
 	movl %esp, %ebp
 
 	// Set 4th bit of CR4
-	movl %cr4, %ecx
-	orl $0x10, %ecx
-	movl %ecx, %cr4
+	movl %cr4, %eax
+	orl $0x10, %eax
+	movl %eax, %cr4
 
 	// Clear 5th bit of CR4
-	movl %cr4, %ecx
-	andl $(0x20^0xFFFFFFFF), %ecx
-	movl %ecx, %cr4 
+	movl %cr4, %eax
+	andl $(0x20^0xFFFFFFFF), %eax
+	movl %eax, %cr4
 
 	// Set 31st bit of CR0
-	movl %cr0, %ecx
-	orl $0x80000000, %ecx
-	movl %ecx, %cr0
+	movl %cr0, %eax
+	orl $0x80000000, %eax
+	movl %eax, %cr0
 
 	// Set 16th bit of CR0 (prevents supervisor from writing to read only pages)
-	movl %cr0, %ecx
-	orl $(1 << 16), %ecx
-	movl %ecx, %cr0
+	movl %cr0, %eax
+	orl $(1 << 16), %eax
+	movl %eax, %cr0
 
 	leave
 	ret

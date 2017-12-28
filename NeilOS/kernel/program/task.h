@@ -16,14 +16,15 @@
 #define USER_ARGV_LOC				0x8000000
 #define USER_ADDRESS				0x8000000
 
-#define INITIAL_TASK_PID			0
+#define INITIAL_TASK_PID			1
+#define MAIN_THREAD_TID				1
 
 typedef enum {
 	UNLOADED = 0,					// Context is not on the stack
 	SUSPENDED,						// Not ready to execute (contents on stack)
 	READY,							// Ready to execute (contents on stack)
 	RUNNING,						// Currently executing
-} task_state;
+} thread_state;
 
 struct pcb;
 
@@ -43,24 +44,50 @@ typedef struct task_list {
 // List for all the running tasks
 extern task_list_t* tasks;
 
+typedef struct thread {
+	// The esp to return to when resuming a thread (must be first parameter, 0)
+	uint32_t saved_esp;
+	// Stack address (second, 4)
+	uint32_t stack_address;
+	// Currently in a syscall (third, 8)
+	bool in_syscall;
+	
+	context_state_t	context;
+	struct pcb* pcb;
+	uint32_t tid;
+	thread_state state;
+	thread_state backup_state;
+	
+	semaphore_t lock;
+	
+	struct thread* next;
+	struct thread* prev;
+	
+	// SSE / FPU instructions
+	uint8_t sse_registers_unaligned[512 + 16];
+	uint8_t* sse_registers;
+	bool sse_used;
+	bool sse_init;
+} thread_t;
+
+// The current thread
+extern thread_t* current_thread;
+
 // Structure to hold information per process
 // This contains all the info that a task needs to operated correctly.
 typedef struct pcb {
-	// The esp to return to when resume a task (must be first parameter, 0)
-	uint32_t saved_esp;
-	// Where to start execution from (must be second, 4)
+	// Where to start execution from (must be first, 0)
 	uint32_t entry;
-	// Stack address (third, 8)
-	uint32_t stack_address;
-	// Currently in a syscall (fourth, 12)
-	bool in_syscall;
-	// If this is set, the task will terminate next time it is loaded (fifth, 13)
+	// If this is set, the task will terminate next time it is loaded (second, 4)
 	bool should_terminate;
-	// Set if a signal has occurred (sixth, 14)
+	// Set if a signal has occurred (third, 5)
 	bool signal_occurred;
 	
-	// The saved context of the task
-	context_state_t	context;
+	// The threads
+	thread_t* threads;
+	
+	// Overall state of the task
+	thread_state state;
 	
 	// Each entry in the list holds the physical address of the
 	// corresponding 4MB page starting at 0x8000000
@@ -91,9 +118,6 @@ typedef struct pcb {
 	// Associated task
 	task_list_t* task;
 	
-	// Whether this task is currently running or ready to run
-	task_state state;
-	
 	// Signal things
 	sigset_t signal_pending;
 	sigset_t signal_mask;
@@ -104,19 +128,10 @@ typedef struct pcb {
 	
 	// Dynamic objects
 	dylib_list_t* dylibs;
-	
-	// SSE / FPU instructions
-	uint8_t sse_registers_unaligned[512 + 16];
-	uint8_t* sse_registers;
-	bool sse_used;
-	bool sse_init;
 } pcb_t;
 
 // The current pcb
 extern pcb_t* current_pcb;
-
-// Gets the childmost pcb for the active terminal
-pcb_t* get_pcb_for_terminal(uint32_t terminal);
 
 // Gets the pcb for a pid
 pcb_t* pcb_from_pid(uint32_t pid);
@@ -144,10 +159,10 @@ void terminate_task(uint32_t ret);
 void map_task_into_memory(pcb_t* pcb);
 
 // Maps memory so that this task is loaded (optionally disables interrupts)
-void set_current_task(pcb_t* pcb);
+void set_current_task(pcb_t* pcb, thread_t* thread);
 
 // Switch from one task to another
-void context_switch(pcb_t* from, pcb_t* to);
+void context_switch(thread_t* from, thread_t* to);
 
 // Run the scheduler
 void schedule();

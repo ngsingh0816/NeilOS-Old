@@ -167,10 +167,6 @@ void signal_handle(pcb_t* pcb) {
 		if (signal_is_pending(pcb, signum) && !signal_is_masked(pcb, signum))
 			break;
 	}
-	if (signum == NUMBER_OF_SIGNALS) {
-		printf("Signal error.\n");
-		for (;;) {}
-	}
 	
 	// Mark this signal as no longer pending and mark as a signal occurring
 	signal_set_pending(pcb, signum, false);

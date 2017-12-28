@@ -3,7 +3,7 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			40
+#define NUM_SYSCALLS			43
 
 #include <boot/x86_desc.h>
 
@@ -17,7 +17,6 @@
 .globl PIC_int
 
 .globl return_to_user
-.globl return_from_user
 .globl context_switch_asm
 .globl get_context
 
@@ -42,7 +41,6 @@
 .globl _sigreturn
 .globl _sigjmp
 .globl _context_switch_asm
-.globl _return_from_user
 .globl _idt_vectors
 .globl _idt_vectors_user
 .globl _intx80
@@ -58,8 +56,6 @@ sigjmp:
 _sigjmp:
 context_switch_asm:
 _context_switch_asm:
-return_from_user:
-_return_from_user:
 idt_vectors:
 _idt_vectors:
 idt_vectors_user:
@@ -124,7 +120,7 @@ get_context:
 
 	ret
 
-// ContextSwitch(pcb_t* from, pcb_t* to)
+// ContextSwitch(thread_t* from, thread_t* to)
 // Switches contexes from the first argument to the second
 context_switch_asm:
 	cli
@@ -136,7 +132,7 @@ context_switch_asm:
 	cmp $0, 4(%esp)
 	je done_parent_cs
 
-	// Prepare the first argument for a context switch by saving the stack
+	// Prepare the "from" thread for a context switch by saving the stack
 	movl 4(%esp), %eax
 	pusha
 	movl %esp, (%eax)
@@ -176,6 +172,32 @@ sigreturn:
 // Passed an address to return to
 // Jumps to the specified address in user mode using the iret instruction
 return_to_user:
+	// 12(%esp) = parent thread
+	// 8(%esp) = pcb
+	// 4(%esp) = thread
+	pushl %edx
+	pushl %ebx
+	// 20(%esp) = parent thread
+	// 16(%esp) = pcb
+	// 12(%esp) = thread
+
+	movl 20(%esp), %edx		// parent thread
+	movl 16(%esp), %eax		// pcb
+	movl 12(%esp), %ebx		// thread
+
+	cmp $0, %edx
+	je done_parent
+	popl %ebx
+	popl %edx
+	pusha
+	movl 44(%esp), %edx		// parent thread
+	movl 36(%esp), %ebx		// thread
+	// set parent_thread->saved_esp = esp
+	movl %esp, (%edx)
+	addl $-8, %esp
+
+	done_parent:
+	addl $8, %esp
 	// Order goes SS, ESP, EFLAGS, CS, EIP
 	movl $USER_DS, %ecx
 	movw    %cx, %ds
@@ -183,23 +205,10 @@ return_to_user:
 	movw    %cx, %fs
 	movw    %cx, %gs
 
-	// Save our stack and get the entry point
-	// set parent->saved_esp = esp
-	movl 8(%esp), %edx
-	movl 4(%esp), %eax
-	cmp $0, %edx
-	je done_parent
-	pusha
-	movl %esp, (%edx)
-
-	done_parent:
-	// set ebx = pcb->entry
-	movl 4(%eax), %ebx
-
 	pushl %ecx
+	// set ecx = thread->stack_address - 12
 	// - 12 because the argc, argv, and evp have been pushed to the stack
-	// set ecx = pcb->stack_address
-	movl 8(%eax), %ecx
+	movl 4(%ebx), %ecx	// thread->stack_address
 	addl $-12, %ecx
 	pushl %ecx
 
@@ -209,25 +218,10 @@ return_to_user:
 	orl $(1 << 9), %ecx
 	pushl %ecx
 
-	movl $USER_CS, %eax
-	pushl %eax
-	pushl %ebx
+	movl $USER_CS, %ecx
+	pushl %ecx
+	pushl (%eax)		// pcb->entry
 	iret
-
-save_return: .long 0
-// Will return here after the process ends, so continue the kernel
-return_from_user:
-	// Critical section
-	cli
-
-	popl %eax
-	movl %eax, save_return
-	popl %esp
-	popa
-	movl save_return, %eax
-	sti
-
-	ret
 
 // Helper to return a child from fork (immediately exits)
 // fork_return()
@@ -326,11 +320,12 @@ interrupt:
 		addl $4, %esp
 		popa
 
-		// Say that the current task is in a syscall and clear the signal occurred flag
+		// Say that the current thread is in a syscall and clear the signal occurred flag for the task
 		pushl %eax
+		movl current_thread, %eax
+		movb $1, 8(%eax)
 		movl current_pcb, %eax
-		movb $1, 12(%eax)
-		movb $0, 14(%eax)
+		movb $0, 5(%eax)
 		popl %eax
 
 		// Push the arguments
@@ -351,12 +346,13 @@ interrupt:
 		popl %edx
 		popl %esi
 
-		// Say that the current task is out of the syscall
-		movl current_pcb, %eax
-		movb $0, 12(%eax)
+		// Say that the current thread is out of the syscall
+		movl current_thread, %eax
+		movb $0, 8(%eax)
 
 		// If we are supposed to terminate the task, do it
-		cmpb $1, 13(%eax)
+		movl current_pcb, %eax
+		cmpb $1, 4(%eax)
 		je terminate_syscall_task
 
 		// Segment registers
@@ -708,7 +704,7 @@ intx2F:
 	iret
 intx80:
 	pusha
-	call pcb_set_context
+	call thread_set_context
 	popa
 
 	pushl %eax

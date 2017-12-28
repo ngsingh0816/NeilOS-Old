@@ -62,4 +62,6 @@ DO_CALL(sys_fpathconf, 36)
 DO_CALL(sys_getwd, 37)
 DO_CALL(sys_chdir, 38)
 DO_CALL(sys_ioctl, 39)
-
+DO_CALL(sys_thread_fork, 40)
+DO_CALL(sys_gettid, 41)
+DO_CALL(sys_thread_exit, 42)

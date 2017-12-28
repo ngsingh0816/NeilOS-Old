@@ -17,10 +17,108 @@
 task_list_t* tasks = NULL;
 mutex_t task_lock = MUTEX_UNLOCKED;
 
-// Current pcb
+// Current pcb / thread
 pcb_t* current_pcb = NULL;
+thread_t* current_thread = NULL;
 
-extern void context_switch_asm(pcb_t* from, pcb_t* to);
+extern void context_switch_asm(thread_t* from, thread_t* to);
+
+// Cleanup memory for threads
+void thread_list_dealloc(thread_t** list) {
+	thread_t* t = *(list);
+	*(list) = NULL;
+	if (t)
+		down(&t->lock);
+	while (t) {
+		thread_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+		kfree(prev);
+	}
+}
+
+// Copy a thread
+thread_t* thread_copy(thread_t* t, pcb_t* new_pcb, bool exact) {
+	thread_t* n = (thread_t*)kmalloc(USER_KERNEL_STACK_SIZE);
+	if (!n)
+		return NULL;
+	
+	memcpy(n, t, exact ? USER_KERNEL_STACK_SIZE : sizeof(thread_t));
+	n->lock = MUTEX_UNLOCKED;
+	n->next = NULL;
+	n->prev = NULL;
+	n->pcb = new_pcb;
+	n->sse_registers = (uint8_t*)((uint32_t)n->sse_registers_unaligned + 16 -
+								  ((uint32_t)n->sse_registers_unaligned % 16));
+	
+	return n;
+}
+
+// Copy a list of threads
+bool thread_list_copy(thread_t** new, thread_t* old, pcb_t* new_pcb, bool exact) {
+	thread_t* head = NULL;
+	thread_t* tail = NULL;
+	thread_t* t = old;
+	down(&t->lock);
+	while (t) {
+		thread_t* n = thread_copy(t, new_pcb, exact);
+		if (!n) {
+			thread_list_dealloc(&head);
+			return NULL;
+		}
+		
+		thread_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+		
+		if (!head) {
+			head = n;
+			tail = n;
+		} else {
+			tail->next = n;
+			n->prev = tail;
+			tail = n;
+		}
+	}
+	
+	(*new) = head;
+	return true;
+}
+
+// Create the default, main thread
+thread_t* thread_create_main(pcb_t* pcb) {
+	thread_t* t = (thread_t*)kmalloc(USER_KERNEL_STACK_SIZE);
+	if (!t)
+		return NULL;
+	memset(t, 0, sizeof(thread_t));
+	t->tid = MAIN_THREAD_TID;
+	t->pcb = pcb;
+	t->lock = MUTEX_UNLOCKED;
+	t->sse_registers = (uint8_t*)((uint32_t)t->sse_registers_unaligned + 16 -
+								  ((uint32_t)t->sse_registers_unaligned % 16));
+	t->state = READY;
+	
+	return t;
+}
+
+// Restore the state of all threads
+void thread_list_restore_state(thread_t* list) {
+	thread_t* t = list;
+	if (t)
+		down(&t->lock);
+	while (t) {
+		t->state = t->backup_state;
+		thread_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+	}
+}
 
 // Get the pcb for a specific pid
 pcb_t* pcb_from_pid(uint32_t pid) {
@@ -58,7 +156,7 @@ task_list_t* vend_pid() {
 		tasks = (task_list_t*)kmalloc(sizeof(task_list_t));
 		tasks->next = NULL;
 		tasks->prev = NULL;
-		tasks->pid = 0;
+		tasks->pid = INITIAL_TASK_PID;
 		tasks->pcb = NULL;
 		tasks->lock = MUTEX_UNLOCKED;
 		
@@ -101,23 +199,6 @@ task_list_t* vend_pid() {
 // Set the kernel stack for the next task to be switched to
 void set_kernel_stack(uint32_t address) {
 	tss.esp0 = address;
-}
-
-// Copies a task from random blocks into contiguous memory
-void copy_task_into_memory(uint32_t start_address, file_descriptor_t* file) {
-	// Copy the task into memory
-	uint64_t size = fseek(file, uint64_make(0, 0), SEEK_END);
-	fseek(file, uint64_make(0, 0), SEEK_SET);
-	uint32_t offset = 0;
-	uint32_t num = 0;
-	while ((num = fread((void*)start_address + offset, 1, size.low, file)) != 0) {
-		// Error
-		if (num == -1)
-			return;
-		
-		offset += num;
-		size = uint64_sub(size, uint64_make(0, num));
-	}
 }
 
 // Map a task's address space into memory
@@ -259,7 +340,7 @@ bool load_task_into_memory(pcb_t* pcb, char* filename) {
 
 // Helper to copy over the data in a pcb
 bool copy_pcb(pcb_t* in, pcb_t* out) {
-	memcpy(out, in, USER_KERNEL_STACK_SIZE);
+	memcpy(out, in, sizeof(pcb_t));
 	
 	out->working_dir = path_copy(in->working_dir);
 	if (!out->working_dir)
@@ -300,11 +381,6 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 		}
 	}
 	up(&in->descriptor_lock);
-	
-	// Update sse registers pointer to be aligned to new registers
-	out->sse_registers = (uint8_t*)((uint32_t)out->sse_registers_unaligned + 16 -
-									((uint32_t)out->sse_registers_unaligned % 16));
-	memcpy(out->sse_registers, in->sse_registers, 512);
 		
 	return true;
 }
@@ -313,6 +389,9 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 void pcb_error(pcb_t* pcb, task_list_t* task) {
 	if (pcb->working_dir)
 		kfree(pcb->working_dir);
+	
+	// Threads
+	thread_list_dealloc(&pcb->threads);
 	
 	// Memory map
 	page_list_dealloc(pcb->page_list);
@@ -340,7 +419,7 @@ pcb_t* duplicate_current_task() {
 	task_list_t* task = vend_pid();
 	
 	// Reserve a kernel stack and have the pcb be at the top of it
-	pcb_t* pcb = (pcb_t*)kmalloc(USER_KERNEL_STACK_SIZE);
+	pcb_t* pcb = (pcb_t*)kmalloc(sizeof(pcb_t));
 	copy_pcb(current, pcb);
 	
 	// Overwrite the needed things
@@ -353,7 +432,6 @@ pcb_t* duplicate_current_task() {
 	pcb->lock = MUTEX_UNLOCKED;
 	// Clear the current pending signals
 	pcb->signal_pending = 0;
-	pcb->in_syscall = false;
 	pcb->should_terminate = false;
 	pcb->signal_occurred = false;
 	task->pcb = pcb;
@@ -398,6 +476,16 @@ pcb_t* duplicate_current_task() {
 		
 		l = l->next;
 	}
+	
+	// Copy over threads
+	thread_t* t = pcb->threads;
+	pcb->threads = NULL;
+	if (!thread_list_copy(&pcb->threads, t, pcb, true)) {
+		up(&current->lock);
+		pcb_error(pcb, task);
+		return NULL;
+	}
+	
 	up(&current->lock);
 	
 	return pcb;
@@ -407,24 +495,25 @@ bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
 	// Find the last memory mapped region and set the stack to that
 	page_list_t* t = pcb->page_list;
 	while (t) {
-		if (t->vaddr > pcb->stack_address)
-			pcb->stack_address = t->vaddr;
+		if (t->vaddr > pcb->threads->stack_address)
+			pcb->threads->stack_address = t->vaddr;
 		t = t->next;
 	}
 	// Map another block in for the stack
-	page_list_t* stack_block = page_list_get(&pcb->page_list, pcb->stack_address + FOUR_MB_SIZE, MEMORY_WRITE, true);
+	page_list_t* stack_block = page_list_get(&pcb->page_list,
+											 pcb->threads->stack_address + FOUR_MB_SIZE, MEMORY_WRITE, true);
 	if (!stack_block)
 		return false;
-	pcb->stack_address += FOUR_MB_SIZE;
+	pcb->threads->stack_address += FOUR_MB_SIZE;
 	page_list_map(stack_block, false);
 	
 	// The stack grows downward
-	pcb->stack_address += USER_STACK_SIZE;
+	pcb->threads->stack_address += USER_STACK_SIZE;
 	// The heap grows upwards
-	pcb->brk = pcb->stack_address;
+	pcb->brk = pcb->threads->stack_address;
 	
 	// Copy over the argv, argc, envp
-	uint32_t* esp = (uint32_t*)(pcb->stack_address - sizeof(uint32_t) * 3);
+	uint32_t* esp = (uint32_t*)(pcb->threads->stack_address - sizeof(uint32_t) * 3);
 	esp[2] = (uint32_t)pcb->envp;
 	esp[1] = (uint32_t)pcb->argv;
 	esp[0] = argc;
@@ -439,14 +528,18 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	pcb_t* parent = current_pcb;//(task->pid == INITIAL_TASK_PID) ? NULL : current_pcb;
 	
 	// Reserve a kernel stack and have the pcb be at the top of it
-	pcb_t* pcb = (pcb_t*)kmalloc(USER_KERNEL_STACK_SIZE);
+	pcb_t* pcb = (pcb_t*)kmalloc(sizeof(pcb_t));
 	memset(pcb, 0, sizeof(pcb_t));
-	set_current_task(pcb);
+	pcb->threads = thread_create_main(pcb);
+	if (!pcb->threads) {
+		kfree(pcb);
+		return NULL;
+	}
+	
+	set_current_task(pcb, pcb->threads);
 	pcb->state = UNLOADED;
 	pcb->task = task;
 	pcb->parent = parent;
-	pcb->sse_registers = (uint8_t*)((uint32_t)pcb->sse_registers_unaligned + 16 -
-									((uint32_t)pcb->sse_registers_unaligned % 16));
 	pcb->descriptor_lock = MUTEX_UNLOCKED;
 	pcb->lock = MUTEX_UNLOCKED;
 	
@@ -459,7 +552,7 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	pcb->working_dir = kmalloc(wd_len + 1 + start_path);
 	if (!pcb->working_dir) {
 		pcb_error(pcb, task);
-		set_current_task(parent);
+		set_current_task(parent, parent ? parent->threads : NULL);
 		return NULL;
 	}
 	memcpy(&pcb->working_dir[start_path], path, wd_len);
@@ -470,28 +563,29 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 	if (parent) {
 		if (!add_child_task(parent, task->pid, pcb)) {
 			pcb_error(pcb, task);
-			set_current_task(parent);
+			set_current_task(parent, parent ? parent->threads : NULL);
 			return NULL;
 		}
 	}
 	
 	if (!load_task_into_memory(pcb, filename)) {
 		pcb_error(pcb, task);
-		set_current_task(parent);
+		set_current_task(parent, parent ? parent->threads : NULL);
 		return NULL;
 	}
 	current_pcb = parent;
+	current_thread = parent ? parent->threads : NULL;
 	
 	uint32_t argc = 0;
 	if (!load_argv_and_envp(pcb, argv, envp, &argc)) {
 		pcb_error(pcb, task);
-		set_current_task(parent);
+		set_current_task(parent, parent ? parent->threads : NULL);
 		return NULL;
 	}
 	
 	if (!setup_stack_and_heap(pcb, argc)) {
 		pcb_error(pcb, task);
-		set_current_task(parent);
+		set_current_task(parent, parent ? parent->threads : NULL);
 		return NULL;
 	}
 	
@@ -614,8 +708,24 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	
 	down(&current_pcb->lock);
 	pcb_t backup = *current_pcb;
+	thread_t backup_thread = *current_thread;
 	
-	current_pcb->stack_address = 0;
+	// Suspend all threads but this one
+	thread_t* t = current_pcb->threads;
+	if (t)
+		down(&t->lock);
+	while (t) {
+		t->backup_state = t->state;
+		if (t != current_thread)
+			t->state = SUSPENDED;
+		
+		thread_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+	}
+	
 	current_pcb->signal_pending = 0;
 	current_pcb->signal_mask = 0;
 	current_pcb->signal_waiting = false;
@@ -629,9 +739,11 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	current_pcb->temporary_mappings = NULL;
 	dylib_list_t* dylibs = current_pcb->dylibs;
 	current_pcb->dylibs = NULL;
+	thread_t* threads = current_pcb->threads;
 	
 	if (!load_task_into_memory(current_pcb, kfile)) {
 		*current_pcb = backup;
+		thread_list_restore_state(current_pcb->threads);
 		copy_task_arguments_free(kfile, kargv, kenvp);
 		up(&current_pcb->lock);
 		return NULL;
@@ -639,7 +751,11 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	
 	uint32_t argc = 0;
 	if (!load_argv_and_envp(current_pcb, (const char**)kargv, (const char**)kenvp, &argc)) {
+		kfree(current_pcb->threads);
+		page_list_dealloc(current_pcb->page_list);
 		*current_pcb = backup;
+		*current_thread = backup_thread;
+		thread_list_restore_state(current_pcb->threads);
 		copy_task_arguments_free(kfile, kargv, kenvp);
 		up(&current_pcb->lock);
 		return NULL;
@@ -647,47 +763,38 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	
 	copy_task_arguments_free(kfile, kargv, kenvp);
 	
+	current_thread->stack_address = 0;
 	if (!setup_stack_and_heap(current_pcb, argc)) {
+		kfree(current_pcb->threads);
+		page_list_dealloc(current_pcb->page_list);
 		*current_pcb = backup;
+		*current_thread = backup_thread;
+		thread_list_restore_state(current_pcb->threads);
 		up(&current_pcb->lock);
 		return NULL;
 	}
 	
+	// Make the current thread the only thread
+	thread_t* next = current_thread->next, *prev = current_thread->prev;
+	current_thread->next = NULL;
+	current_pcb->threads = current_thread;
+	current_thread->prev = NULL;
+	if (prev)
+		prev->next = next;
+	else
+		threads = next;
+	
 	// Free old memory
+	thread_list_dealloc(&threads);
 	page_list_dealloc(list);
 	page_list_dealloc(tlist);
 	dylib_list_dealloc(dylibs);
 	
-	current_pcb->in_syscall = false;
 	up(&current_pcb->lock);
 	
+	map_task_into_memory(current_pcb);
+	
 	return current_pcb;
-}
-
-// Find the next runnable task
-pcb_t* get_next_runnable_task(task_list_t* hint) {
-	task_list_t* t = hint;
-	if (!t) {
-		t = tasks;
-		if (!t)
-			return NULL;
-	}
-	
-	task_list_t* initial = t;
-	do {
-		pcb_t* pcb = t->pcb;
-		if (pcb && pcb->state == READY) {
-			// We've found one
-			return pcb;
-		}
-		
-		// Loop around
-		t = t->next;
-		if (!t)
-			t = tasks;
-	} while (t && t != initial);
-	
-	return NULL;
 }
 
 #define TERMINATE_TASK		1
@@ -699,11 +806,27 @@ void terminate_task(uint32_t ret) {
 	pcb_t* current = current_pcb;
 	
 	// We can't terminate a task in a syscall, so allow the syscall to finish
-	if (current->in_syscall) {
+	// We suspend all threads besides this one so we can safely deallocate everything in this current thread
+	bool in_syscall = false;
+	thread_t* t = current->threads;
+	if (t)
+		down(&t->lock);
+	while (t) {
+		if (t->in_syscall)
+			in_syscall = true;
+		if (t != current_thread)
+			t->state = SUSPENDED;
+		
+		thread_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+	}
+	if (in_syscall) {
 		current->should_terminate = true;
 		return;
 	}
-	current->should_terminate = false;
 	
 	// Unload the task and get its parent
 	pcb_t* parent = current->parent;
@@ -740,7 +863,7 @@ void terminate_task(uint32_t ret) {
 	if (current->working_dir)
 		kfree(current->working_dir);
 	
-	// Free the task memory and dylibsallocated by the deleted task
+	// Free the task memory and dylibs allocated by the deleted task
 	page_list_t* page_list = current->page_list;
 	page_list_t* temp_list = current->temporary_mappings;
 	current->page_list = NULL;
@@ -757,24 +880,6 @@ void terminate_task(uint32_t ret) {
 	
 	current->argv = NULL;
 	current->envp = NULL;
-	
-	/*// Find next possible task to run
-	pcb_t* next_pcb = get_next_runnable_task(hint);
-	if (!next_pcb) {
-		// Resume the parent as the last resort
-		next_pcb = parent;
-#if DEBUG
-		if (!next_pcb) {
-			blue_screen("No runnable tasks. :(");
-			return;
-		}
-#endif
-
-	}
-	
-	set_current_task(next_pcb);
-	if (next_pcb->state == READY)
-		next_pcb->state = RUNNING;*/
 	
 	// Unlink the task from the task list (so therefore cannot be scheduled)
 	task_list_t* task = current->task;
@@ -797,17 +902,21 @@ void terminate_task(uint32_t ret) {
 	if (task->next)
 		up(&task->next->lock);
 	
-	// Delete the task
+	// Delete the task and threads
 	heap_perform_unlock();
-	if (task->pcb)
-		kfree(task->pcb);
+	thread_list_dealloc(&current->threads);
+	if (current)
+		kfree(current);
 	kfree(task);
+	
+	current_pcb = NULL;
+	current_thread = NULL;
 	
 	schedule();
 	
 	// TODO: temp should be a run(tasks->pcb)
 	if (tasks && tasks->pcb)
-		context_switch(NULL, tasks->pcb);
+		context_switch(NULL, tasks->pcb->threads);
 	
 #ifdef DEBUG
 	// Should never get here
@@ -827,22 +936,26 @@ void terminate_task(uint32_t ret) {
 }
 
 // Maps memory so that this task is loaded
-void set_current_task(pcb_t* pcb) {
+void set_current_task(pcb_t* pcb, thread_t* thread) {
+	pcb_t* backup = current_pcb;
 	current_pcb = pcb;
+	current_thread = thread;
 	
 	if (pcb) {
-		map_task_into_memory(pcb);
-		set_kernel_stack((uint32_t)pcb + USER_KERNEL_STACK_SIZE);
-		descriptors = pcb->descriptors;
+		set_kernel_stack((uint32_t)thread + USER_KERNEL_STACK_SIZE);
+		if (pcb != backup) {
+			map_task_into_memory(pcb);
+			descriptors = pcb->descriptors;
+		}
 	}
 }
 
 extern void disable_sse();
 
-// Switch from one task to another (automatically enables interrupts)
-void context_switch(pcb_t* from, pcb_t* to) {
+// Switch from one thread to another (automatically enables interrupts)
+void context_switch(thread_t* from, thread_t* to) {
 	// Don't bother switching if they are the same
-	if (from && from == to && !signal_pending(from)) {
+	if (from && from == to && !signal_pending(from->pcb)) {
 		enable_irq(PIT_IRQ);
 		sti();
 		return;
@@ -856,18 +969,72 @@ void context_switch(pcb_t* from, pcb_t* to) {
 	}
 	
 	// Map the "to" task back into memory and set its parameters
-	set_current_task(to);
+	set_current_task(to->pcb, to);
 	
-	if (from)
+	if (from) {
 		from->state = READY;
+		from->pcb->state = READY;
+	}
 	// TODO: this is just for kernel shell test, also will never happen in real life
-	if (to->state != UNLOADED)
+	if (to->state != UNLOADED) {
 		to->state = RUNNING;
+		to->pcb->state = RUNNING;
+	}
 	
 	// This part auto enables interrupts
 	cli();
 	enable_irq(PIT_IRQ);
 	context_switch_asm(from, to);
+}
+
+// Find the next runnable thread
+thread_t* get_next_runnable_thread(thread_t* hint) {
+	thread_t* t = hint;
+	
+	if (t) {
+		// Make sure that out initial thread is still valid
+		task_list_t* s = tasks;
+		bool found = false;
+		while (s) {
+			if (s->pcb == t->pcb) {
+				found = true;
+				break;
+			}
+			s = s->next;
+		}
+		if (!found) {
+			t = NULL;
+			if (tasks && tasks->pcb)
+				t = tasks->pcb->threads;
+			if (!t)
+				return NULL;
+		}
+	}
+	else {
+		if (tasks && tasks->pcb)
+			t = tasks->pcb->threads;
+		if (!t)
+			return NULL;
+	}
+	
+	pcb_t* pcb = t->pcb;
+	thread_t* initial = t;
+	do {
+		if (t->state == READY && (t->pcb->state == READY || t->pcb->state == RUNNING))
+			return t;
+		thread_t* prev = t;
+		t = t->next;
+		if (!t) {
+			task_list_t* next_task = prev->pcb->task->next;
+			pcb = (next_task && next_task->pcb) ? next_task->pcb : tasks->pcb;
+			t = pcb->threads;
+		}
+	} while (t != initial);
+	
+	if ((t->state == READY || t->state == RUNNING) &&
+		  (t->pcb->state == READY || t->pcb->state == RUNNING))
+		return t;
+	return NULL;
 }
 
 // Run the scheduler (gets called up PIT interrupt)
@@ -877,52 +1044,41 @@ void schedule() {
 		return;
 	disable_irq(PIT_IRQ);
 	
-	pcb_t* current = current_pcb;
-	
 	// If this task is supposed to terminate, terminate it
-	if (current && current->should_terminate) {
+	if (current_pcb && current_pcb->should_terminate) {
 		uint32_t flags = 0;
 		cli_and_save(flags);
 		enable_irq(PIT_IRQ);
-		if (down_trylock(&current->lock)) {
-			current->should_terminate = false;
+		if (down_trylock(&current_pcb->lock)) {
+			current_pcb->should_terminate = false;
 			terminate_task(1);
 			// Will only return here if we failed
-			up(&current->lock);
+			up(&current_pcb->lock);
 		}
 		restore_flags(flags);
-		return;
 	}
 	
-	task_list_t* hint = NULL;
-	if (current && current->task)
-		hint = current->task->next;
-	pcb_t* next_pcb = get_next_runnable_task(hint);
-	
-	// If there are no runnable tasks, do nothing (unless this task has signals pending)
-	if (!next_pcb) {
-		if (current && signal_pending(current))
-			next_pcb = current;
+	// If the only runnable task is the same one, do nothing (unless this task has signals pending)
+	thread_t* next_thread = get_next_runnable_thread(current_thread);
+	if (next_thread == current_thread) {
+		if (current_pcb && signal_pending(current_pcb))
+			next_thread = current_thread;
 		else {
 			enable_irq(PIT_IRQ);
 			return;
 		}
+	} else if (!next_thread) {
+		// TODO: If there are no threads that can run, we can turn off the cpu and save energy
+		enable_irq(PIT_IRQ);
+		return;
 	}
 	
-	// Swtich to the new task (automatically reenables interrupts)
-	if (next_pcb->state != UNLOADED) {
-		context_switch(current, next_pcb);
-		
-		// This is where we will get context switched into
-		// Handle signals if needed
-		signal_handle(current_pcb);
-	}
-	else {
-		if (current)
-			current->state = READY;
-		enable_irq(PIT_IRQ);
-		run_with_fake_parent(next_pcb, current);
-	}
+	// Swtich to the new thread (automatically reenables interrupts)
+	context_switch(current_thread, next_thread);
+	
+	// This is where we will get context switched into
+	// Handle signals if needed
+	signal_handle(current_pcb);
 }
 
 // Returns whether multitasking was enabled
