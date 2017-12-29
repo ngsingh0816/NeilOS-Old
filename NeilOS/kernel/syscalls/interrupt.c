@@ -49,7 +49,7 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	sysconf, fpathconf,
 	getwd, chdir,
 	ioctl,
-	thread_fork, gettid, thread_exit,
+	sys_thread_create, gettid, thread_wait, thread_exit,
 };
 
 

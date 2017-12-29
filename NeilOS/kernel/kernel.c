@@ -82,7 +82,6 @@
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
  	* Could work by writing to it, then reading will block until it is ready to accept data, then repeat
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
- * Software Graphics Driver
  * Graphics (QEMU VBE) Driver?
  * GUI (Compositing Window Manager)
 	* Interacts through message queues (or maybe pipes + shared memory for big data transfers)?

@@ -3,7 +3,8 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			43
+#define NUM_SYSCALLS			44
+#define THREAD_EXIT_SYSCALL		43
 
 #include <boot/x86_desc.h>
 
@@ -32,6 +33,11 @@
 
 .globl syscalls
 
+.globl schedule
+
+.globl implicit_thread_exit_start
+.globl implicit_thread_exit_end
+
 #if DEBUG
 .globl debug_save_context
 #endif
@@ -49,6 +55,8 @@
 .globl _fork_return
 .globl _enable_sse
 .globl _disable_sse
+.globl _implicit_thread_exit_start
+.globl _implicit_thread_exit_end
 
 sigreturn:
 _sigreturn:
@@ -72,6 +80,10 @@ enable_sse:
 _enable_sse:
 disable_sse:
 _disable_sse:
+implicit_thread_exit_start:
+_implicit_thread_exit_start:
+implicit_thread_exit_end:
+_implicit_thread_exit_end:
 
 #else
 
@@ -236,6 +248,13 @@ fork_return:
 
 	iret
 
+// Helper code to perform an implicit call to thread_exit()
+implicit_thread_exit_start:
+	movl $THREAD_EXIT_SYSCALL, %eax
+	int $0x80
+	// Shouldn't return
+implicit_thread_exit_end:
+
 // The assembly linkage function for calling an interrupt
 interrupt:
 	// Check if its a syscall
@@ -312,6 +331,13 @@ interrupt:
 		mov %cx, %gs
 		popl %ecx
 
+		// If we are supposed to terminate the task, do it
+		pushl %eax
+		movl current_pcb, %eax
+		cmpb $1, 4(%eax)
+		je terminate_syscall_task
+		popl %eax
+
 		// Check for signals
 		pusha
 		movl current_pcb, %eax
@@ -353,7 +379,7 @@ interrupt:
 		// If we are supposed to terminate the task, do it
 		movl current_pcb, %eax
 		cmpb $1, 4(%eax)
-		je terminate_syscall_task
+		je terminate_syscall_task2
 
 		// Segment registers
 		pop %gs
@@ -377,15 +403,15 @@ interrupt:
 		movl $-1, %eax
 		ret
 	terminate_syscall_task:
-		movl $-1, %eax
+		popl %eax
+	terminate_syscall_task2:
+		movl $0, %eax
 		pushl %eax
 		call terminate_task
 		popl %eax
-		// If we get here the OS is probably broken, so just blue screen
-		pushl broken_string
-		call blue_screen
-		hlt
-	finally_done: jmp finally_done
+		// If we get here, there are still some other threads running, so just schedule then loop around
+		call schedule
+		jmp terminate_syscall_task2
 
 
 broken_string: .string "OS Integrity Error"

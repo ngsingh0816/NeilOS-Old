@@ -47,10 +47,13 @@ uint32_t getwd(char* buf);
 uint32_t chdir(const char* path);
 
 // Fork a new thread
-uint32_t thread_fork(void* user_stack);
+uint32_t sys_thread_create(void (*func)(), void* user_stack);
 
 // Get current thread id
 uint32_t gettid();
+
+// Wait for a thread to finish
+uint32_t thread_wait(uint32_t tid);
 
 // Exit a thread
 uint32_t thread_exit();

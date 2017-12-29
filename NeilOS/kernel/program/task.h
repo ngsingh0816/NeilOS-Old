@@ -24,6 +24,7 @@ typedef enum {
 	SUSPENDED,						// Not ready to execute (contents on stack)
 	READY,							// Ready to execute (contents on stack)
 	RUNNING,						// Currently executing
+	FINISHED,						// Done executing and waiting for info to be read
 } thread_state;
 
 struct pcb;
@@ -132,6 +133,12 @@ typedef struct pcb {
 
 // The current pcb
 extern pcb_t* current_pcb;
+
+// Create a thread for the given pcb
+thread_t* thread_create(pcb_t* pcb);
+
+// Create a copy of a thread
+thread_t* thread_copy(thread_t* t, pcb_t* new_pcb, bool exact);
 
 // Gets the pcb for a pid
 pcb_t* pcb_from_pid(uint32_t pid);

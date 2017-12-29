@@ -89,6 +89,38 @@ bool thread_list_copy(thread_t** new, thread_t* old, pcb_t* new_pcb, bool exact)
 	return true;
 }
 
+thread_t* thread_create(pcb_t* pcb) {
+	thread_t* t = (thread_t*)kmalloc(USER_KERNEL_STACK_SIZE);
+	if (!t)
+		return NULL;
+	memset(t, 0, sizeof(thread_t));
+	uint32_t tid = 0;
+	
+	// Find an available tid
+	thread_t* p = pcb->threads;
+	if (p)
+		down(&p->lock);
+	while (p) {
+		if (p->tid > tid)
+			tid = p->tid;
+		
+		thread_t* prev = p;
+		p = p->next;
+		if (p)
+			down(&p->lock);
+		up(&prev->lock);
+	}
+	
+	t->tid = tid + 1;
+	t->pcb = pcb;
+	t->lock = MUTEX_UNLOCKED;
+	t->sse_registers = (uint8_t*)((uint32_t)t->sse_registers_unaligned + 16 -
+								  ((uint32_t)t->sse_registers_unaligned % 16));
+	t->state = READY;
+	
+	return t;
+}
+
 // Create the default, main thread
 thread_t* thread_create_main(pcb_t* pcb) {
 	thread_t* t = (thread_t*)kmalloc(USER_KERNEL_STACK_SIZE);
@@ -814,8 +846,6 @@ void terminate_task(uint32_t ret) {
 	while (t) {
 		if (t->in_syscall)
 			in_syscall = true;
-		if (t != current_thread)
-			t->state = SUSPENDED;
 		
 		thread_t* prev = t;
 		t = t->next;
@@ -972,7 +1002,8 @@ void context_switch(thread_t* from, thread_t* to) {
 	set_current_task(to->pcb, to);
 	
 	if (from) {
-		from->state = READY;
+		if (from->state != FINISHED)
+			from->state = READY;
 		from->pcb->state = READY;
 	}
 	// TODO: this is just for kernel shell test, also will never happen in real life

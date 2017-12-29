@@ -12,6 +12,16 @@
 #include <common/log.h>
 #include <syscalls/interrupt.h>
 #include <drivers/filesystem/path.h>
+#include <boot/x86_desc.h>
+
+typedef struct {
+	uint32_t eip;
+	uint32_t cs;
+	uint32_t eflags;
+	uint32_t esp;
+	uint32_t ss;
+} iret_t;
+
 
 // Returns to a user space program
 extern void return_to_user(thread_t* thread, pcb_t* pcb, thread_t* parent_thread);
@@ -19,6 +29,10 @@ extern void return_to_user(thread_t* thread, pcb_t* pcb, thread_t* parent_thread
 extern void get_context(context_state_t* context);
 // What to return to from a child forking
 extern void fork_return(context_state_t context);
+
+// Helper code to perform an implicit call to thread_exit()
+extern void implicit_thread_exit_start();
+extern void implicit_thread_exit_end();
 
 // Initialize the descriptors for a pcb
 void init_descriptors(pcb_t* pcb) {
@@ -308,17 +322,171 @@ uint32_t chdir(const char* path) {
 	return 0;
 }
 
-// Fork a new thread
-uint32_t thread_fork(void* user_stack) {
-	return 0;
+// Create a new thread
+uint32_t sys_thread_create(void (*func)(), void* user_stack) {
+	// Create an exact copy of this thread
+	thread_t* t = thread_create(current_pcb);
+	if (!t)
+		return -ENOMEM;
+	
+	// Add this thread in
+	t->state = SUSPENDED;
+	t->stack_address = (uint32_t)user_stack;
+	t->context = current_thread->context;
+	
+	// This points to where the iret info is
+	// We need info for the context switch (popa, ret)
+	// This ret should point to fork_return, which is just an iret.
+	// So just add in a context state followed by fork_return's address, followed by iret info
+	// We also need to modify the iret's esp to be the user stack.
+	t->context.eax = 0;
+	t->saved_esp = (uint32_t)t + USER_KERNEL_STACK_SIZE;
+	t->saved_esp -= sizeof(uint32_t) + sizeof(context_state_t) + sizeof(iret_t);
+	char* esp = (char*)t->saved_esp;
+	memcpy(esp, &t->context, sizeof(context_state_t));
+	uint32_t addr = (uint32_t)fork_return;
+	memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
+	iret_t* iret = (iret_t*)&esp[sizeof(context_state_t) + sizeof(uint32_t)];
+	iret->ss = *(uint32_t*)(t->context.esp+0x10);
+	// Also push an implicit call to thread_exit() on the stack
+	uint32_t func_size = (uint32_t)implicit_thread_exit_end - (uint32_t)implicit_thread_exit_start;
+	iret->esp = (uint32_t)user_stack - sizeof(uint32_t) - func_size;
+	uint32_t implicit_eip = iret->esp + sizeof(uint32_t);
+	memcpy((void*)iret->esp, &implicit_eip, sizeof(uint32_t));
+	memcpy((void*)(iret->esp + sizeof(uint32_t)), (void*)implicit_thread_exit_start, func_size);
+	iret->eflags = *(uint32_t*)(t->context.esp+0x8);
+	iret->cs = *(uint32_t*)(t->context.esp+0x4);
+	iret->eip = (uint32_t)func;
+	t->in_syscall = false;
+	
+	// Link in the thread
+	thread_t* p = current_pcb->threads;
+	if (p)
+		down(&p->lock);
+	thread_t* prev = NULL;
+	while (p) {
+		prev = p;
+		p = p->next;
+		if (p) {
+			down(&p->lock);
+			up(&prev->lock);
+		}
+	}
+	if (prev) {
+		t->prev = prev;
+		prev->next = t;
+		up(&prev->lock);
+	}
+	
+	// Enable the new thread to be scheduled
+	t->state = READY;
+	
+	// Jump into the new thread
+	context_switch(current_thread, t);
+	
+	return t->tid;
 }
 
 // Get current thread id
 uint32_t gettid() {
+	return current_thread->tid;
+}
+
+// Wait for a thread to finish
+uint32_t thread_wait(uint32_t tid) {
+	// Loop through all the threads and find a match
+	down(&current_pcb->lock);
+	while (!current_pcb->should_terminate) {
+		bool found = false;
+		thread_t* t = current_pcb->threads;
+		if (t)
+			down(&t->lock);
+		up(&current_pcb->lock);
+		thread_t* prev = NULL;
+		while (t) {
+			if (t->tid == tid) {
+				found = true;
+				if (t->state == FINISHED) {
+					// Remove this thread
+					thread_t* next = t->next;
+					if (next)
+						down(&next->lock);
+					if (prev) {
+						prev->next = next;
+						up(&prev->lock);
+					}
+					if (next) {
+						next->prev = prev;
+						up(&next->lock);
+					}
+					up(&t->lock);
+					kfree(t);
+					return 0;
+				}
+				
+				if (t->prev)
+					up(&t->prev->lock);
+				up(&t->lock);
+				
+				schedule();
+				break;
+			}
+			
+			// This is to prevent two threads waiting on the same thread to remove the thread
+			// at the same time
+			thread_t* dprev = t->prev;
+			prev = t;
+			t = t->next;
+			if (t)
+				down(&t->lock);
+			else
+				up(&prev->lock);
+			if (dprev)
+				up(&dprev->lock);
+		}
+		if (!found)
+			return -ECHILD;
+		
+		down(&current_pcb->lock);
+	}
+	up(&current_pcb->lock);
+	
 	return 0;
 }
 
 // Exit a thread
 uint32_t thread_exit() {
+	down(&current_thread->lock);
+	current_thread->state = FINISHED;
+	current_thread->in_syscall = false;
+	up(&current_thread->lock);
+	
+	// If this is the last thread, then exit
+	down(&current_pcb->lock);
+	thread_t* t = current_pcb->threads;
+	if (t)
+		down(&t->lock);
+	up(&current_pcb->lock);
+	bool valid = false;
+	while (t) {
+		if (t->state != FINISHED) {
+			valid = true;
+			up(&t->lock);
+			break;
+		}
+		
+		thread_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+	}
+	if (!valid)
+		exit(0);
+	
+	// Schedule out of here
+	for (;;)
+		schedule();
+	
 	return 0;
 }
