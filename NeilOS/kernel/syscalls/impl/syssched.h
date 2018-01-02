@@ -15,4 +15,7 @@
 // Put calling thread to sleep
 uint32_t sleep(uint32_t seconds);
 
+// Yield the calling thread
+uint32_t sched_yield();
+
 #endif /* SYSSCHED_H */

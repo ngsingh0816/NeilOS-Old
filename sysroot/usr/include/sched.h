@@ -10,4 +10,11 @@ pid_t gettid();
 unsigned int thread_wait(pid_t tid);
 unsigned int thread_exit();
 
+// Scheduling
+struct sched_param {
+	int sched_priority;
+};
+
+int sched_yield();
+
 #endif

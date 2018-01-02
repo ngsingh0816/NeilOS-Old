@@ -3,8 +3,8 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			44
-#define THREAD_EXIT_SYSCALL		43
+#define NUM_SYSCALLS			45
+#define THREAD_EXIT_SYSCALL		44
 
 #include <boot/x86_desc.h>
 

@@ -28,3 +28,9 @@ uint32_t sleep(uint32_t seconds) {
 
 	return 0;
 }
+
+// Yield the calling thread
+uint32_t sched_yield() {
+	schedule();
+	return 0;
+}

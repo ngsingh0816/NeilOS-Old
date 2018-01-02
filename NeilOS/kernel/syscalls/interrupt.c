@@ -25,7 +25,6 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
  	* usleep (implemented using sleep)
  	* popen / pclose
  * More
-	sched_yield
  	mmap, munmap
 	abort
 	pread, pwrite
@@ -45,7 +44,7 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	dup, dup2,
 	times, gettimeofday,
 	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend, alarm,
-	sleep,
+	sleep, sched_yield,
 	sysconf, fpathconf,
 	getwd, chdir,
 	ioctl,
