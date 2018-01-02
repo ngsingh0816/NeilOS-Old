@@ -11,9 +11,10 @@
 #include <sys/fcntl.h>
 #include <sys/errno.h>
 #include <unistd.h>
+#include <sched.h>
 
-extern unsigned int sys_errno();
 extern unsigned int sys_sleep(unsigned int seconds);
+extern unsigned int sys_sched_yield();
 
 unsigned int sleep(unsigned int seconds) {
 	int ret = sys_sleep(seconds);
@@ -27,4 +28,13 @@ unsigned int sleep(unsigned int seconds) {
 int usleep(useconds_t micros) {
 	// TODO: actually implement this
 	return sleep(micros / 1000000);
+}
+
+int sched_yield() {
+	int ret = sys_sched_yield();
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
 }
