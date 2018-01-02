@@ -41,6 +41,7 @@
  * Higher Half Kernel
  * Ported GCC
  * Ported Dash
+ * User Threads (pthreads)
  */
 
 /* TODO (could be improved):
@@ -52,6 +53,11 @@
  * Signals - make the signal execute in user space, not kernel space (same with dylib init's)
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
  * Disk Scheduling / Improvements
+ * Kernel Threads
+ * Filesystem - multiple processes or threads writing to the same inode (i.e. fmkdir("/hi") and fmkdir("/bye")
+	may cause an issue because they both modify the "." inode's contents at the same time
+ 		* can probably be fixed by r/w lock per inode
+ * Thread Local Storage (TLS)
  */
 
 /* TODO (bugs)
@@ -68,29 +74,25 @@
  */
 
 /* TODO:
- * More system calls
- * (Kernel?) Threads (pthread?, gcd?)
-	* Potential multitasking issues:
- 		* Filesystem - multiple things writing to the same thing (i.e. fmkdir("/hi") and fmkdir("/bye") on different
- 			threads may cause an issue because they both modify the "." inode's contents at the same time
- 				* can probably be fixed by r/w lock per inode
- * SMP?
- * Scheduler Rework
- * API (add user level support for all new features continuing - also make a user level program to test each of these functionalities)
  * Mouse Driver
  	* Read in blocking mode returns only when mouse is moved, read in non blocking mode returns current mouse position
  	* Have kernel interrupt handle moving of cursor
  * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
  	* Could work by writing to it, then reading will block until it is ready to accept data, then repeat
+ * More system calls
+ * API (add user level support for all new features continuing - also make a user level program to
+ 		test each of these functionalities)
+ * Dylib Lazy Linking
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
+ * Scheduler Rework
  * Graphics (QEMU VBE) Driver?
+ * Message Queues?
  * GUI (Compositing Window Manager)
 	* Interacts through message queues (or maybe pipes + shared memory for big data transfers)?
  * Ethernet Driver
  * Sockets
- * Message Queues?
  * Get libtool working?
- * Dylib Lazy Linking?
+ * SMP?
  * Page files on disk?
 	* Could make loading a program only load entry point page and then lazy load the rest?
  * Module support?
