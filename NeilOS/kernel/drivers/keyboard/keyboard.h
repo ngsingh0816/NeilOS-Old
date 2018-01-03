@@ -59,4 +59,6 @@ bool keyboard_init();
 void register_keychange(void (*handler)(uint8_t key, modifier_keys_t modifier_keys,
 										bool pressed));
 
+void keyboard_handle();
+
 #endif

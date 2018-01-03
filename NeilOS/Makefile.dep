@@ -61,6 +61,9 @@ build/./kernel/drivers/filesystem/filesystem.o: \
 build/./kernel/drivers/filesystem/path.o: \
  kernel/drivers/filesystem/path.c kernel/drivers/filesystem/path.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/filesystem/path.o ./kernel/drivers/filesystem/path.c
+build/./kernel/drivers/mouse/mouse.o: kernel/drivers/mouse/mouse.c \
+ kernel/drivers/mouse/mouse.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/mouse/mouse.o ./kernel/drivers/mouse/mouse.c
 build/./kernel/drivers/pic/i8259.o: kernel/drivers/pic/i8259.c \
  kernel/drivers/pic/i8259.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pic/i8259.o ./kernel/drivers/pic/i8259.c

@@ -268,6 +268,13 @@ file_descriptor_t* terminal_duplicate(file_descriptor_t* f) {
 	if (!d)
 		return NULL;
 	memcpy(d, f, sizeof(file_descriptor_t));
+	int namelen = strlen(f->filename);
+	d->filename = kmalloc(namelen + 1);
+	if (!d->filename) {
+		kfree(d);
+		return NULL;
+	}
+	memcpy(d->filename, f->filename, namelen + 1);
 	d->lock = MUTEX_UNLOCKED;
 	
 	return d;
@@ -275,5 +282,6 @@ file_descriptor_t* terminal_duplicate(file_descriptor_t* f) {
 
 // Close the terminal
 uint32_t terminal_close(file_descriptor_t* fd) {
+	kfree(fd->filename);
 	return 0;
 }

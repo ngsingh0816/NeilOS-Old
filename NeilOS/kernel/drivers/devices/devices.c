@@ -14,6 +14,7 @@
 #include <drivers/ATA/ata.h>
 #include <drivers/filesystem/filesystem.h>
 #include <drivers/filesystem/path.h>
+#include <drivers/mouse/mouse.h>
 #include <drivers/rtc/rtc.h>
 #include <drivers/terminal/terminal.h>
 #include <memory/allocation/heap.h>
@@ -59,6 +60,8 @@ bool devices_init() {
 	if (!device_file_add("stderr", terminal_open))
 		return false;
 	if (!device_file_add("tty", terminal_open))
+		return false;
+	if (!device_file_add("mouse", mouse_open))
 		return false;
 	/*if (!device_file_add("rtc", rtc_open))
 		return false;*/

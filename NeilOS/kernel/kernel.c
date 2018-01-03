@@ -18,6 +18,7 @@
 #include <drivers/pit/pit.h>
 #include <program/task.h>
 #include <drivers/devices/devices.h>
+#include <drivers/mouse/mouse.h>
 
 /* Features:
  * Memory Allocator
@@ -50,6 +51,8 @@
 	that aren't CPU intensive will call schedule() and sleep so they will not use up
 	their whole alloted time), and compare it to their alloted time. If they use all of it,
 	give them more time next quantum (to a limit), otherwise give them less.
+ 	* Could also change time to be 1ms (a quantum) and have each task allocated some number of quantums
+ 		so we could then manage time to the 1ms level
  * Signals - make the signal execute in user space, not kernel space (same with dylib init's)
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
  * Disk Scheduling / Improvements
@@ -171,6 +174,7 @@ entry (unsigned long magic, unsigned long addr)
 	
 	// Initialize some drivers
 	keyboard_init();
+	mouse_init();
 	terminal_init();			// Clears the screen
 	rtc_init();
 	

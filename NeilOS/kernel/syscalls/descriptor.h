@@ -18,6 +18,7 @@
 #define FILE_FILE_TYPE		2
 #define STANDARD_INOUT_TYPE	3
 #define DISK_FILE_TYPE		4
+#define MOUSE_FILE_TYPE		5
 
 // File Modes
 #define FILE_MODE_READ				0x001

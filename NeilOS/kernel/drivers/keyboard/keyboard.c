@@ -2,11 +2,15 @@
 #include <drivers/pic/i8259.h>
 #include <syscalls/interrupt.h>
 #include <common/lib.h>
+#include <drivers/mouse/mouse.h>
 
 #define KEYBOARD_IRQ		0x1
 
 #define KEYBOARD_DATA_PORT			0x60
 #define KEYBOARD_COMMAND_PORT		0x64
+
+#define DATA_BIT					0x1
+#define MOUSE_BIT					(1 << 5)
 
 #define KEYBOARD_DISABLE1			0xAD
 #define KEYBOARD_DISABLE2			0xA7
@@ -180,6 +184,19 @@ void update_modifier_keys(unsigned char keycode, bool pressed) {
 	}
 }
 
+void keyboard_handle() {
+	//set-up a boolean and then pass its memory address to interpret scancode.
+	//scancode will change pressed accordingly.
+	bool pressed = false;
+	unsigned char keycode = interpret_scancode(&pressed);
+	
+	update_modifier_keys(keycode, pressed);
+	
+	// Call the user handler if it exists
+	if (user_handler)
+		user_handler(keycode, modifier_keys, pressed);
+}
+
 /*	keyboard_handler 
 	DESCRIPTION: handles a keyboard interrupt
 	INPUTS: irq number
@@ -192,18 +209,16 @@ void keyboard_handler(int irq) {
 	// Say the we've handled this interrupt
 	send_eoi(irq);
 	
-	//set-up a boolean and then pass its memory address to interpret scancode.
-	//scancode will change pressed accordingly.
-	bool pressed = false;
-	unsigned char keycode = interpret_scancode(&pressed);
-	
-	update_modifier_keys(keycode, pressed);
+	int status = inb(KEYBOARD_COMMAND_PORT);
+	while (status & DATA_BIT) {
+		if (status & MOUSE_BIT)
+			mouse_handle();
+		else
+			keyboard_handle();
+		status = inb(KEYBOARD_COMMAND_PORT);
+	}
 	
 	enable_irq(KEYBOARD_IRQ);
-	
-	// Call the user handler if it exists
-	if (user_handler)
-		user_handler(keycode, modifier_keys, pressed);
 }
 
 // Initialize the keyboard, write to ports, returns false on failure
