@@ -13,13 +13,6 @@
 #define CONFIG_ADDRESS		0xCF8
 #define CONFIG_DATA			0xCFC
 
-// Header information
-#define VENDOR_ID_REGISTER		0x00
-#define COMMAND_REGISTER		0x04
-#define CLASS_REGISTER			0x08
-#define HEADER_TYPE_REGISTER	0x0C
-#define IRQ_REGISTER			0x3C
-
 #define INVALID_DEVICE			0xFFFF
 
 #define NUMBER_OF_BUSES			256

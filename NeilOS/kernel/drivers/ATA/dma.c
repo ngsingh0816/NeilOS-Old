@@ -38,8 +38,6 @@
 #define ATA_COMMAND_WRITE_DMA_28			0xCA
 #define ATA_COMMAND_WRITE_DMA_48			0x35
 
-#define PCI_ENABLE_BUSMASTER		0x05
-
 #define DMA_IRQ						0x0E
 
 #define DMA_TIMEOUT					1000000

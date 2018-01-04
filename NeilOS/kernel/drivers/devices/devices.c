@@ -12,6 +12,7 @@
 #include "zero.h"
 
 #include <drivers/ATA/ata.h>
+#include <drivers/audio/es1371.h>
 #include <drivers/filesystem/filesystem.h>
 #include <drivers/filesystem/path.h>
 #include <drivers/mouse/mouse.h>
@@ -62,6 +63,8 @@ bool devices_init() {
 	if (!device_file_add("tty", terminal_open))
 		return false;
 	if (!device_file_add("mouse", mouse_open))
+		return false;
+	if (!device_file_add("audio", es_open))
 		return false;
 	/*if (!device_file_add("rtc", rtc_open))
 		return false;*/

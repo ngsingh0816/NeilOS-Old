@@ -19,6 +19,7 @@
 #define STANDARD_INOUT_TYPE	3
 #define DISK_FILE_TYPE		4
 #define MOUSE_FILE_TYPE		5
+#define AUDIO_FILE_TYPE		6
 
 // File Modes
 #define FILE_MODE_READ				0x001
@@ -94,6 +95,7 @@ typedef struct file_descriptor {
 	uint64_t (*llseek)(int32_t fd, uint64_t offset, int whence);
 	uint64_t (*truncate)(int32_t fd, uint64_t nsize);
 	uint32_t (*stat)(int32_t fd, sys_stat_type* data);
+	uint32_t (*ioctl)(int32_t fd, int request, uint32_t arg1, uint32_t arg2);
 	struct file_descriptor* (*duplicate)(struct file_descriptor* f);
 	uint32_t (*close)(struct file_descriptor* f);	// Open allocates a file descriptor, but the syscall close frees it
 	

@@ -18,6 +18,6 @@ uint32_t sysconf(uint32_t name);
 uint32_t fpathconf(uint32_t fd, uint32_t name);
 
 // Perform I/O Control
-int ioctl(uint32_t fd, int request, ...);
+int ioctl(uint32_t fd, int request, uint32_t arg1, uint32_t arg2);
 
 #endif /* SYSMISC_H */

@@ -67,6 +67,9 @@ build/./kernel/drivers/mouse/mouse.o: kernel/drivers/mouse/mouse.c \
 build/./kernel/drivers/pic/i8259.o: kernel/drivers/pic/i8259.c \
  kernel/drivers/pic/i8259.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pic/i8259.o ./kernel/drivers/pic/i8259.c
+build/./kernel/drivers/audio/es1371.o: kernel/drivers/audio/es1371.c \
+ kernel/drivers/audio/es1371.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/audio/es1371.o ./kernel/drivers/audio/es1371.c
 build/./kernel/drivers/rtc/rtc.o: kernel/drivers/rtc/rtc.c \
  kernel/drivers/rtc/rtc.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/rtc/rtc.o ./kernel/drivers/rtc/rtc.c

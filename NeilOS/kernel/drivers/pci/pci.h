@@ -17,6 +17,18 @@
 #define SATA_CLASS		0x1
 #define SATA_SUBCLASS	0x6
 
+#define AUDIO_CLASS		0x4
+#define AUDIO_SUBCLASS	0x1
+
+// Header information
+#define VENDOR_ID_REGISTER		0x00
+#define COMMAND_REGISTER		0x04
+#define CLASS_REGISTER			0x08
+#define HEADER_TYPE_REGISTER	0x0C
+#define IRQ_REGISTER			0x3C
+
+#define PCI_ENABLE_BUSMASTER		0x05
+
 typedef struct {
 	union {
 		uint32_t val[0x10];

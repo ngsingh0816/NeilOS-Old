@@ -59,6 +59,7 @@
 		28DF5AE61EF3AB890009CA98 /* interrupt_asm.S in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AC11EF3AB890009CA98 /* interrupt_asm.S */; };
 		28E62BBD1F17289600538741 /* page_list.c in Sources */ = {isa = PBXBuildFile; fileRef = 28E62BBB1F17289600538741 /* page_list.c */; };
 		28EEC45C1FFC3944009BAD3B /* mouse.c in Sources */ = {isa = PBXBuildFile; fileRef = 28EEC45B1FFC3944009BAD3B /* mouse.c */; };
+		28EEC4621FFC6B78009BAD3B /* es1371.c in Sources */ = {isa = PBXBuildFile; fileRef = 28EEC4611FFC6B78009BAD3B /* es1371.c */; };
 		28FE4A801F02020F007411F3 /* fifo.c in Sources */ = {isa = PBXBuildFile; fileRef = 28FE4A7E1F02020F007411F3 /* fifo.c */; };
 /* End PBXBuildFile section */
 
@@ -184,6 +185,8 @@
 		28E62BBC1F17289600538741 /* page_list.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = page_list.h; sourceTree = "<group>"; };
 		28EEC45A1FFC3944009BAD3B /* mouse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mouse.h; sourceTree = "<group>"; };
 		28EEC45B1FFC3944009BAD3B /* mouse.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mouse.c; sourceTree = "<group>"; };
+		28EEC4601FFC6B78009BAD3B /* es1371.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = es1371.h; sourceTree = "<group>"; };
+		28EEC4611FFC6B78009BAD3B /* es1371.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = es1371.c; sourceTree = "<group>"; };
 		28FE4A7E1F02020F007411F3 /* fifo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fifo.c; sourceTree = "<group>"; };
 		28FE4A7F1F02020F007411F3 /* fifo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fifo.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -360,6 +363,7 @@
 			isa = PBXGroup;
 			children = (
 				28DF5A831EF3AB880009CA98 /* ATA */,
+				28EEC45F1FFC6B46009BAD3B /* audio */,
 				28C4CD8B1F5E6BD100512DBC /* devices */,
 				28DF5A8A1EF3AB880009CA98 /* filesystem */,
 				28DF5A991EF3AB880009CA98 /* keyboard */,
@@ -531,6 +535,15 @@
 			name = build;
 			sourceTree = "<group>";
 		};
+		28EEC45F1FFC6B46009BAD3B /* audio */ = {
+			isa = PBXGroup;
+			children = (
+				28EEC4611FFC6B78009BAD3B /* es1371.c */,
+				28EEC4601FFC6B78009BAD3B /* es1371.h */,
+			);
+			path = audio;
+			sourceTree = "<group>";
+		};
 		28F409CD1FFC391E006288CB /* mouse */ = {
 			isa = PBXGroup;
 			children = (
@@ -678,6 +691,7 @@
 				28DF5ACB1EF3AB890009CA98 /* lib.c in Sources */,
 				280FE3431F00735700E1A724 /* pipe.c in Sources */,
 				28DF5ACA1EF3AB890009CA98 /* spinlock.c in Sources */,
+				28EEC4621FFC6B78009BAD3B /* es1371.c in Sources */,
 				28DF5AC51EF3AB890009CA98 /* x86_desc.S in Sources */,
 				28DF5AD41EF3AB890009CA98 /* filesystem.c in Sources */,
 				28DF5AD31EF3AB890009CA98 /* inode.c in Sources */,

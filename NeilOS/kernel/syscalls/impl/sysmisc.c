@@ -213,10 +213,30 @@ uint32_t fpathconf(uint32_t fd, uint32_t name) {
 }
 
 // Perform I/O Control
-int ioctl(uint32_t fd, int request, ...) {
-	LOG_DEBUG_INFO_STR("(%d, %d)", fd, request);
+int ioctl(uint32_t fd, int request, uint32_t arg1, uint32_t arg2) {
+	LOG_DEBUG_INFO_STR("(%d, %d, %d, %d)", fd, request, arg1, arg2);
 
-	// TODO: implement
+	// Check if the arguments are in range
+	if (fd >= NUMBER_OF_DESCRIPTORS)
+		return -EBADF;
+	
+	down(&current_pcb->descriptor_lock);
+	
+	// If we are trying to use an invalid descriptor, return failure
+	if (!descriptors[fd] || !descriptors[fd]->ioctl) {
+		up(&current_pcb->descriptor_lock);
+		return descriptors[fd] ? -EINVAL : -EBADF;
+	}
+	
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	up(&current_pcb->descriptor_lock);
+	
+	// Call to the driver specific call
+	uint32_t ret = d->ioctl(fd, request, arg1, arg2);
+	
+	up(&d->lock);
+	return ret;
 	
 	return -1;
 }

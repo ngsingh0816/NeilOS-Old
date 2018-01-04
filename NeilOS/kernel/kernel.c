@@ -19,6 +19,7 @@
 #include <program/task.h>
 #include <drivers/devices/devices.h>
 #include <drivers/mouse/mouse.h>
+#include <drivers/audio/es1371.h>
 
 /* Features:
  * Memory Allocator
@@ -43,6 +44,8 @@
  * Ported GCC
  * Ported Dash
  * User Threads (pthreads)
+ * Mouse Driver
+ * Audio Driver (Ensoniq AudioPCI 1370/1371)
  */
 
 /* TODO (could be improved):
@@ -77,11 +80,6 @@
  */
 
 /* TODO:
- * Mouse Driver
- 	* Read in blocking mode returns only when mouse is moved, read in non blocking mode returns current mouse position
- 	* Have kernel interrupt handle moving of cursor
- * Sound Drivers (Sound Blaster 16, Ensoniq AudioPCI ES1370?)
- 	* Could work by writing to it, then reading will block until it is ready to accept data, then repeat
  * More system calls
  * API (add user level support for all new features continuing - also make a user level program to
  		test each of these functionalities)
@@ -183,6 +181,7 @@ entry (unsigned long magic, unsigned long addr)
 	
 	ata_init();
 	filesystem_init("disk0s1");
+	es_init();
 	
 	// Initialize the scheduler
 	pit_init();

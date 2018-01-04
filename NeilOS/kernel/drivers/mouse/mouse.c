@@ -202,7 +202,7 @@ file_descriptor_t* mouse_open(const char* filename, uint32_t mode) {
 	// Mark in use
 	d->lock = MUTEX_UNLOCKED;
 	d->type = MOUSE_FILE_TYPE;
-	d->mode = FILE_MODE_READ | FILE_MODE_WRITE | FILE_TYPE_CHARACTER;
+	d->mode = FILE_TYPE_CHARACTER | mode;
 	int namelen = strlen(filename);
 	d->filename = kmalloc(namelen + 1);
 	if (!d->filename) {
