@@ -76,7 +76,7 @@ bool signal_is_pending(pcb_t* pcb, uint32_t signum) {
 
 bool signal_pending(pcb_t* pcb) {
 	// Check if there are any unblocked signals
-	bool has_alarm = (pcb->alarm.val != 0 && pcb->alarm.val <= get_current_time().val);
+	bool has_alarm = (pcb->alarm.val != 0 && pcb->alarm.val <= get_current_unix_time().val);
 	return (pcb->signal_pending != 0 && pcb->signal_pending != pcb->signal_mask) || has_alarm;
 }
 
@@ -153,7 +153,7 @@ void signal_send(pcb_t* pcb, uint32_t signum) {
 // Handle signals (returns true if signal is used)
 void signal_handle(pcb_t* pcb) {
 	// Check for alarms
-	if (pcb->alarm.val != 0 && pcb->alarm.val <= get_current_time().val) {
+	if (pcb->alarm.val != 0 && pcb->alarm.val <= get_current_unix_time().val) {
 		pcb->alarm.val = 0;
 		signal_send(pcb, SIGALRM);
 	}

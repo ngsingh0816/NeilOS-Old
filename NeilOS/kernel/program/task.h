@@ -171,6 +171,9 @@ void set_current_task(pcb_t* pcb, thread_t* thread);
 // Switch from one task to another
 void context_switch(thread_t* from, thread_t* to);
 
+// Handle a single scheduler tick
+void scheduler_tick();
+
 // Run the scheduler
 void schedule();
 

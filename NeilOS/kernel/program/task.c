@@ -1068,6 +1068,19 @@ thread_t* get_next_runnable_thread(thread_t* hint) {
 	return NULL;
 }
 
+// Handle a single scheduler tick
+void scheduler_tick() {
+	static int counter = 0;
+	// Increment the current time and perform scheduling if needed
+	time_increment_ms(1);
+	
+	counter++;
+	if (counter == 20) {
+		counter = 0;
+		schedule();
+	}
+}
+
 // Run the scheduler (gets called up PIT interrupt)
 void schedule() {
 	// If we have disabled multitasking, don't do anything

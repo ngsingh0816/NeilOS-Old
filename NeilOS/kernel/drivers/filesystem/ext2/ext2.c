@@ -116,7 +116,7 @@ ext_inode_t ext2_open(const char* path) {
 	kfree(component);
 	
 	// Update the access time of this inode
-	inode.info.atime = get_current_time().val;
+	inode.info.atime = get_current_unix_time().val;
 	ext2_set_inode_info(inode.inode, &inode.info);
 
 	// Return the inode found
@@ -144,7 +144,7 @@ ext_inode_t ext2_create(ext_inode_t* parent, const char* name, unsigned int mode
 	ret.info.mode |= EXT2_INODE_MODE_ATTR_ALL;
 	
 	// Update the times of this inode
-	ret.info.ctime = get_current_time().val;
+	ret.info.ctime = get_current_unix_time().val;
 	ret.info.atime = ret.info.ctime;
 	ret.info.mtime = ret.info.ctime;
 	
@@ -220,7 +220,7 @@ bool ext2_unlink(ext_inode_t* parent, const char* name) {
 		return false;
 	
 	// Update modified times
-	parent->info.mtime = get_current_time().val;
+	parent->info.mtime = get_current_unix_time().val;
 	ext2_set_inode_info(parent->inode, &parent->info);
 	
 	// Decrease the link count for this inode
@@ -241,7 +241,7 @@ bool ext2_link(ext_inode_t* inode, ext_inode_t* link_parent, const char* link_na
 		return false;
 	
 	// Update modified times
-	link_parent->info.mtime = get_current_time().val;
+	link_parent->info.mtime = get_current_unix_time().val;
 	ext2_set_inode_info(link_parent->inode, &link_parent->info);
 	
 	return true;
@@ -374,7 +374,7 @@ uint32_t ext2_write_data(ext_inode_t* inode, uint64_t offset, const void* buffer
 		inode->info.size = true_size.low;
 	}
 	// Update inode
-	inode->info.mtime = get_current_time().val;
+	inode->info.mtime = get_current_unix_time().val;
 	ext2_set_inode_info(inode->inode, &inode->info);
 
 	
@@ -415,7 +415,7 @@ uint64_t ext2_truncate_inode_zero(ext_inode_t* inode, uint64_t size, bool fill) 
 		// Save the new inode data
 		inode->info.size_high = size.high;
 		inode->info.size = size.low;
-		inode->info.mtime = get_current_time().val;
+		inode->info.mtime = get_current_unix_time().val;
 		ext2_set_inode_info(inode->inode, &inode->info);
 		
 		// Write zero's to this new space
@@ -462,7 +462,7 @@ uint64_t ext2_truncate_inode_zero(ext_inode_t* inode, uint64_t size, bool fill) 
 		// Save the new inode data
 		inode->info.size_high = size.high;
 		inode->info.size = size.low;
-		inode->info.mtime = get_current_time().val;
+		inode->info.mtime = get_current_unix_time().val;
 		ext2_set_inode_info(inode->inode, &inode->info);
 	}
 	

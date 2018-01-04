@@ -11,6 +11,13 @@
 
 #include "types.h"
 
+#define NANOS_IN_SEC	(1000 * 1000 * 1000)
+#define NANOS_IN_MS		(1000 * 1000)
+#define NANOS_IN_US		1000
+#define US_IN_SEC		(1000 * 1000)
+#define US_IN_MS		1000
+#define MS_IN_SEC		1000
+
 // UNIX time struct
 typedef struct {
 	uint32_t val;
@@ -27,8 +34,13 @@ typedef struct {
 } date_t;
 
 struct timeval {
-	long tv_sec;
-	long tv_usec;
+	uint32_t tv_sec;
+	uint32_t tv_usec;
+};
+
+struct timespec {
+	uint32_t tv_sec;
+	uint32_t tv_nsec;
 };
 
 // Returns the current date (GMT)
@@ -37,6 +49,15 @@ date_t get_current_date();
 int sget_current_date(char* str);
 
 // Returns the current UNIX time
-time_t get_current_time();
+time_t get_current_unix_time();
+
+void time_load_current();
+struct timeval time_get();
+void time_increment_ms(int ms);
+struct timeval time_add(struct timeval t1, struct timeval t2);
+struct timeval time_subtract(struct timeval t1, struct timeval t2);
+bool time_less(struct timeval t1, struct timeval t2);
+struct timeval timespec_to_timeval(struct timespec t);
+struct timespec timeval_to_timespec(struct timeval t);
 
 #endif

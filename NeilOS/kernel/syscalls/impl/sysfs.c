@@ -99,7 +99,7 @@ uint32_t utime(const char* filename, uint32_t* times) {
 	if (times)
 		fsettime(&f, times[0], times[1]);
 	else {
-		uint32_t t = get_current_time().val;
+		uint32_t t = get_current_unix_time().val;
 		fsettime(&f, t, t);
 	}
 	fclose(&f);

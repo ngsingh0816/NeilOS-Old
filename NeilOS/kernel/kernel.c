@@ -80,7 +80,8 @@
  */
 
 /* TODO:
- * Implement real terminal (termios)
+ * Implement microsecond timing (by chaning the scheduler a little)
+ * Implement real terminal (termios non-canonical mode)
  * More system calls
  * API (add user level support for all new features continuing - also make a user level program to
  		test each of these functionalities)
@@ -186,7 +187,8 @@ entry (unsigned long magic, unsigned long addr)
 	
 	// Initialize the scheduler
 	pit_init();
-	pit_register_handler(schedule);
+	time_load_current();
+	pit_register_handler(scheduler_tick);
 	
 	devices_init();
 	
@@ -383,7 +385,7 @@ entry (unsigned long magic, unsigned long addr)
 			date_t date = get_current_date();
 			printf("%d:%d:%d on %d/%d/%d\n", date.hour, date.minute, date.second, date.month, date.day, date.year);
 			
-			printf("UNIX time: %d\n", get_current_time().val);
+			printf("UNIX time: %d\n", get_current_unix_time().val);
 		} else {
 			if (num == 1)
 				continue;

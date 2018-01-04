@@ -115,7 +115,7 @@ uint32_t alarm(uint32_t seconds) {
 	
 	down(&current_pcb->lock);
 	uint32_t prev = current_pcb->alarm.val;
-	uint32_t time = get_current_time().val;
+	uint32_t time = get_current_unix_time().val;
 	
 	if (seconds == 0)
 		current_pcb->alarm.val = 0;

@@ -8,24 +8,31 @@
 
 #include "syssched.h"
 #include <common/log.h>
-#include <common/time.h>
 #include <program/task.h>
+#include <syscalls/interrupt.h>
 
 // Put calling thread to sleep
-uint32_t sleep(uint32_t seconds) {
-	LOG_DEBUG_INFO_STR("(%d)", seconds);
+uint32_t nanosleep(const struct timespec* req, struct timespec* rem) {
+	LOG_DEBUG_INFO_STR("(%d.%d)", req->tv_sec, req->tv_usec);
+
+	// Require minimum of 1ms of sleep
+	uint32_t sec = req->tv_sec, nanos = req->tv_nsec;
+	if (sec == 0 && nanos < NANOS_IN_MS)
+		nanos = NANOS_IN_MS;
 	
-	uint32_t end = get_current_time().val + seconds;
-	while (get_current_time().val < end) {
+	struct timeval end = time_add(time_get(), (struct timeval){ sec, nanos / NANOS_IN_US });
+	while (time_less(time_get(), end)) {
 		down(&current_pcb->lock);
-		if (current_pcb->should_terminate) {
+		if (current_pcb->should_terminate || signal_occurring(current_pcb)) {
 			up(&current_pcb->lock);
-			return end - get_current_time().val;
+			if (rem)
+				*rem = timeval_to_timespec(time_subtract(end, time_get()));
+			return -EINTR;
 		}
 		up(&current_pcb->lock);
 		schedule();
 	}
-
+	
 	return 0;
 }
 

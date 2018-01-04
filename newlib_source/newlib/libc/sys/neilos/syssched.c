@@ -10,24 +10,24 @@
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/errno.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <sched.h>
 
-extern unsigned int sys_sleep(unsigned int seconds);
+extern unsigned int sys_nanosleep(struct timespec* req, struct timespec* rem);
 extern unsigned int sys_sched_yield();
 
-unsigned int sleep(unsigned int seconds) {
-	int ret = sys_sleep(seconds);
+unsigned int nanosleep(struct timespec* req, struct timespec* rem) {
+	if (req->tv_sec < 0 || req->tv_nsec < 0 || req->tv_nsec > 999999999) {
+		errno = EINVAL;
+		return -1;
+	}
+	int ret = sys_nanosleep(req, rem);
     if (ret < 0) {
         errno = -ret;
         return -1;
     }
 	return ret;
-}
-
-int usleep(useconds_t micros) {
-	// TODO: actually implement this
-	return sleep(micros / 1000000);
 }
 
 int sched_yield() {

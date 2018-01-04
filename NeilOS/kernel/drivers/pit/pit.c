@@ -4,7 +4,7 @@
 #include <common/lib.h>
 
 #define PIT_IRQ						0
-#define PIT_DEFAULT_INTERVAL		20
+#define PIT_DEFAULT_INTERVAL		1
 #define PIT_CHANNEL_0_PORT			0x40
 #define PIT_COMMAND_PORT			0x43
 #define PIT_CHANNEL_0_RATE			0x34

@@ -30,6 +30,8 @@
 #define RTC_FORMAT_BIN		0x04
 #define RTC_FORMAT_12		0x02
 
+struct timeval current_time;
+
 // Check if an update is in progress
 bool rtc_update_in_progress() {
 	outb(REGISTER_A_CMD, RTC_COMMAND_PORT);
@@ -69,7 +71,7 @@ uint8_t bcd_to_binary(uint8_t val) {
 }
 
 // Returns the current date using the RTC
-date_t get_current_date() {
+date_t get_current_date_rtc() {
 	date_t ret[2];
 	uint8_t century[2] = { 0, 0 };
 	memset(ret, 0, sizeof(date_t) * 2);
@@ -131,11 +133,11 @@ int sget_current_date(char* str) {
 #define EPOCH_YEAR					1970
 
 // Returns the current UNIX time
-time_t get_current_time() {
+time_t get_current_unix_time_rtc() {
 	uint32_t val = 0;
 	
 	// Adjust the time to unix
-	date_t date = get_current_date();
+	date_t date = get_current_date_rtc();
 	date.month -= EPOCH_MONTH;
 	date.day -= EPOCH_DAY;
 	date.year -= EPOCH_YEAR;
@@ -149,4 +151,92 @@ time_t get_current_time() {
 		date.year * SECONDS_PER_YEAR;
 	
 	return (time_t){ val };
+}
+
+time_t get_current_unix_time() {
+	return (time_t){ current_time.tv_sec };
+}
+
+date_t get_current_date() {
+	uint32_t val = current_time.tv_sec;
+	date_t date;
+	
+	date.year = val / SECONDS_PER_YEAR;
+	val -= date.year * SECONDS_PER_YEAR;
+	date.month = val / SECONDS_PER_MONTH;
+	val -= date.month * SECONDS_PER_MONTH;
+	date.day = val / SECONDS_PER_DAY;
+	val -= date.day * SECONDS_PER_DAY;
+	date.hour = val / SECONDS_PER_HOUR;
+	val -= date.hour * SECONDS_PER_HOUR;
+	date.minute = val / SECONDS_PER_MIN;
+	val -= date.minute * SECONDS_PER_MIN;
+	date.second = val;
+	
+	date.day += EPOCH_DAY;
+	date.month += EPOCH_MONTH;
+	date.year += EPOCH_YEAR;
+	
+	return date;
+}
+
+void time_load_current() {
+	current_time.tv_sec = get_current_unix_time_rtc().val;
+	current_time.tv_usec = 0;
+}
+
+struct timeval time_get() {
+	return current_time;
+}
+
+void time_increment_ms(int ms) {
+	current_time.tv_usec += US_IN_MS * ms;
+	unsigned int sec = current_time.tv_usec / US_IN_SEC;
+	current_time.tv_usec -= sec * US_IN_SEC;
+	current_time.tv_sec += sec;
+}
+
+struct timeval time_add(struct timeval t1, struct timeval t2) {
+	current_time.tv_usec += t2.tv_usec;
+	unsigned int sec = t1.tv_usec / US_IN_SEC;
+	t1.tv_usec -= sec * US_IN_SEC;
+	t1.tv_sec += sec + t2.tv_sec;
+	return t1;
+}
+
+struct timeval time_subtract(struct timeval t1, struct timeval t2) {
+	if (t1.tv_sec < t2.tv_sec || (t1.tv_sec == t2.tv_sec && t1.tv_usec < t2.tv_usec)) {
+		t1.tv_sec = 0;
+		t1.tv_usec = 0;
+		return t1;
+	}
+	while (t1.tv_usec < t2.tv_usec) {
+		t1.tv_usec += US_IN_SEC;
+		t1.tv_sec--;
+	}
+	t1.tv_sec -= t2.tv_sec;
+	t1.tv_usec -= t2.tv_usec;
+	return t1;
+}
+
+bool time_less(struct timeval t1, struct timeval t2) {
+	if (t1.tv_sec > t2.tv_sec)
+		return false;
+	else if (t1.tv_sec == t2.tv_sec)
+		return (t1.tv_usec < t2.tv_usec);
+	return true;
+}
+
+struct timeval timespec_to_timeval(struct timespec t) {
+	struct timeval ret;
+	ret.tv_sec = t.tv_sec;
+	ret.tv_usec = t.tv_nsec / NANOS_IN_US;
+	return ret;
+}
+
+struct timespec timeval_to_timespec(struct timeval t) {
+	struct timespec ret;
+	ret.tv_sec = t.tv_sec;
+	ret.tv_nsec = t.tv_usec * NANOS_IN_US;
+	return ret;
 }

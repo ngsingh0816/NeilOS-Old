@@ -10,10 +10,11 @@
 #define SYSSCHED_H
 
 #include <common/types.h>
+#include <common/time.h>
 #include <syscalls/descriptor.h>
 
 // Put calling thread to sleep
-uint32_t sleep(uint32_t seconds);
+uint32_t nanosleep(const struct timespec* req, struct timespec* rem);
 
 // Yield the calling thread
 uint32_t sched_yield();

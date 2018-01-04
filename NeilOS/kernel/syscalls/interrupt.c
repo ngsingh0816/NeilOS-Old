@@ -29,7 +29,6 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	abort
 	syslog
 	clock_gettime, clock_nanosleep, clock_settime
-	nanosleep (when implementing this, we can implement usleep using newlib's usleep in the posix folder)
 	timer_create, timer_delete, timer_settime
  	select (stubbed - test "tail -f"), pselect, poll
  	sockets stuff
@@ -42,7 +41,7 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	dup, dup2,
 	times, gettimeofday,
 	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend, alarm,
-	sleep, sched_yield,
+	nanosleep, sched_yield,
 	sysconf, fpathconf,
 	getwd, chdir,
 	ioctl,
