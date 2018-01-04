@@ -21,24 +21,22 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
  * For coreutils:
 	 du - "cannot read directory ., not a directory"
 	 timeout - hangs
- * For awk:
- 	* usleep (implemented using sleep)
- 	* popen / pclose
+ * For bash:
+ 	* select
+ 	* termios things
  * More
  	mmap, munmap
 	abort
-	pread, pwrite
 	syslog
 	clock_gettime, clock_nanosleep, clock_settime
-	nanosleep
+	nanosleep (when implementing this, we can implement usleep using newlib's usleep in the posix folder)
 	timer_create, timer_delete, timer_settime
- 	ioctl
- 	select (stubbed - test "tail -f"), pselect,
+ 	select (stubbed - test "tail -f"), pselect, poll
  	sockets stuff
  */
 
 void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
-	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl,
+	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl, select,
 	mkdir, link, unlink, readdir, utime,
 	brk, sbrk,
 	dup, dup2,

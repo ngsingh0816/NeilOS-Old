@@ -22,7 +22,7 @@ uint32_t brk(uint32_t addr) {
 	down(&current_pcb->lock);
 	if (addr > current_pcb->brk) {
 		// Allocate new pages
-		uint32_t start = current_pcb->brk - (current_pcb->brk % FOUR_MB_SIZE) + FOUR_MB_SIZE;
+		uint32_t start = (current_pcb->brk-1) - ((current_pcb->brk-1) % FOUR_MB_SIZE) + FOUR_MB_SIZE;
 		for (; start < addr; start += FOUR_MB_SIZE) {
 			page_list_t* t = page_list_get(&current_pcb->page_list, start, MEMORY_WRITE, true);
 			if (!t) {

@@ -80,6 +80,7 @@
  */
 
 /* TODO:
+ * Implement real terminal (termios)
  * More system calls
  * API (add user level support for all new features continuing - also make a user level program to
  		test each of these functionalities)

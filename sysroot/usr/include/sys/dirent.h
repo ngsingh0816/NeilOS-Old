@@ -21,6 +21,7 @@ typedef struct {
     int dd_size;	/* amount of data in buffer */
 } DIR;
 
+# define __dirfd(dp)	((dp)->dd_fd)
 
 DIR *opendir(const char *);
 struct dirent *readdir(DIR *);

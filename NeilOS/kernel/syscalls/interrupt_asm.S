@@ -3,8 +3,8 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			45
-#define THREAD_EXIT_SYSCALL		44
+#define NUM_SYSCALLS			46
+#define THREAD_EXIT_SYSCALL		45
 
 #include <boot/x86_desc.h>
 
@@ -355,6 +355,7 @@ interrupt:
 		popl %eax
 
 		// Push the arguments
+		pushl %edi
 		pushl %esi
 		pushl %edx
 		pushl %ecx
@@ -371,6 +372,7 @@ interrupt:
 		popl %ecx
 		popl %edx
 		popl %esi
+		popl %edi
 
 		// Say that the current thread is out of the syscall
 		movl current_thread, %eax

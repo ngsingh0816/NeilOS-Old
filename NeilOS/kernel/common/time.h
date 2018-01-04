@@ -26,6 +26,11 @@ typedef struct {
 	int16_t year;
 } date_t;
 
+struct timeval {
+	long tv_sec;
+	long tv_usec;
+};
+
 // Returns the current date (GMT)
 date_t get_current_date();
 // Returns a string of the current date

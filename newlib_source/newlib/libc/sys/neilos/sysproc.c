@@ -41,7 +41,12 @@ int fork() {
 	return ret;
 }
 
-int execve(const char *name, char **argv, char **env) {
+int vfork() {
+	// Lazy but probably works
+	return fork();
+}
+
+int _execve(const char *name, char **argv, char **env) {
 	int ret = sys_execve(name, argv, env);
     if (ret < 0) {
         errno = -ret;
@@ -50,7 +55,7 @@ int execve(const char *name, char **argv, char **env) {
 	return ret;
 }
 
-int execv(const char* name, char **argv) {
+/*int execv(const char* name, char **argv) {
 	return execve(name, argv, environ);
 }
 
@@ -136,7 +141,7 @@ int execlp(const char* path, const char* arg, ...) {
 	free(list);
 	
 	return ret;
-}
+}*/
 
 int getpid() {
 	int ret = sys_getpid();
@@ -207,7 +212,7 @@ char* getwd(char* buf) {
 	return buf;
 }
 
-char* getcwd(char* buf, size_t size) {
+/*char* getcwd(char* buf, size_t size) {
 	if (!buf || size == 0) {
 		buf = malloc(4096);	// PATH_MAX on linux
 		if (!buf)
@@ -220,7 +225,7 @@ char* getcwd(char* buf, size_t size) {
         return NULL;
     }
 	return buf;
-}
+}*/
 
 int chdir(const char* path) {
 	int ret = sys_chdir(path);

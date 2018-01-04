@@ -13,6 +13,8 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/select.h>
+#include <sys/signal.h>
 
 typedef struct {
 	uint32_t dev_id;
@@ -41,6 +43,8 @@ extern unsigned int sys_dup2(unsigned int fd, unsigned int new_fd);
 extern unsigned int sys_pipe(int pipefd[2]);
 extern unsigned int sys_fcntl(int fd, int cmd, ...);
 extern unsigned int sys_ioctl(int fd, int cmd, ...);
+extern unsigned int sys_select(int nfds, fd_set* readfds, fd_set* writefds,
+							   fd_set* exceptfds, struct timeval* timeout);
 
 int open(const char* name, int mode, ...) {
 	int ret = sys_open(name, mode + 1);
@@ -49,6 +53,10 @@ int open(const char* name, int mode, ...) {
         return -1;
     }
 	return ret;
+}
+
+int _open(const char* name, int mode, ...) {
+	return open(name, mode);
 }
 
 int read(int file, char* ptr, int len) {
@@ -185,6 +193,10 @@ int close(int file) {
 	return ret;
 }
 
+int _close(int file) {
+	return close(file);
+}
+
 int isatty(int file) {
 	int ret = sys_isatty(file);
     if (ret < 0) {
@@ -248,6 +260,11 @@ int fcntl(int fd, int cmd, ...) {
 	return ret;
 }
 
+int _fcntl(int fd, int cmd, ...) {
+	uint32_t* esp = ((uint32_t*)&cmd) + 1;
+	return fcntl(fd, cmd, *esp, *(esp + 1));
+}
+
 int ioctl(int fd, int request, ...) {
 	uint32_t* esp = ((uint32_t*)&request) + 1;
 	int ret = sys_ioctl(fd, request, *esp, *(esp + 1));
@@ -256,4 +273,26 @@ int ioctl(int fd, int request, ...) {
         return -1;
     }
 	return ret;
+}
+
+int select (int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout) {
+	int ret = sys_select(nfds, readfds, writefds, exceptfds, timeout);
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
+}
+
+int pselect (int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
+			 const struct timespec* timeout, const sigset_t* sigmask) {
+	sigset_t origmask;
+	struct timeval val;
+	val.tv_sec = timeout->tv_sec;
+	val.tv_usec = timeout->tv_nsec / 1000;
+	sigprocmask(SIG_SETMASK, sigmask, &origmask);
+	int ready = select(nfds, readfds, writefds, exceptfds, &val);
+	sigprocmask(SIG_SETMASK, &origmask, NULL);
+	return ready;
+	
 }

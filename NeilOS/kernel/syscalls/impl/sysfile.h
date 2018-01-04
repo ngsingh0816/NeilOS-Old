@@ -11,6 +11,7 @@
 
 #include <common/types.h>
 #include <syscalls/descriptor.h>
+#include <common/time.h>
 
 // Helper for open
 file_descriptor_t* open_handle(const char* filename, uint32_t mode);
@@ -49,5 +50,8 @@ uint32_t pipe(uint32_t pipefd[2]);
 
 // Extensions
 int fcntl(uint32_t fd, int32_t cmd, ...);
+
+// Wait for changes to file descriptors
+int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
 
 #endif /* SYSFILE_H */

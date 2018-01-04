@@ -79,6 +79,10 @@ typedef struct {
 	time_t child_process_time;
 } sys_time_type;
 
+typedef	struct {
+	uint32_t bits[2];
+} fd_set;
+
 // File descriptor
 typedef struct file_descriptor {
 	char* filename;
