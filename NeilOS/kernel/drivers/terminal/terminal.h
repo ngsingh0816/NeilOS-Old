@@ -116,6 +116,10 @@ uint64_t terminal_llseek(int32_t fd, uint64_t offset, int whence);
 // ioctl
 uint32_t terminal_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2);
 
+// Used for select
+bool terminal_can_read();
+bool terminal_can_write();
+
 // Duplicate the file handle
 file_descriptor_t* terminal_duplicate(file_descriptor_t* f);
 

@@ -28,9 +28,11 @@ uint32_t times(sys_time_type* data) {
 }
 
 // Returns the time of day in seconds
-uint32_t gettimeofday() {
-	LOG_DEBUG_INFO();
+uint32_t gettimeofday(struct timeval* t) {
+	LOG_DEBUG_INFO_STR("(0x%x)", t);
 
-	date_t date = get_current_date();
-	return date.second + date.minute * 60 + date.hour * 60 * 60;
+	if (t)
+		*t = time_get();
+	
+	return 0;
 }

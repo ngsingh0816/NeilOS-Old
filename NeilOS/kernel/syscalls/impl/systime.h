@@ -16,7 +16,7 @@
 // Get the timing information for a process
 uint32_t times(sys_time_type* data);
 
-// Returns the time of day in seconds
-uint32_t gettimeofday();
+// Returns the time of day in milliseconds
+uint32_t gettimeofday(struct timeval* t);
 
 #endif /* SYSTIME_H */

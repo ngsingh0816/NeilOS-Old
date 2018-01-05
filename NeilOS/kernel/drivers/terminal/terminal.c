@@ -590,6 +590,8 @@ file_descriptor_t* terminal_open(const char* filename, uint32_t mode) {
 	d->stat = terminal_stat;
 	d->llseek = terminal_llseek;
 	d->ioctl = terminal_ioctl;
+	d->can_read = terminal_can_read;
+	d->can_write = terminal_can_write;
 	d->duplicate = terminal_duplicate;
 	d->close = terminal_close;
 	
@@ -787,6 +789,28 @@ uint32_t terminal_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2) {
 	}
 	
 	return 0;
+}
+
+// Used for select
+bool terminal_can_read() {
+	if (termios.lflag & ICANON) {
+		// Check for a terminating character
+		for (uint32_t z = 0; z < buffer_size; z++) {
+			char c = buffer[(buffer_head + z) % MAX_TERMINAL_BUFFER_LENGTH];
+			if (c == 0x0 || c == ENTER_KEY || c == EOF_KEY) {
+				return true;
+			}
+		}
+		return false;
+	} else {
+		uint32_t min = termios.cc[VMIN];
+		return (buffer_size >= min);
+	}
+}
+
+bool terminal_can_write() {
+	// Always can write to the terminal
+	return true;
 }
 
 // Duplicate the file handle

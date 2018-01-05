@@ -21,16 +21,10 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
  * For coreutils:
 	 du - "cannot read directory ., not a directory"
 	 timeout - hangs
- * For bash:
- 	* select
- 	* termios things
  * More
  	mmap, munmap
-	abort
-	syslog
-	clock_gettime, clock_nanosleep, clock_settime
 	timer_create, timer_delete, timer_settime
- 	select (stubbed - test "tail -f"), pselect, poll
+	select (implemented for terminal, need others - files), poll
  	sockets stuff
  */
 

@@ -476,9 +476,78 @@ int fcntl(uint32_t fd, int32_t cmd, ...) {
 	return 0;
 }
 
+// Helper to clear fds
+void clear_fds(fd_set* read, fd_set* write, fd_set* except) {
+	if (read)
+		memset(read, 0, sizeof(fd_set));
+	if (write)
+		memset(write, 0, sizeof(fd_set));
+	if (except)
+		memset(except, 0, sizeof(fd_set));
+}
+
 // Wait for changes to file descriptors
 int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout) {
 	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x, 0x%x, 0x%x)", nfds, readfds, writefds, exceptfds, timeout);
-	//printf("Select used\n");
-	return 0;
+	
+	if ((!readfds && !writefds && !exceptfds && !timeout) || nfds == 0)
+		return -EINVAL;
+	
+	if (nfds > NUMBER_OF_DESCRIPTORS)
+		nfds = NUMBER_OF_DESCRIPTORS;
+	
+	// Copy over fd sets and clear them
+	fd_set rc;
+	if (readfds)
+		rc = *readfds;
+	else
+		memset(&rc, 0, sizeof(fd_set));
+	fd_set wc;
+	if (writefds)
+		wc = *writefds;
+	else
+		memset(&wc, 0, sizeof(fd_set));
+	clear_fds(readfds, writefds, exceptfds);
+	
+	// Keep on checking until something works or the timeout has expired
+	struct timeval end = { 0, 0 };
+	if (timeout)
+		end = time_add(time_get(), *timeout);
+	int total = 0;
+	while (!current_pcb->should_terminate) {
+		if (signal_occurring(current_pcb))
+			return -EINTR;
+		// Check all file descriptors and see if they can read or write
+		for (int z = 0; z < nfds; z++) {
+			int index = z / 32;
+			int bit = z % 32;
+			if ((rc.bits[index] >> bit) & 0x1) {
+				if (!descriptors[z])
+					return -EBADF;
+				if (descriptors[z]->can_read) {
+					if (descriptors[z]->can_read()) {
+						readfds->bits[index] |= (1 << bit);
+						total++;
+					}
+				}
+			}
+			if ((wc.bits[index] >> bit) & 0x1) {
+				if (descriptors[z] && descriptors[z]->can_write) {
+					if (descriptors[z]->can_write()) {
+						writefds->bits[index] |= (1 << bit);
+						total++;
+					}
+				}
+			}
+		}
+		if (total != 0)
+			break;
+		
+		if (timeout && !time_less(time_get(), end))
+			break;
+		
+		schedule();
+	}
+	
+	return total;
 }
