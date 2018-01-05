@@ -41,8 +41,7 @@
  * Copy on Write
  * Grub2
  * Higher Half Kernel
- * Ported GCC
- * Ported Dash
+ * Ported GCC / Dash / Bash / etc.
  * User Threads (pthreads)
  * Mouse Driver
  * Audio Driver (Ensoniq AudioPCI 1370/1371)
@@ -77,11 +76,11 @@
  * Very rarely, ls | grep cat will crash during elf_perform_relocation_dylib because for some reason
  	the extra page_list entries from the dylibs do not get linked into pcb->page_list so there is a page fault
  * bin/dash -> cd .. -> ls -> ls crashes
+ * bin/dash -> / -> / -> etc, eventually crashes
+ * bin/bash crashes if TERM!=dumb
  */
 
 /* TODO:
- * Implement microsecond timing (by chaning the scheduler a little)
- * Implement real terminal (termios non-canonical mode)
  * More system calls
  * API (add user level support for all new features continuing - also make a user level program to
  		test each of these functionalities)

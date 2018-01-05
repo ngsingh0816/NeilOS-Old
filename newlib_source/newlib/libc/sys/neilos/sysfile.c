@@ -288,11 +288,15 @@ int pselect (int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
 			 const struct timespec* timeout, const sigset_t* sigmask) {
 	sigset_t origmask;
 	struct timeval val;
-	val.tv_sec = timeout->tv_sec;
-	val.tv_usec = timeout->tv_nsec / 1000;
-	sigprocmask(SIG_SETMASK, sigmask, &origmask);
-	int ready = select(nfds, readfds, writefds, exceptfds, &val);
-	sigprocmask(SIG_SETMASK, &origmask, NULL);
+	if (timeout) {
+		val.tv_sec = timeout->tv_sec;
+		val.tv_usec = timeout->tv_nsec / 1000;
+	}
+	if (sigmask)
+		sigprocmask(SIG_SETMASK, sigmask, &origmask);
+	int ready = select(nfds, readfds, writefds, exceptfds, timeout ? &val : NULL);
+	if (sigmask)
+		sigprocmask(SIG_SETMASK, &origmask, NULL);
 	return ready;
 	
 }

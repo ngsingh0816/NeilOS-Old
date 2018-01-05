@@ -479,6 +479,6 @@ int fcntl(uint32_t fd, int32_t cmd, ...) {
 // Wait for changes to file descriptors
 int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout) {
 	LOG_DEBUG_INFO_STR("(%d, 0x%x, 0x%x, 0x%x, 0x%x)", nfds, readfds, writefds, exceptfds, timeout);
-	printf("Select used\n");
+	//printf("Select used\n");
 	return 0;
 }

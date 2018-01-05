@@ -193,7 +193,7 @@ void keyboard_handle() {
 	update_modifier_keys(keycode, pressed);
 	
 	// Call the user handler if it exists
-	if (user_handler)
+	if (user_handler && keycode != 0)
 		user_handler(keycode, modifier_keys, pressed);
 }
 

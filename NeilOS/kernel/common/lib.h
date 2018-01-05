@@ -7,7 +7,15 @@
 
 #include "types.h"
 
-void backspace();
+int32_t cursor_position_get_x();
+int32_t cursor_position_get_y();
+void cursor_position_set_x(int32_t x);
+void cursor_position_set_y(int32_t y);
+void backspace(uint8_t key);
+void reverse_line_feed();
+void clear_display(int type);
+void clear_line(int type);
+
 int32_t sprintf(char* str, const int8_t* format, ...);
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
@@ -16,8 +24,8 @@ int8_t *itoa(uint32_t value, int8_t* buf, int32_t radix);
 int8_t *strrev(int8_t* s);
 uint32_t strlen(const int8_t* s);
 void clear(void);
-void set_cursor_position(uint8_t x, uint8_t y);
-void refresh_cursor_position();
+void cursor_position_set(int32_t x, int32_t y);
+void cursor_position_refresh();
 void show_cursor(bool show);
 void blue_screen(char* message, ...);
 

@@ -23,26 +23,133 @@ int32_t screen_x = 0, screen_y = 0;
 static int current_attrib = ATTRIB;
 static char* video_mem = (char *)VIDEO;
 
+int32_t cursor_position_get_x() {
+	return screen_x;
+}
+
+int32_t cursor_position_get_y() {
+	return screen_y;
+}
+
+void cursor_position_set_x(int32_t x) {
+	screen_x = x;
+	if (screen_x < 0)
+		screen_x = 0;
+	else if (screen_x >= NUM_COLS)
+		screen_x = NUM_COLS-1;
+}
+
+void cursor_position_set_y(int32_t y) {
+	screen_y = y;
+	if (screen_y < 0)
+		screen_y = 0;
+	else if (screen_y >= NUM_ROWS)
+		screen_y = NUM_ROWS-1;
+}
+
 // Move the cursor pointer back one (change buffer in function which calls this)
 //inputs: specific terminal screen
 //outputs: none
 //side effects: prints a backspace to the screen
-void backspace() {
-	// Move back one space
-	screen_x--;
-	if (screen_x < 0) {
-		screen_x += NUM_COLS;
-		screen_y--;
+void backspace(uint8_t key) {
+	int32_t next_x = screen_x - 1;
+	int32_t next_y = screen_y;
+	if (next_x < 0) {
+		next_x += NUM_COLS;
+		next_y--;
 	}
 	
-	// Place an empty space
-	*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = ' ';
-	*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1) + 1) = current_attrib;
-	
-	set_rectangle(screen_x * 8, screen_y * 16, 8, 16, 0, 0, 0);
+	// Delete both the ^ and the X (e.g.) when backspacing
+	int loops = 1;
+	if (key + 0x40 == *(uint8_t *)(video_mem + ((NUM_COLS*next_y + next_x) << 1)))
+		loops = 2;
+	for (int z = 0; z < loops; z++) {
+		// Move back one space
+		screen_x--;
+		if (screen_x < 0) {
+			screen_x += NUM_COLS;
+			screen_y--;
+		}
+		
+		// Place an empty space
+		*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = ' ';
+		*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1) + 1) = current_attrib;
+		
+		set_rectangle(screen_x * 8, screen_y * 16, 8, 16, 0, 0, 0);
+	}
 	
 	// Update the cursor
-	set_cursor_position(screen_x, screen_y);
+	cursor_position_set(screen_x, screen_y);
+}
+
+void reverse_line_feed() {
+	screen_x = 0;
+	screen_y--;
+	
+	int x_pos, y_pos;		// For iterating over the screen
+	// We've gone past the screen, shift everything up 1 row
+	if (screen_y < 0) {
+		for (y_pos = 1; y_pos < NUM_ROWS; y_pos++) {
+			for (x_pos = 0; x_pos < NUM_COLS; x_pos++) {
+				uint8_t last_char = *(uint8_t *)(video_mem +
+												 ((NUM_COLS*(y_pos-1) + x_pos) << 1));
+				uint8_t last_attrib = *(uint8_t *)(video_mem +
+												   ((NUM_COLS*(y_pos-1) + x_pos) << 1) + 1);
+				
+				*(uint8_t *)(video_mem + ((NUM_COLS*y_pos + x_pos) << 1)) = last_char;
+				*(uint8_t *)(video_mem + ((NUM_COLS*y_pos + x_pos) << 1) + 1) = last_attrib;
+			}
+		}
+		
+		// Clear the first row
+		for (x_pos = 0; x_pos < NUM_COLS; x_pos++) {
+			*(uint8_t *)(video_mem + (x_pos << 1)) = ' ';
+			*(uint8_t *)(video_mem + (x_pos << 1) + 1) = current_attrib;
+		}
+		
+		// Update the new screen position
+		screen_y = 0;
+	}
+}
+
+void clear_display(int type) {
+	if (type == 2 || type == 3) {
+		clear();
+		return;
+	}
+	
+	int32_t start_x = screen_x, start_y = screen_y;
+	int32_t end_x = NUM_COLS-1, end_y = NUM_ROWS-1;
+	if (type == 1) {
+		start_x = 0;
+		start_y = 0;
+		end_x = screen_x;
+		end_y = screen_y;
+	}
+	
+	for (int y = start_y; y <= end_y; y++) {
+		for (int x = start_x; x < end_x; x++) {
+			*(uint8_t *)(video_mem + ((NUM_COLS*y + x) << 1)) = ' ';
+			*(uint8_t *)(video_mem + ((NUM_COLS*y + x) << 1) + 1) = current_attrib;
+		}
+	}
+}
+
+void clear_line(int type) {
+	int32_t start_x = screen_x;
+	int32_t end_x = NUM_COLS-1;
+	if (type == 1) {
+		start_x = 0;
+		end_x = screen_x;
+	} else if (type == 2) {
+		start_x = 0;
+		end_x = screen_x;
+	}
+	
+	for (int x = start_x; x < end_x; x++) {
+		*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + x) << 1)) = ' ';
+		*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + x) << 1) + 1) = current_attrib;
+	}
 }
 
 /*
@@ -64,12 +171,12 @@ clear(void)
 	set_rectangle(0, 0, RESOLUTION_X, RESOLUTION_Y, 0, 0, 0);
 	
 	// Reset the cursor position
-	set_cursor_position(0, 0);
+	cursor_position_set(0, 0);
 	current_attrib = ATTRIB;
 }
 
 /*
- * set_cursor_position()
+ * cursor_position_set()
  *	Inputs: x: the new x cursor position (0, 79)
 			y: the new y cursor position (0, 24)
  *	Ouptuts: none
@@ -77,7 +184,15 @@ clear(void)
  *	Function: Sets the cursor to a new position
  */
 
-void set_cursor_position(uint8_t x, uint8_t y) {
+void cursor_position_set(int32_t x, int32_t y) {
+	if (x < 0)
+		x = 0;
+	if (y < 0)
+		y = 0;
+	if (x >= NUM_COLS)
+		x = NUM_COLS - 1;
+	if (y >= NUM_ROWS)
+		y = NUM_ROWS - 1;
 	unsigned int position = y * NUM_COLS + x;
 	
 	// Set the low byte to the VGA Index Register
@@ -92,8 +207,8 @@ void set_cursor_position(uint8_t x, uint8_t y) {
 	screen_y = y;
 }
 
-void refresh_cursor_position() {
-	set_cursor_position(screen_x, screen_y);
+void cursor_position_refresh() {
+	cursor_position_set(screen_x, screen_y);
 }
 
 /*
@@ -521,7 +636,7 @@ format_char_switch:
 	}
 	
 	// Move the cursor
-	set_cursor_position(screen_x, screen_y);
+	cursor_position_set(screen_x, screen_y);
 	
 	// End critical section
 	restore_flags(flags);

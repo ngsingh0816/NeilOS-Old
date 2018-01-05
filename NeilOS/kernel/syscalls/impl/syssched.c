@@ -13,7 +13,7 @@
 
 // Put calling thread to sleep
 uint32_t nanosleep(const struct timespec* req, struct timespec* rem) {
-	LOG_DEBUG_INFO_STR("(%d.%d)", req->tv_sec, req->tv_usec);
+	LOG_DEBUG_INFO_STR("(%d.%d)", req->tv_sec, req->tv_nsec);
 
 	// Require minimum of 1ms of sleep
 	uint32_t sec = req->tv_sec, nanos = req->tv_nsec;

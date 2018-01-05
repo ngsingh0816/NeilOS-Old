@@ -29,7 +29,9 @@ void signal_continue(pcb_t* pcb) {
 
 // Suspend the task
 void signal_suspend(pcb_t* pcb) {
-	
+	down(&pcb->lock);
+	pcb->state = SUSPENDED;
+	up(&pcb->lock);
 }
 
 // Signal default list

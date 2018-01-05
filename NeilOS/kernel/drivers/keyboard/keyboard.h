@@ -4,10 +4,20 @@
 #include <common/types.h>
 
 // Keycodes for this OS
-#define ESCAPE_KEY		0x1B
-#define ENTER_KEY		'\n'
-#define TAB_KEY			0x09
+#define NUL_KEY			0x00
+#define EOF_KEY			0x04
+#define BEL_KEY			0x07
 #define BACKSPACE_KEY	0x08
+#define TAB_KEY			0x09
+#define ENTER_KEY		0xA
+#define VERTICAL_TAB_KEY 0xB
+#define NEW_PAGE_KEY	0xC
+#define CARRIAGE_RETURN_KEY	0xD
+#define SHIFT_OUT_KEY	0xE
+#define SHIFT_IN_KEY	0xF
+#define CANCEL_KEY		0x18
+#define SUBSTITUTE_KEY	0x1A
+#define ESCAPE_KEY		0x1B
 #define DELETE_KEY		0x7F
 #define F1_KEY			0x80
 #define F2_KEY			0x81
@@ -33,10 +43,11 @@
 #define PAGE_UP_KEY		0x99
 #define PAGE_DOWN_KEY	0x9A
 #define PAUSE_KEY		0x9B
+#define CSI_KEY			0x9B
 #define UP_ARROW_KEY	0x9C
 #define DOWN_ARROW_KEY	0x9D
-#define LEFT_ARROW_KEY	0x9E
-#define RIGHT_ARROW_KEY	0x9F
+#define RIGHT_ARROW_KEY	0x9E
+#define LEFT_ARROW_KEY	0x9F
 #define RIGHT_CONTROL_KEY 0xA0
 #define NUM_LOCK_KEY	0xA1
 #define SCROLL_LOCK_KEY	0xA2
