@@ -206,7 +206,11 @@ int get_escape_code(uint8_t keycode, uint8_t* bytes, char* print) {
 			bytes[2] = keycode - F1_KEY + 'P';
 			strcpy(print, "^[OP");
 			print[3] = keycode - F1_KEY + 'P';
-			return 3;			
+			return 3;
+		case TAB_KEY:
+			bytes[0] = '\t';
+			strcpy(print, " ");
+			return 1;
 	}
 	
 	return 0;
@@ -486,7 +490,7 @@ void handle_keys(uint8_t keycode, modifier_keys_t modifier_keys, bool pressed) {
 				backspace(buffer[circular_dec(&buffer_tail, MAX_TERMINAL_BUFFER_LENGTH)]);
 				buffer_size--;
 			}
-			if ((termios.lflag & ICANON))
+			if (termios.lflag & ICANON)
 				return;
 		} else if (keycode == CARRIAGE_RETURN_KEY) {
 			if ((termios.iflag & IGNCR))
@@ -617,10 +621,10 @@ uint32_t read_helper(void* buf, uint32_t bytes) {
 // using backspace and the arrow keys.
 // inputs: file descriptor, buffer pointer and the bytes
 // ouutputs: returns how many bytes were read
-uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
+uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	pcb_t* pcb = current_pcb;
 	if (termios.lflag & ICANON) {
-		while (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+		while (!(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
 			if (signal_occurring(pcb))
 				return -EINTR;
 			
@@ -667,7 +671,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 			// Block until data available or timeout expires (in 1/10th second units)
 			struct timeval end = time_add(time_get(), (struct timeval){ time / 10, (time % 10) * US_IN_MS });
 			while (buffer_size == 0 && time_less(time_get(), end) &&
-				   !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
 				if (signal_occurring(pcb))
 					return -EINTR;
 				
@@ -680,7 +684,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 			if (less > bytes)
 				less = bytes;
 			while (buffer_size < less &&
-				   !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
 				if (signal_occurring(pcb))
 					return -EINTR;
 				
@@ -694,7 +698,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 			if (less > bytes)
 				less = bytes;
 			while (buffer_size == 0 &&
-				   !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
 				if (signal_occurring(pcb))
 					return -EINTR;
 				
@@ -704,7 +708,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 			while (orig < less) {
 				struct timeval end = time_add(time_get(), (struct timeval){ time / 10, (time % 10) * US_IN_MS });
 				while (buffer_size == orig && time_less(time_get(), end) &&
-					   !(descriptors[fd]->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+					   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
 					if (signal_occurring(pcb))
 						return -EINTR;
 					
@@ -724,7 +728,7 @@ uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes) {
 // Writes a string to the terminal (returns how many bytes were written)
 //inputs: file descriptor, buffer pointer and the bytes
 //outputs: -1 for failure and the bytes for success
-uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes) {
+uint32_t terminal_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	// Loop over and print all the characters
 	uint8_t* cbuf = (uint8_t*)buf;
 	for(uint32_t i = 0; i < nbytes;) {
@@ -738,15 +742,15 @@ uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes) {
 }
 
 // Get info
-uint32_t terminal_stat(int32_t fd, sys_stat_type* data) {
+uint32_t terminal_stat(file_descriptor_t* f, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->size = 0;
-	data->mode = descriptors[fd]->mode;
+	data->mode = f->mode;
 	return 0;
 }
 
 // Seek a terminal (not supported).
-uint64_t terminal_llseek(int32_t fd, uint64_t offset, int whence) {
+uint64_t terminal_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 	return uint64_make(-1, -ESPIPE);
 }
 
@@ -756,7 +760,7 @@ uint64_t terminal_llseek(int32_t fd, uint64_t offset, int whence) {
 #define TCGETATTR		2
 #define TCSETATTR		3
 #define TTYNAME			4
-uint32_t terminal_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2) {
+uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2) {
 	switch (request) {
 		case TCFLUSH: {
 			if (arg1 == TCIFLUSH || arg1 == TCIOFLUSH)
@@ -792,7 +796,7 @@ uint32_t terminal_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2) {
 }
 
 // Used for select
-bool terminal_can_read() {
+bool terminal_can_read(file_descriptor_t* f) {
 	if (termios.lflag & ICANON) {
 		// Check for a terminating character
 		for (uint32_t z = 0; z < buffer_size; z++) {
@@ -808,7 +812,7 @@ bool terminal_can_read() {
 	}
 }
 
-bool terminal_can_write() {
+bool terminal_can_write(file_descriptor_t* f) {
 	// Always can write to the terminal
 	return true;
 }

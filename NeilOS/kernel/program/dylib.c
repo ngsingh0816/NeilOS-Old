@@ -47,23 +47,26 @@ bool dylib_is_loaded(char* name) {
 		return false;
 	
 	down(&dylib_lock);
-	if (dylibs && dylibs->dylib)
-		down(&dylibs->dylib->lock);
+	if (dylibs)
+		down(&dylibs->lock);
 	dylib_list_t* t = dylibs;
 	up(&dylib_lock);
 	uint32_t len = strlen(realname) + 1;
-	while (t && t->dylib) {
-		if (strncmp(realname, t->dylib->name, len) == 0) {
-			kfree(realname);
+	while (t) {
+		down(&t->dylib->lock);
+		if (t->dylib && strncmp(realname, t->dylib->name, len) == 0) {
 			up(&t->dylib->lock);
+			up(&t->lock);
+			kfree(realname);
 			return true;
 		}
+		up(&t->dylib->lock);
 		
 		dylib_list_t* prev = t;
 		t = t->next;
-		if (t && t->dylib)
-			down(&t->dylib->lock);
-		up(&prev->dylib->lock);
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
 	}
 	
 	kfree(realname);
@@ -81,6 +84,7 @@ dylib_t* dylib_load(char* name) {
 	if (!t)
 		return false;
 	memset(t, 0, sizeof(dylib_list_t));
+	t->lock = MUTEX_UNLOCKED;
 	t->dylib = kmalloc(sizeof(dylib_t));
 	if (!t->dylib) {
 		kfree(t);
@@ -136,6 +140,7 @@ dylib_t* dylib_create_from_pcb(pcb_t* pcb) {
 		return NULL;
 	}
 	memset(list, 0, sizeof(dylib_list_t));
+	list->lock = MUTEX_UNLOCKED;
 	list->dylib = dylib;
 	list->next = pcb->dylibs;
 	// Must be first to hide duplicate external symbols
@@ -151,23 +156,26 @@ dylib_t* dylib_get(char* name, bool allocate) {
 		return false;
 	
 	down(&dylib_lock);
-	if (dylibs && dylibs->dylib)
-		down(&dylibs->dylib->lock);
+	if (dylibs)
+		down(&dylibs->lock);
 	dylib_list_t* t = dylibs;
 	up(&dylib_lock);
 	uint32_t len = strlen(realname) + 1;
-	while (t && t->dylib) {
-		if (strncmp(realname, t->dylib->name, len) == 0) {
-			kfree(realname);
+	while (t) {
+		down(&t->dylib->lock);
+		if (t->dylib && strncmp(realname, t->dylib->name, len) == 0) {
 			up(&t->dylib->lock);
+			up(&t->lock);
+			kfree(realname);
 			return t->dylib;
 		}
+		up(&t->dylib->lock);
 		
 		dylib_list_t* prev = t;
 		t = t->next;
-		if (t && t->dylib)
-			down(&t->dylib->lock);
-		up(&prev->dylib->lock);
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
 	}
 	
 	if (allocate) {
@@ -203,10 +211,6 @@ bool dylib_list_copy_for_pcb(dylib_list_t* list, pcb_t* pcb) {
 	
 	memset(l, 0, sizeof(dylib_list_t));
 	l->dylib = list->dylib;
-	if (!l->dylib) {
-		printf("Error\n");
-		for (;;);
-	}
 	l->dylib->num_instances++;
 	
 	// We must place this at the back because the order of linking is important for duplicate symbols
@@ -233,6 +237,7 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 
 	// Copy over the dylib data
 	memset(list, 0, sizeof(dylib_list_t));
+	list->lock = MUTEX_UNLOCKED;
 	list->dylib = dylib;
 	page_list_t* p = dylib->page_list;
 	page_list_t* pl = NULL;
@@ -241,10 +246,9 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	while (p) {
 		page_list_t* page = page_list_add_copy(&pl, p);
 		if (!page) {
+			up(&dylib->lock);
 			page_list_dealloc(pl);
 			kfree(list);
-			
-			up(&dylib->lock);
 			
 			return false;
 		}
@@ -364,36 +368,32 @@ void* dylib_get_symbol_address_hash(dylib_t* dylib, uint32_t hash, char* name, b
 }
 
 // Get the symbol address for a specific symbol
-void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* found) {
+void* dylib_get_symbol_address_list(dylib_list_t* list, char* name, bool* found) {
 	*found = false;
 	uint32_t hash = elf_compute_hash(name);
 	down(&dylib_lock);
-	dylib_list_t* t = dylibs;
-	if (t && t->dylib)
-		down(&t->dylib->lock);
+	dylib_list_t* t = list;
+	if (t)
+		down(&t->lock);
 	up(&dylib_lock);
-	while (t && t->dylib) {
+	while (t) {
 		void* ret = NULL;
-		if (t->dylib->hash.nbuckets != 0) {
-			up(&t->dylib->lock);
-			ret = dylib_get_symbol_address_hash(t->dylib, hash, name, found);
-			down(&t->dylib->lock);
-		}
-		else {
-			up(&t->dylib->lock);
-			ret = dylib_get_symbol_address_name(t->dylib, name, found);
-			down(&t->dylib->lock);
+		if (t->dylib) {
+			if (t->dylib->hash.nbuckets != 0)
+				ret = dylib_get_symbol_address_hash(t->dylib, hash, name, found);
+			else
+				ret = dylib_get_symbol_address_name(t->dylib, name, found);
 		}
 		if (*found) {
-			up(&t->dylib->lock);
+			up(&t->lock);
 			return (void*)((uint32_t)ret + t->offset);
 		}
 		
 		dylib_list_t* prev = t;
 		t = t->next;
-		if (t && t->dylib)
-			down(&t->dylib->lock);
-		up(&prev->dylib->lock);
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
 	}
 	return NULL;
 }
@@ -410,12 +410,13 @@ void dylib_unload(char* name) {
 	down(&dylib_lock);
 	dylib_list_t* t = dylibs;
 	dylib_t* dylib = NULL;
-	if (t && t->dylib)
-		down(&t->dylib->lock);
+	if (t)
+		down(&t->lock);
 	up(&dylib_lock);
-	while (t && t->dylib) {
-		if (strncmp(realname, t->dylib->name, len) == 0) {
-			kfree(realname);
+	while (t) {
+		down(&t->dylib->lock);
+		if (t->dylib && strncmp(realname, t->dylib->name, len) == 0) {
+			up(&t->dylib->lock);
 			dylib = t->dylib;
 			// Unlink it
 			if (t->prev)
@@ -424,19 +425,22 @@ void dylib_unload(char* name) {
 				dylibs = t->next;
 			
 			if (t->prev)
-				up(&t->prev->dylib->lock);
-			up(&t->dylib->lock);
+				up(&t->prev->lock);
+			up(&t->lock);
+			
+			kfree(realname);
 			break;
 		}
+		up(&t->dylib->lock);
 		
 		if (t->prev)
-			up(&t->prev->dylib->lock);
+			up(&t->prev->lock);
 		dylib_list_t* prev = t;
 		t = t->next;
 		if (t)
-			down(&t->dylib->lock);
+			down(&t->lock);
 		else
-			up(&prev->dylib->lock);
+			up(&prev->lock);
 	}
 	if (!dylib)
 		return;

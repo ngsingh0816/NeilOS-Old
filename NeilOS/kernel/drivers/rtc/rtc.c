@@ -194,7 +194,7 @@ bool rtc_set_freq(uint32_t hz) {
 	return true;
 }
 
-uint32_t rtc_write(int32_t fd, const void* buf, uint32_t nbytes) {
+uint32_t rtc_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	int z;										// Looping over the 32 bits of the rate
 	
 	// Only accept 4 byte integers
@@ -218,7 +218,7 @@ uint32_t rtc_write(int32_t fd, const void* buf, uint32_t nbytes) {
 		}
 	}
 	
-	rtc_info_t* info = descriptors[fd]->info;
+	rtc_info_t* info = f->info;
 	info->target_freq = hz;
 	
 	return sizeof(int32_t);
@@ -226,12 +226,12 @@ uint32_t rtc_write(int32_t fd, const void* buf, uint32_t nbytes) {
 
 //inputs: file descriptor, pointer to buffer, number of bytes
 //output: 0 when interrupted
-uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
-	rtc_info_t* info = descriptors[fd]->info;
+uint32_t rtc_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
+	rtc_info_t* info = f->info;
 	// Wait for an interrupt to occur
 	info->waiting = true;
 	info->counter = 0;
-	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
+	if (!(f->mode & FILE_MODE_NONBLOCKING)) {
 		while (info->counter < (MAX_FREQUENCY / info->target_freq)) {
 			if (signal_occurring(current_pcb))
 				return -EINTR;
@@ -244,10 +244,10 @@ uint32_t rtc_read(int32_t fd, void* buf, uint32_t bytes) {
 }
 
 // Get info
-uint32_t rtc_stat(int32_t fd, sys_stat_type* data) {
+uint32_t rtc_stat(file_descriptor_t* f, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->size = 0;
-	data->mode = descriptors[fd]->mode;
+	data->mode = f->mode;
 	return 0;
 }
 

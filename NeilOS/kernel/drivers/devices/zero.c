@@ -27,6 +27,7 @@ file_descriptor_t* zero_open(const char* filename, uint32_t mode) {
 	// Assign the functions
 	d->read = zero_read;
 	d->write = zero_write;
+	d->llseek = zero_llseek;
 	d->stat = zero_stat;
 	d->duplicate = zero_duplicate;
 	d->close = zero_close;
@@ -35,21 +36,26 @@ file_descriptor_t* zero_open(const char* filename, uint32_t mode) {
 }
 
 // Read zeros
-uint32_t zero_read(int32_t fd, void* buf, uint32_t bytes) {
+uint32_t zero_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	memset(buf, 0, bytes);
 	return bytes;
 }
 
 // Write all
-uint32_t zero_write(int32_t fd, const void* buf, uint32_t nbytes) {
+uint32_t zero_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	return nbytes;
 }
 
+// Seek
+uint64_t zero_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
+	return uint64_make(0, 0);
+}
+
 // Get info
-uint32_t zero_stat(int32_t fd, sys_stat_type* data) {
+uint32_t zero_stat(file_descriptor_t* f, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->size = 0;
-	data->mode = descriptors[fd]->mode;
+	data->mode = f->mode;
 	data->inode = filesystem_get_inode("/dev/zero");
 	return 0;
 }

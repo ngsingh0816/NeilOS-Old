@@ -233,11 +233,11 @@ file_descriptor_t* mouse_open(const char* filename, uint32_t mode) {
 #define MOUSE_STRUCT_SIZE		9
 
 // Returns the last mouse position if in nonblocking mode, otherwise blocks until mouse is moved
-uint32_t mouse_read(int32_t fd, void* buf, uint32_t bytes) {
+uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	if (bytes != MOUSE_STRUCT_SIZE)
 		return -EINVAL;
 	
-	if (!(descriptors[fd]->mode & FILE_MODE_NONBLOCKING)) {
+	if (!(f->mode & FILE_MODE_NONBLOCKING)) {
 		unsigned int id = mouse_packet_id;
 		pcb_t* pcb = current_pcb;
 		while (id == mouse_packet_id && !(pcb && pcb->should_terminate)) {
@@ -256,7 +256,7 @@ uint32_t mouse_read(int32_t fd, void* buf, uint32_t bytes) {
 }
 
 // Sets the cursor position
-uint32_t mouse_write(int32_t fd, const void* buf, uint32_t nbytes) {
+uint32_t mouse_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	if (nbytes != MOUSE_STRUCT_SIZE)
 		return -EINVAL;
 	
@@ -275,15 +275,15 @@ uint32_t mouse_write(int32_t fd, const void* buf, uint32_t nbytes) {
 }
 
 // Get info
-uint32_t mouse_stat(int32_t fd, sys_stat_type* data) {
+uint32_t mouse_stat(file_descriptor_t* f, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->size = 0;
-	data->mode = descriptors[fd]->mode;
+	data->mode = f->mode;
 	return 0;
 }
 
 // Seek a mouse (returns error)
-uint64_t mouse_llseek(int32_t fd, uint64_t offset, int whence) {
+uint64_t mouse_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 	return uint64_make(-1, -ESPIPE);
 }
 

@@ -436,6 +436,15 @@ bool copy_pcb(pcb_t* in, pcb_t* out) {
 
 // Helper for error function
 void pcb_error(pcb_t* pcb, task_list_t* task) {
+	// Task
+	down(&task_lock);
+	if (task->next)
+		task->next->prev = task->prev;
+	if (task->prev)
+		task->prev->next = task->next;
+	up(&task_lock);
+	kfree(task);
+	
 	if (pcb->working_dir)
 		kfree(pcb->working_dir);
 	
@@ -443,21 +452,22 @@ void pcb_error(pcb_t* pcb, task_list_t* task) {
 	thread_list_dealloc(&pcb->threads);
 	
 	// Memory map
-	page_list_dealloc(pcb->page_list);
+	if (pcb->page_list)
+		page_list_dealloc(pcb->page_list);
+	if (pcb->temporary_mappings)
+		page_list_dealloc(pcb->temporary_mappings);
+	if (pcb->user_mappings)
+		mmap_list_dealloc_list(pcb->user_mappings);
 	
 	// Dylibs
-	dylib_list_dealloc(pcb->dylibs);
+	if (pcb->dylibs)
+		dylib_list_dealloc(pcb->dylibs);
 	
 	// Descriptors
 	pcb_free_descriptors(pcb);
 	
 	// PCB
 	kfree(pcb);
-	
-	// Task
-	if (task->prev)
-		task->prev->next = task->next;
-	kfree(task);
 }
 
 // Duplicate current task
@@ -483,12 +493,16 @@ pcb_t* duplicate_current_task() {
 	pcb->signal_pending = 0;
 	pcb->should_terminate = false;
 	pcb->signal_occurred = false;
-	task->pcb = pcb;
 	
 	add_child_task(current, task->pid, pcb);
 	
-	// Copy over the memory used
 	pcb->page_list = NULL;
+	pcb->temporary_mappings = NULL;
+	pcb->dylibs = NULL;
+	pcb->threads = NULL;
+	task->pcb = pcb;
+	
+	// Copy over the memory used
 	down(&current->lock);
 	page_list_t* n = current->page_list;
 	while (n) {
@@ -501,7 +515,6 @@ pcb_t* duplicate_current_task() {
 		n = n->next;
 	}
 	
-	pcb->temporary_mappings = NULL;
 	n = current->temporary_mappings;
 	while (n) {
 		if (!page_list_add_copy(&pcb->temporary_mappings, n)) {
@@ -513,9 +526,14 @@ pcb_t* duplicate_current_task() {
 		n = n->next;
 	}
 	
+	if (current->user_mappings && !(pcb->user_mappings = mmap_list_copy(current->user_mappings))) {
+		up(&current->lock);
+		pcb_error(pcb, task);
+		return NULL;
+	}
+	
 	// Copy the dylib lists too
-	dylib_list_t* l = pcb->dylibs;
-	pcb->dylibs = NULL;
+	dylib_list_t* l = current->dylibs;
 	while (l) {
 		if (!dylib_list_copy_for_pcb(l, pcb)) {
 			up(&current->lock);
@@ -527,8 +545,7 @@ pcb_t* duplicate_current_task() {
 	}
 	
 	// Copy over threads
-	thread_t* t = pcb->threads;
-	pcb->threads = NULL;
+	thread_t* t = current->threads;
 	if (!thread_list_copy(&pcb->threads, t, pcb, true)) {
 		up(&current->lock);
 		pcb_error(pcb, task);
@@ -550,7 +567,7 @@ bool setup_stack_and_heap(pcb_t* pcb, uint32_t argc) {
 	}
 	// Map another block in for the stack
 	page_list_t* stack_block = page_list_get(&pcb->page_list,
-											 pcb->threads->stack_address + FOUR_MB_SIZE, MEMORY_WRITE, true);
+											 pcb->threads->stack_address + FOUR_MB_SIZE, MEMORY_RW, true);
 	if (!stack_block)
 		return false;
 	pcb->threads->stack_address += FOUR_MB_SIZE;
@@ -786,6 +803,8 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	current_pcb->page_list = NULL;
 	page_list_t* tlist = current_pcb->temporary_mappings;
 	current_pcb->temporary_mappings = NULL;
+	mmap_list_t* maps = current_pcb->user_mappings;
+	current_pcb->user_mappings = NULL;
 	dylib_list_t* dylibs = current_pcb->dylibs;
 	current_pcb->dylibs = NULL;
 	thread_t* threads = current_pcb->threads;
@@ -837,6 +856,7 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 	thread_list_dealloc(&threads);
 	page_list_dealloc(list);
 	page_list_dealloc(tlist);
+	mmap_list_dealloc_list(maps);
 	dylib_list_dealloc(dylibs);
 	
 	up(&current_pcb->lock);
@@ -874,6 +894,8 @@ void terminate_task(uint32_t ret) {
 		current->should_terminate = true;
 		return;
 	}
+	
+	down(&current_pcb->lock);
 	
 	// Unload the task and get its parent
 	pcb_t* parent = current->parent;
@@ -913,10 +935,12 @@ void terminate_task(uint32_t ret) {
 	// Free the task memory and dylibs allocated by the deleted task
 	page_list_t* page_list = current->page_list;
 	page_list_t* temp_list = current->temporary_mappings;
+	mmap_list_t* maps = current->user_mappings;
 	current->page_list = NULL;
 	current->temporary_mappings = NULL;
 	page_list_dealloc(page_list);
 	page_list_dealloc(temp_list);
+	mmap_list_dealloc_list(maps);
 	
 	dylib_list_t* dylibs = current->dylibs;
 	current->dylibs = NULL;
@@ -1072,10 +1096,12 @@ thread_t* get_next_runnable_thread(thread_t* hint) {
 			return t;
 		thread_t* prev = t;
 		t = t->next;
-		if (!t) {
-			task_list_t* next_task = prev->pcb->task->next;
+		task_list_t* next_task = prev->pcb->task->next;
+		while (!t) {
 			pcb = (next_task && next_task->pcb) ? next_task->pcb : tasks->pcb;
 			t = pcb->threads;
+			if (next_task)
+				next_task = next_task->next;
 		}
 	} while (t != initial);
 	

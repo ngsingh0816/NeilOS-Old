@@ -84,15 +84,50 @@ uint32_t vm_get_next_unmapped_page(uint32_t type) {
 uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type) {
 	// Standard linear search
 	uint32_t z = VM_KERNEL_START;
-	if (type == VIRTUAL_MEMORY_USER)
+	uint32_t end = VM_BITMAP_SIZE;
+	if (type == VIRTUAL_MEMORY_USER) {
 		z = VM_USER_START;
+		end = VM_KERNEL_START;
+	}
 	
 	static const uint32_t bits_in_uint32_t = 8 * sizeof(uint32_t);
 	
-	for (; z < VM_BITMAP_SIZE; z++) {
+	for (; z < end; z++) {
 		if (vm_bitmap[z] != (uint32_t)-1) {
 			uint32_t q;
 			for (q = 0; q < bits_in_uint32_t; q++) {
+				bool all = true;
+				uint32_t n;
+				for (n = 0; n < pages; n++) {
+					if ((vm_bitmap[z + ((n + q) / bits_in_uint32_t)] >> ((n + q) % bits_in_uint32_t)) & 0x1) {
+						all = false;
+						break;
+					}
+				}
+				if (all)
+					return FOUR_MB_SIZE * (sizeof(uint32_t) * 8 * z + q);
+			}
+		}
+	}
+	
+	return (uint32_t)NULL;
+}
+
+// Gets the address of the next unmapped 4MB pages of the specific type
+uint32_t vm_get_next_unmapped_pages_from_back(uint32_t pages, uint32_t type) {
+	// Standard linear search
+	int end = VM_KERNEL_START;
+	int z = VM_BITMAP_SIZE-1;
+	if (type == VIRTUAL_MEMORY_USER) {
+		end = 0;
+		z = VM_KERNEL_START-1;
+	}
+	
+	static const uint32_t bits_in_uint32_t = 8 * sizeof(uint32_t);
+	
+	for (; z >= end; z--) {
+		if (vm_bitmap[z] != (uint32_t)-1) {
+			for (int q = bits_in_uint32_t - 1; q >= 0; q--) {
 				bool all = true;
 				uint32_t n;
 				for (n = 0; n < pages; n++) {
@@ -129,7 +164,9 @@ void vm_map_page(uint32_t vaddr, uint32_t paddr, uint32_t permissions, bool pres
 		invalidate_page_address((void*)(page_table_mappings[page] * FOUR_MB_SIZE));
 	
 	// Map the page
-	uint32_t data = PAGE_PRESENT_BIT | PAGE_DIRECTORY_BIT;
+	uint32_t data = PAGE_DIRECTORY_BIT;
+	if (permissions & MEMORY_READ)
+		data |= PAGE_PRESENT_BIT;
 	if (!(permissions & MEMORY_KERNEL))
 		data |= PAGE_USER_BIT;
 	if (permissions & MEMORY_WRITE)
@@ -149,7 +186,9 @@ void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t* page_tabl
 	if (!(page_directory[page] & PAGE_DIRECTORY_BIT))
 		invalidate_page_address((void*)(page_table_mappings[page] * FOUR_MB_SIZE));
 	
-	uint32_t data = PAGE_PRESENT_BIT;
+	uint32_t data = 0;
+	if (permissions & MEMORY_READ)
+		data |= PAGE_PRESENT_BIT;
 	if (!(permissions & MEMORY_KERNEL))
 		data |= PAGE_USER_BIT;
 	if (permissions & MEMORY_WRITE)
@@ -163,7 +202,9 @@ void vm_map_page_table(uint32_t vaddr, uint32_t* page_table, uint32_t* page_tabl
 
 // Create a page table entry (address must be 4kb aligned)
 uint32_t vm_create_page_table_entry(uint32_t paddr, uint32_t permissions) {
-	uint32_t data = PAGE_PRESENT_BIT;
+	uint32_t data = 0;
+	if (permissions & MEMORY_READ)
+		data |= PAGE_PRESENT_BIT;
 	if (!(permissions & MEMORY_KERNEL))
 		data |= PAGE_USER_BIT;
 	if (permissions & MEMORY_WRITE)

@@ -102,23 +102,23 @@ void terminal_init();
 file_descriptor_t* terminal_open(const char* filename, uint32_t mode);
 
 // Returns a buffered string of input
-uint32_t terminal_read(int32_t fd, void* buf, uint32_t bytes);
+uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes);
 
 // Writes a string to the terminal
-uint32_t terminal_write(int32_t fd, const void* buf, uint32_t nbytes);
+uint32_t terminal_write(file_descriptor_t* f, const void* buf, uint32_t nbytes);
 
 // Get info
-uint32_t terminal_stat(int32_t fd, sys_stat_type* data);
+uint32_t terminal_stat(file_descriptor_t* f, sys_stat_type* data);
 
 // Seek a terminal (returns error)
-uint64_t terminal_llseek(int32_t fd, uint64_t offset, int whence);
+uint64_t terminal_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // ioctl
-uint32_t terminal_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2);
+uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2);
 
 // Used for select
-bool terminal_can_read();
-bool terminal_can_write();
+bool terminal_can_read(file_descriptor_t* f);
+bool terminal_can_write(file_descriptor_t* f);
 
 // Duplicate the file handle
 file_descriptor_t* terminal_duplicate(file_descriptor_t* f);

@@ -85,7 +85,7 @@ void* convert_physical_to_virtual(uint32_t paddr, uint32_t size, uint32_t type) 
 		int z;
 		for (z = 0; z < num_pages; z++) {
 			vm_map_page(vaddr + z * PAGE_SIZE, paddr_aligned + z * PAGE_SIZE,
-						MEMORY_WRITE | ((type == VIRTUAL_MEMORY_KERNEL) ? MEMORY_KERNEL : 0x0), false);
+						MEMORY_RW | ((type == VIRTUAL_MEMORY_KERNEL) ? MEMORY_KERNEL : 0x0), false);
 			
 		}
 		vm_unlock();
@@ -120,7 +120,7 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 		return NULL;
 	}
 	while (t) {
-		vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL, false);
+		vm_map_page(vaddr, (uint32_t)t, MEMORY_RW | MEMORY_KERNEL, false);
 		uint32_t paddr = (uint32_t)t;
 		t = (page_four_kb_t*)vaddr;
 		
@@ -159,7 +159,7 @@ void* page_physical_get_aligned_four_kb(uint32_t type) {
 	vaddr = (uint32_t)t;
 	t = vm_virtual_to_physical(vaddr);
 	if (prev) {
-		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL, false);
+		vm_map_page(vaddr, (uint32_t)prev, MEMORY_RW | MEMORY_KERNEL, false);
 		prev = (page_four_kb_t*)vaddr;
 		prev->next = t;
 	}
@@ -195,7 +195,7 @@ bool page_physical_free_aligned_four_kb(void* addr) {
 		up(&four_kb_lock);
 		return false;
 	}
-	vm_map_page(vaddr, (uint32_t)t, MEMORY_WRITE | MEMORY_KERNEL, false);
+	vm_map_page(vaddr, (uint32_t)t, MEMORY_RW | MEMORY_KERNEL, false);
 	t = (page_four_kb_t*)vaddr;
 	
 	if (!t->entries[offset])
@@ -221,11 +221,11 @@ bool page_physical_free_aligned_four_kb(void* addr) {
 	// Remove this entry
 	page_four_kb_t* next = t->next, *prev = t->prev;
 	if (prev) {
-		vm_map_page(vaddr, (uint32_t)prev, MEMORY_WRITE | MEMORY_KERNEL, false);
+		vm_map_page(vaddr, (uint32_t)prev, MEMORY_RW | MEMORY_KERNEL, false);
 		((page_four_kb_t*)vaddr)->next = next;
 	}
 	if (next) {
-		vm_map_page(vaddr, (uint32_t)next, MEMORY_WRITE | MEMORY_KERNEL, false);
+		vm_map_page(vaddr, (uint32_t)next, MEMORY_RW | MEMORY_KERNEL, false);
 		((page_four_kb_t*)vaddr)->prev = prev;
 	}
 	if (t == four_kb_pages)

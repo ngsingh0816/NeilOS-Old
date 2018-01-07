@@ -11,13 +11,16 @@ pushl %ecx                    ;\
 pushl %edi                    ;\
 pushl %esi                    ;\
 pushl %edi					  ;\
+pushl %ebp					  ;\
 movl $number, %eax            ;\
-movl 24(%esp), %ebx           ;\
-movl 28(%esp), %ecx           ;\
-movl 32(%esp), %edx           ;\
-movl 36(%esp), %esi           ;\
-movl 40(%esp), %edi			  ;\
+movl 28(%esp), %ebx           ;\
+movl 32(%esp), %ecx           ;\
+movl 36(%esp), %edx           ;\
+movl 40(%esp), %esi           ;\
+movl 44(%esp), %edi			  ;\
+movl 48(%esp), %ebp			  ;\
 int	$0x80                     ;\
+popl %ebp					  ;\
 popl %edi					  ;\
 popl %esi                     ;\
 popl %edi                     ;\
@@ -49,25 +52,28 @@ DO_CALL(sys_readdir, 20)
 DO_CALL(sys_utime, 21)
 DO_CALL(sys_brk, 22)
 DO_CALL(sys_sbrk, 23)
-DO_CALL(sys_dup, 24)
-DO_CALL(sys_dup2, 25)
-DO_CALL(sys_times, 26)
-DO_CALL(sys_gettimeofday, 27)
-DO_CALL(sys_kill, 28)
-DO_CALL(sys_sigaction, 29)
-DO_CALL(sys_sigsetmask, 30)
-DO_CALL(sys_siggetmask, 31)
-DO_CALL(sys_sigprocmask, 32)
-DO_CALL(sys_sigsuspend, 33)
-DO_CALL(sys_alarm, 34)
-DO_CALL(sys_nanosleep, 35)
-DO_CALL(sys_sched_yield, 36)
-DO_CALL(sys_sysconf, 37)
-DO_CALL(sys_fpathconf, 38)
-DO_CALL(sys_getwd, 39)
-DO_CALL(sys_chdir, 40)
-DO_CALL(sys_ioctl, 41)
-DO_CALL(sys_thread_create, 42)
-DO_CALL(sys_gettid, 43)
-DO_CALL(sys_thread_wait, 44)
-DO_CALL(sys_thread_exit, 45)
+DO_CALL(sys_mmap, 24)
+DO_CALL(sys_munmap, 25)
+DO_CALL(sys_msync, 26)
+DO_CALL(sys_dup, 27)
+DO_CALL(sys_dup2, 28)
+DO_CALL(sys_times, 29)
+DO_CALL(sys_gettimeofday, 30)
+DO_CALL(sys_kill, 31)
+DO_CALL(sys_sigaction, 32)
+DO_CALL(sys_sigsetmask, 33)
+DO_CALL(sys_siggetmask, 34)
+DO_CALL(sys_sigprocmask, 35)
+DO_CALL(sys_sigsuspend, 36)
+DO_CALL(sys_alarm, 37)
+DO_CALL(sys_nanosleep, 38)
+DO_CALL(sys_sched_yield, 39)
+DO_CALL(sys_sysconf, 40)
+DO_CALL(sys_fpathconf, 41)
+DO_CALL(sys_getwd, 42)
+DO_CALL(sys_chdir, 43)
+DO_CALL(sys_ioctl, 44)
+DO_CALL(sys_thread_create, 45)
+DO_CALL(sys_gettid, 46)
+DO_CALL(sys_thread_wait, 47)
+DO_CALL(sys_thread_exit, 48)

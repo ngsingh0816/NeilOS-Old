@@ -188,30 +188,30 @@ file_descriptor_t* ata_open(const char* filename, uint32_t mode) {
 }
 
 // Read data from the disk
-uint32_t ata_read(int32_t fd, void* buf, uint32_t bytes) {
-	if (!(descriptors[fd]->mode & FILE_MODE_READ))
+uint32_t ata_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
+	if (!(f->mode & FILE_MODE_READ))
 		return -EACCES;
 	
-	return ata_partition_read(descriptors[fd]->info, buf, bytes);
+	return ata_partition_read(f->info, buf, bytes);
 }
 
 // Write data to the disk
-uint32_t ata_write(int32_t fd, const void* buf, uint32_t nbytes) {
-	if (!(descriptors[fd]->mode & FILE_MODE_WRITE))
+uint32_t ata_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
+	if (!(f->mode & FILE_MODE_WRITE))
 		return -EACCES;
 	
-	if (descriptors[fd]->mode & FILE_MODE_APPEND)
-		ata_llseek(fd, uint64_make(0, 0), SEEK_END);
-	return ata_partition_write(descriptors[fd]->info, buf, nbytes);
+	if (f->mode & FILE_MODE_APPEND)
+		ata_llseek(f, uint64_make(0, 0), SEEK_END);
+	return ata_partition_write(f->info, buf, nbytes);
 }
 
 // Seek to a disk's position
-uint64_t ata_llseek(int32_t fd, uint64_t offset, int whence) {
-	return ata_partition_llseek(descriptors[fd]->info, offset, whence);
+uint64_t ata_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
+	return ata_partition_llseek(f->info, offset, whence);
 }
 
 // Get info
-uint32_t ata_stat(int32_t fd, sys_stat_type* data) {
+uint32_t ata_stat(file_descriptor_t* f, sys_stat_type* data) {
 	// TODO: fill this in maybe
 	return 0;
 }

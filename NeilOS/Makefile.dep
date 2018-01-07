@@ -103,6 +103,9 @@ build/./kernel/memory/memory.o: kernel/memory/memory.c \
  kernel/memory/memory.h kernel/memory/allocation/page_allocator.h \
  kernel/memory/allocation/heap.h kernel/memory/page_list.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/memory.o ./kernel/memory/memory.c
+build/./kernel/memory/mmap_list.o: kernel/memory/mmap_list.c \
+ kernel/memory/mmap_list.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/memory/mmap_list.o ./kernel/memory/mmap_list.c
 build/./kernel/memory/page_list.o: kernel/memory/page_list.c \
  kernel/memory/page_list.h kernel/memory/memory.h \
  kernel/memory/allocation/page_allocator.h \

@@ -452,8 +452,8 @@ uint64_t ftruncate(file_descriptor_t* f, uint64_t size) {
 }
 
 // Truncate a file descriptor
-uint64_t filesystem_truncate(int32_t fd, uint64_t nsize) {
-	return ftruncate(descriptors[fd], nsize);
+uint64_t filesystem_truncate(file_descriptor_t* f, uint64_t nsize) {
+	return ftruncate(f, nsize);
 }
 
 // Make a directory
@@ -625,59 +625,58 @@ file_descriptor_t* filesystem_open(const char* filename, uint32_t mode) {
 }
 
 // Read from a file and return the number of bytes read
-uint32_t filesystem_read_file(int32_t fd, void* buf, uint32_t length) {
-	return fread_file(buf, 1, length, descriptors[fd]);
+uint32_t filesystem_read_file(file_descriptor_t* f, void* buf, uint32_t length) {
+	return fread_file(buf, 1, length, f);
 }
 
 // Write to a file (it's readonly so this call always fails)
-uint32_t filesystem_write_file(int32_t fd, const void* buf, uint32_t length) {
-	return fwrite_file(buf, 1, length, descriptors[fd]);
+uint32_t filesystem_write_file(file_descriptor_t* f, const void* buf, uint32_t length) {
+	return fwrite_file(buf, 1, length, f);
 }
 
 // Seek to an offset in the file
-uint64_t filesystem_llseek_file(int32_t fd, uint64_t offset, int whence) {
-	return fseek_file(descriptors[fd], offset, whence);
+uint64_t filesystem_llseek_file(file_descriptor_t* f, uint64_t offset, int whence) {
+	return fseek_file(f, offset, whence);
 }
 
 // Read from a directory. Each subsequent call to read will return the next
 // entry in the directory until we've read all the entries and then it will return 0.
-uint32_t filesystem_read_directory(int32_t fd, void* buf, uint32_t length) {
-	return fread_directory(buf, 1, length, descriptors[fd], NULL);
+uint32_t filesystem_read_directory(file_descriptor_t* f, void* buf, uint32_t length) {
+	return fread_directory(buf, 1, length, f, NULL);
 }
 
-uint32_t filesystem_readdir(int32_t fd, void* buf, uint32_t length, dirent_t* dirent) {
-	return fread_directory(buf, 1, length, descriptors[fd], dirent);
+uint32_t filesystem_readdir(file_descriptor_t* f, void* buf, uint32_t length, dirent_t* dirent) {
+	return fread_directory(buf, 1, length, f, dirent);
 }
 
 // Write to a directory (which means link a new file in)
-uint32_t filesystem_write_directory(int32_t fd, const void* buf, uint32_t length) {
-	return fwrite_directory(buf, 1, length, descriptors[fd]);
+uint32_t filesystem_write_directory(file_descriptor_t* f, const void* buf, uint32_t length) {
+	return fwrite_directory(buf, 1, length, f);
 }
 
 // Seek to an offset in the directory (the index of the directory entry)
-uint64_t filesystem_llseek_directory(int32_t fd, uint64_t offset, int whence) {
-	return fseek_directory(descriptors[fd], offset, whence);
+uint64_t filesystem_llseek_directory(file_descriptor_t* f, uint64_t offset, int whence) {
+	return fseek_directory(f, offset, whence);
 }
 
 // Get file info
-uint32_t filesystem_stat(int32_t fd, sys_stat_type* ret) {
-	file_descriptor_t* desc = descriptors[fd];
+uint32_t filesystem_stat(file_descriptor_t* f, sys_stat_type* ret) {
 	memset(ret, 0, sizeof(sys_stat_type));
 	
 	ext_inode_info_t* info = NULL;
-	if (desc->mode & FILE_TYPE_REGULAR) {
-		info = &(((file_info_t*)desc->info)->inode.info);
-		ret->inode = ((file_info_t*)desc->info)->inode.inode;
+	if (f->mode & FILE_TYPE_REGULAR) {
+		info = &(((file_info_t*)f->info)->inode.info);
+		ret->inode = ((file_info_t*)f->info)->inode.inode;
 	}
-	else if (desc->mode & FILE_TYPE_DIRECTORY) {
-		info = &(((directory_info_t*)desc->info)->inode.info);
-		ret->inode = ((directory_info_t*)desc->info)->inode.inode;
+	else if (f->mode & FILE_TYPE_DIRECTORY) {
+		info = &(((directory_info_t*)f->info)->inode.info);
+		ret->inode = ((directory_info_t*)f->info)->inode.inode;
 	}
 	if (!info)
 		return -1;
 	
 	ret->dev_id = 0;
-	ret->mode = desc->mode;
+	ret->mode = f->mode;
 	ret->num_links = info->link_count;
 	ret->size = info->size;
 	ret->block_size = ext2_get_block_size();

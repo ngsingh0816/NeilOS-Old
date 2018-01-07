@@ -26,8 +26,10 @@ typedef struct page_cow_list {
 
 typedef struct {
 	uint32_t* pages;
-	// Bitmaps
+	// Whether this page_table owns the corresponding 4kb page
 	uint32_t owners[NUM_PAGE_TABLE_ENTRIES / sizeof(uint32_t) / 8];
+	// Whether or not this page should be copied on write or just referenced directly
+	uint32_t cow[NUM_PAGE_TABLE_ENTRIES / sizeof(uint32_t) / 8];
 } page_table_t;
 
 // Linked list of memory pages
@@ -47,6 +49,15 @@ typedef struct page_list {
 	
 	mutex_t lock;
 } page_list_t;
+
+// Helper to read a bitmap
+bool page_list_read_bitmap(uint32_t* bitmap, uint32_t index);
+
+// Helper to write a bitmap
+void page_list_write_bitmap(uint32_t* bitmap, uint32_t index, bool value);
+
+// Sets up the page table
+bool page_list_set_up_page_table(page_list_t* list);
 
 // Add a page to the list and return it
 page_list_t* page_list_add(page_list_t** list, uint32_t vaddr, uint32_t permissions);
@@ -70,6 +81,10 @@ bool page_list_exists(page_list_t** list, uint32_t vaddr);
 // If it doesn't exist and allocate=true, it will try to add it to the list and return that
 page_list_t* page_list_get(page_list_t** list, uint32_t vaddr, uint32_t permissions, bool allocate);
 
+// Same as above except doesn't allocate physical memory if creating a new page
+page_list_t* page_list_get_no_mem(page_list_t** list, uint32_t vaddr,
+								  uint32_t permissions, bool allocate);
+
 // Map a page into memory (if preserve_context is set to true, then the page will be persistent across context switches)
 // Note: do not set preserve_context=true if the page is already contained in the process's page mappings
 void page_list_map(page_list_t* list, bool preserve_context);
@@ -89,5 +104,8 @@ bool page_list_copy_on_write(page_list_t* list, uint32_t address);
 
 // Dealloc a whole page list
 void page_list_dealloc(page_list_t* list);
+
+// Dealloc a single page list entry
+void page_list_dealloc_entry(page_list_t* t, page_list_t** list);
 
 #endif /* PAGE_LIST_H */

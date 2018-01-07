@@ -47,17 +47,17 @@ void fsettime(file_descriptor_t* file, uint32_t atime, uint32_t mtime);
 
 // Syscalls
 file_descriptor_t* filesystem_open(const char* filename, uint32_t mode);
-uint32_t filesystem_read_file(int32_t fd, void* buf, uint32_t length);
-uint32_t filesystem_write_file(int32_t fd, const void* buf, uint32_t length);
-uint64_t filesystem_llseek_file(int32_t fd, uint64_t offset, int whence);
-uint32_t filesystem_stat(int32_t fd, sys_stat_type* data);
-uint64_t filesystem_truncate(int32_t fd, uint64_t nsize);
+uint32_t filesystem_read_file(file_descriptor_t* f, void* buf, uint32_t length);
+uint32_t filesystem_write_file(file_descriptor_t* f, const void* buf, uint32_t length);
+uint64_t filesystem_llseek_file(file_descriptor_t* f, uint64_t offset, int whence);
+uint32_t filesystem_stat(file_descriptor_t* f, sys_stat_type* data);
+uint64_t filesystem_truncate(file_descriptor_t* f, uint64_t nsize);
 
-uint32_t filesystem_read_directory(int32_t fd, void* buf, uint32_t length);
-uint32_t filesystem_write_directory(int32_t fd, const void* buf, uint32_t length);
-uint64_t filesystem_llseek_directory(int32_t fd, uint64_t offset, int whence);
+uint32_t filesystem_read_directory(file_descriptor_t* f, void* buf, uint32_t length);
+uint32_t filesystem_write_directory(file_descriptor_t* f, const void* buf, uint32_t length);
+uint64_t filesystem_llseek_directory(file_descriptor_t* f, uint64_t offset, int whence);
 
-uint32_t filesystem_readdir(int32_t fd, void* buf, uint32_t length, dirent_t* dirent);
+uint32_t filesystem_readdir(file_descriptor_t* f, void* buf, uint32_t length, dirent_t* dirent);
 
 file_descriptor_t* filesystem_duplicate(file_descriptor_t* f);
 

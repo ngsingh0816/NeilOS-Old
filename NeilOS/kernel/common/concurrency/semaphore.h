@@ -29,6 +29,10 @@ typedef struct {
 	// priority process is waiting for, then switch to that higher process - also should probably
 	// implement priority inversion.
 	struct pcb* owner;	// Most recent owner (really for mutex's)
+#if DEBUG
+	const char* filename;
+	int line_num;
+#endif
 } semaphore_t;
 
 typedef semaphore_t mutex_t;
@@ -38,8 +42,16 @@ void sema_init(semaphore_t* sema, uint32_t val);
 // Initialize a mutex (semaphore with 1 resource)
 #define mutex_init(mutex)		sema_init(mutex, 1)
 
+
+
+#if DEBUG
+#define down(sema)	down_debug(sema, __FILE__, __LINE__)
+void down_debug(semaphore_t* sema, const char* filename, int line_num);
+#else
 // Gain access to a resource
 void down(semaphore_t* sema);
+#endif
+
 // Try to gain access but don't sleep if unavailable
 bool down_trylock(semaphore_t* sema);
 

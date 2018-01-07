@@ -94,14 +94,14 @@ bool ata_init();
 file_descriptor_t* ata_open(const char* filename, uint32_t mode);
 
 // Read data from the disk
-uint32_t ata_read(int32_t fd, void* buf, uint32_t bytes);
+uint32_t ata_read(file_descriptor_t* f, void* buf, uint32_t bytes);
 // Write data to the disk
-uint32_t ata_write(int32_t fd, const void* buf, uint32_t nbytes);
+uint32_t ata_write(file_descriptor_t* f, const void* buf, uint32_t nbytes);
 // Seek to a disk's position
-uint64_t ata_llseek(int32_t fd, uint64_t offset, int whence);
+uint64_t ata_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // Get info
-uint32_t ata_stat(int32_t fd, sys_stat_type* data);
+uint32_t ata_stat(file_descriptor_t* f, sys_stat_type* data);
 
 // Duplicate the file handle
 file_descriptor_t* ata_duplicate(file_descriptor_t* f);

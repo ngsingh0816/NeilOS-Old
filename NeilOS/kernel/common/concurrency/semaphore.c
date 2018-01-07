@@ -15,12 +15,22 @@ void sema_init(semaphore_t* sema, uint32_t val) {
 }
 
 // Gain access to a resource
+#if DEBUG
+void down_debug(semaphore_t* sema, const char* filename, int line_num) {
+#else
 void down(semaphore_t* sema) {
+#endif
 	for (;;) {
 		if (spin_trylock(&sema->lock)) {
 			if (sema->val != 0) {
 				sema->owner = current_pcb;
 				sema->val--;
+				
+#if DEBUG
+				sema->filename = filename;
+				sema->line_num = line_num;
+#endif
+				
 				spin_unlock(&sema->lock);
 				break;
 			}

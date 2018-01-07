@@ -18,19 +18,19 @@ void es_init();
 file_descriptor_t* es_open(const char* filename, uint32_t mode);
 
 // Blocks until more data is needed then returns the amount of bytes needed to write
-uint32_t es_read(int32_t fd, void* buf, uint32_t bytes);
+uint32_t es_read(file_descriptor_t* f, void* buf, uint32_t bytes);
 
 // Write sound data
-uint32_t es_write(int32_t fd, const void* buf, uint32_t nbytes);
+uint32_t es_write(file_descriptor_t* f, const void* buf, uint32_t nbytes);
 
 // Get info
-uint32_t es_stat(int32_t fd, sys_stat_type* data);
+uint32_t es_stat(file_descriptor_t* f, sys_stat_type* data);
 
 // Seek (returns error)
-uint64_t es_llseek(int32_t fd, uint64_t offset, int whence);
+uint64_t es_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // ioctl
-uint32_t es_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2);
+uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2);
 
 // Duplicate the file handle
 file_descriptor_t* es_duplicate(file_descriptor_t* f);

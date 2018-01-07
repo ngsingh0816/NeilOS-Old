@@ -20,6 +20,7 @@ typedef struct dylib_list {
 	struct dylib* dylib;
 	uint32_t offset;
 	
+	semaphore_t lock;
 	struct dylib_list* prev;
 	struct dylib_list* next;
 } dylib_list_t;

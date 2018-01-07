@@ -20,16 +20,16 @@ void mouse_handle();
 file_descriptor_t* mouse_open(const char* filename, uint32_t mode);
 
 // Returns the last mouse position if in nonblocking mode, otherwise blocks until mouse is moved
-uint32_t mouse_read(int32_t fd, void* buf, uint32_t bytes);
+uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes);
 
 // Sets the cursor position
-uint32_t mouse_write(int32_t fd, const void* buf, uint32_t nbytes);
+uint32_t mouse_write(file_descriptor_t* f, const void* buf, uint32_t nbytes);
 
 // Get info
-uint32_t mouse_stat(int32_t fd, sys_stat_type* data);
+uint32_t mouse_stat(file_descriptor_t* f, sys_stat_type* data);
 
 // Seek a mouse (returns error)
-uint64_t mouse_llseek(int32_t fd, uint64_t offset, int whence);
+uint64_t mouse_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // Duplicate the file handle
 file_descriptor_t* mouse_duplicate(file_descriptor_t* f);

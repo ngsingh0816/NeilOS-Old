@@ -45,6 +45,7 @@
  * User Threads (pthreads)
  * Mouse Driver
  * Audio Driver (Ensoniq AudioPCI 1370/1371)
+ * mmap (also munmap, msync)
  */
 
 /* TODO (could be improved):
@@ -62,11 +63,11 @@
  * Filesystem - multiple processes or threads writing to the same inode (i.e. fmkdir("/hi") and fmkdir("/bye")
 	may cause an issue because they both modify the "." inode's contents at the same time
  		* can probably be fixed by r/w lock per inode
+ * Implement MS_INVALIDATE for msync (needs way to easily located all other mapped versions of the same file)
  * Thread Local Storage (TLS)
  */
 
 /* TODO (bugs)
- * Caps lock can mess up dashes (-)
  * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
 	we go back to the scheduler (it doesn't though)
  * bin/dash -> control-c -> ls crashes
@@ -75,9 +76,9 @@
  		don't use the correct esp because there is no ring switch
  * Very rarely, ls | grep cat will crash during elf_perform_relocation_dylib because for some reason
  	the extra page_list entries from the dylibs do not get linked into pcb->page_list so there is a page fault
- * bin/dash -> cd .. -> ls -> ls crashes
  * bin/dash -> / -> / -> etc, eventually crashes
  * bin/bash crashes if TERM!=dumb
+ * Implement CLOSE_ON_EXEC
  */
 
 /* TODO:
@@ -207,7 +208,7 @@ entry (unsigned long magic, unsigned long addr)
 	char input[128];
 	for (;;) {
 		printf("NeilOS> ");
-		uint32_t num = terminal_read(STDIN, input, 128);
+		uint32_t num = terminal_read(descriptors[STDIN], input, 128);
 		input[num - 1] = 0;
 		if (strncmp(input, "stat ", strlen("stat ")) == 0) {
 			file_descriptor_t file;

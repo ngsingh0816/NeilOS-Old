@@ -57,7 +57,11 @@ uint32_t link(const char* filename, const char* new_name) {
 }
 
 uint32_t readdir(uint32_t fd, void* buf, int size, dirent_t* dirent) {
-	return filesystem_readdir(fd, buf, size, dirent);
+	if (fd >= NUMBER_OF_DESCRIPTORS)
+		return -EBADF;
+	if (!descriptors[fd])
+		return -EBADF;
+	return filesystem_readdir(descriptors[fd], buf, size, dirent);
 }
 
 // Unlink a file or directory (note: deletes the file if it is the last remaining link)

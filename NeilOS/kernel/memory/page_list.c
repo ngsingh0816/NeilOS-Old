@@ -192,11 +192,15 @@ bool page_list_copy_page_table(page_list_t* l, page_list_t* p) {
 		return false;
 	}
 	for (uint32_t z = 0; z < NUM_PAGE_TABLE_ENTRIES; z++) {
-		p->page_table->pages[z] = vm_create_page_table_entry(p->page_table->pages[z] & ~(FOUR_KB_SIZE - 1),
-															 p->permissions & ~MEMORY_WRITE);
+		// Copy on write if desired
+		if (page_list_read_bitmap(p->page_table->cow, z)) {
+			p->page_table->pages[z] = vm_create_page_table_entry(p->page_table->pages[z] & ~(FOUR_KB_SIZE - 1),
+																 p->permissions & ~MEMORY_WRITE);
+		}
 		l->page_table->pages[z] = p->page_table->pages[z];
 	}
 	memset(l->page_table->owners, 0, NUM_PAGE_TABLE_ENTRIES / 8);
+	memcpy(l->page_table->cow, p->page_table->cow, NUM_PAGE_TABLE_ENTRIES / 8);
 	
 	return true;
 }
@@ -221,6 +225,8 @@ bool page_list_set_up_page_table(page_list_t* list) {
 	
 	// Set no pages as owners
 	memset(page_table->owners, 0, NUM_PAGE_TABLE_ENTRIES / 8);
+	// Set all pages as copy on write
+	memset(page_table->cow, -1, NUM_PAGE_TABLE_ENTRIES / 8);
 	list->page_table = page_table;
 	
 	return true;
@@ -377,6 +383,33 @@ page_list_t* page_list_get(page_list_t** list, uint32_t vaddr, uint32_t permissi
 	return page_list_add(list, vaddr, permissions);
 }
 
+// Same as above except doesn't allocate physical memory if creating a new page
+page_list_t* page_list_get_no_mem(page_list_t** list, uint32_t vaddr,
+								  uint32_t permissions, bool allocate) {
+	if (!list)
+		return NULL;
+	
+	if (*list)
+		down(&((*list)->lock));
+	page_list_t* t = *list;
+	while (t) {
+		if (t->vaddr == vaddr) {
+			up(&t->lock);
+			return t;
+		}
+		page_list_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+	}
+	
+	if (!allocate)
+		return NULL;
+	
+	return page_list_add_mapping(list, vaddr, 0, permissions);
+}
+
 void page_list_map_internal(page_list_t* list, bool preserve_context) {
 	if (list->page_table) {
 		vm_map_page_table(list->vaddr, vm_virtual_to_physical((uint32_t)list->page_table->pages),
@@ -432,6 +465,15 @@ void page_list_unmap_list(page_list_t* list, bool preserve_context) {
 
 // Perform a copy on write
 bool page_list_copy_on_write(page_list_t* list, uint32_t address) {
+	uint32_t page = (address - list->vaddr) / FOUR_KB_SIZE;
+	// Ensure copy on write is enabled for this page
+	down(&list->lock);
+	if (!page_list_read_bitmap(list->page_table->cow, page)) {
+		up(&list->lock);
+		return false;
+	}
+	up(&list->lock);
+	
 	// Make a 4kb copy of this page
 	void* copy = page_physical_get_aligned_four_kb(VIRTUAL_MEMORY_USER);
 	if (!copy) {
@@ -446,12 +488,11 @@ bool page_list_copy_on_write(page_list_t* list, uint32_t address) {
 	}
 
 	uint32_t offset = (uint32_t)copy & (FOUR_MB_SIZE - 1);
-	vm_map_page(vaddr, (uint32_t)copy - offset, MEMORY_WRITE | MEMORY_KERNEL, false);
+	vm_map_page(vaddr, (uint32_t)copy - offset, MEMORY_RW | MEMORY_KERNEL, false);
 	memcpy((void*)(vaddr + offset), (void*)(address & ~(FOUR_KB_SIZE - 1)), FOUR_KB_SIZE);
 	vm_unmap_page(vaddr, false);
 	vm_unlock();
 	down(&list->lock);
-	uint32_t page = (address - list->vaddr) / FOUR_KB_SIZE;
 	uint32_t old_paddr = list->page_table->pages[page] & ~(FOUR_KB_SIZE - 1);
 	list->page_table->pages[page] = vm_create_page_table_entry((uint32_t)copy, list->permissions);
 	
@@ -508,4 +549,33 @@ void page_list_dealloc(page_list_t* list) {
 		up(&prev->lock);
 		kfree(prev);
 	}
+}
+
+// Dealloc a single page list entry
+void page_list_dealloc_entry(page_list_t* t, page_list_t** list) {
+	// Unlink it
+	if (t->prev)
+		down(&t->prev->lock);
+	down(&t->lock);
+	if (t->next)
+		down(&t->next->lock);
+	if (t->prev) {
+		t->prev->next = t->next;
+		up(&t->prev->lock);
+	}
+	if (t->next) {
+		t->next->prev = t->prev;
+		up(&t->next->lock);
+	}
+	if (list && *list == t)
+		*list = t->next;
+	up(&t->lock);
+	
+	// Remove this from the linked page list
+	if (t->linked)
+		page_cow_list_remove(&t->linked, t);
+	down(&t->lock);
+	t->linked = NULL;
+	
+	page_list_dealloc_mem(t);
 }

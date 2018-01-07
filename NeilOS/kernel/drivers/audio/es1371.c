@@ -284,7 +284,7 @@ file_descriptor_t* es_open(const char* filename, uint32_t mode) {
 }
 
 // Blocks until more data is needed then returns the amount of bytes needed to write
-uint32_t es_read(int32_t fd, void* buf, uint32_t bytes) {
+uint32_t es_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	int id = sound_buffer_id;
 	pcb_t* pcb = current_pcb;
 	while (id == sound_buffer_id && !(pcb && pcb->should_terminate)) {
@@ -297,11 +297,11 @@ uint32_t es_read(int32_t fd, void* buf, uint32_t bytes) {
 }
 
 // Write sound data
-uint32_t es_write(int32_t fd, const void* buf, uint32_t nbytes) {
+uint32_t es_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	if (nbytes != SECTION_SIZE * sizeof(int16_t))
 		return -EINVAL;
 	
-	es_info* info = descriptors[fd]->info;
+	es_info* info = f->info;
 	
 	// Simple addition mixing
 	spin_lock(&sound_lock);
@@ -325,15 +325,15 @@ uint32_t es_write(int32_t fd, const void* buf, uint32_t nbytes) {
 }
 
 // Get info
-uint32_t es_stat(int32_t fd, sys_stat_type* data) {
+uint32_t es_stat(file_descriptor_t* f, sys_stat_type* data) {
 	data->dev_id = 1;
 	data->size = 0;
-	data->mode = descriptors[fd]->mode;
+	data->mode = f->mode;
 	return 0;
 }
 
 // Seek (returns error)
-uint64_t es_llseek(int32_t fd, uint64_t offset, int whence) {
+uint64_t es_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 	return uint64_make(-1, -ESPIPE);
 }
 
@@ -347,8 +347,8 @@ uint64_t es_llseek(int32_t fd, uint64_t offset, int whence) {
 #define ES_IOCTL_GET_MASTER_VOLUME	3
 
 // ioctl
-uint32_t es_ioctl(int32_t fd, int request, uint32_t arg1, uint32_t arg2) {
-	es_info* info = descriptors[fd]->info;
+uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2) {
+	es_info* info = f->info;
 	switch (request) {
 		case ES_IOCTL_SET_VOLUME: {
 			info->volume = *((float*)&arg1);

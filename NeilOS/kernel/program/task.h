@@ -9,6 +9,7 @@
 #include <drivers/filesystem/ext2/ext2.h>
 #include <program/signal.h>
 #include <memory/page_list.h>
+#include <memory/mmap_list.h>
 #include <program/dylib.h>
 
 #define USER_KERNEL_STACK_SIZE		(1024 * 8)			// 8 KB
@@ -96,6 +97,8 @@ typedef struct pcb {
 	uint32_t brk;
 	// For use with preserving context mappings (see vm_map_page)
 	page_list_t* temporary_mappings;
+	// List of user mapped mmap regions
+	mmap_list_t* user_mappings;
 	
 	// The file descriptors for this task
 	file_descriptor_t* descriptors[NUMBER_OF_DESCRIPTORS];

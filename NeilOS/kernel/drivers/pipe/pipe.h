@@ -21,16 +21,16 @@ file_descriptor_t* pipe_open(const char* filename, uint32_t mode);
 bool pipe_connect(file_descriptor_t* input, file_descriptor_t* output);
 
 // Read a pipe
-uint32_t pipe_read(int32_t fd, void* buf, uint32_t bytes);
+uint32_t pipe_read(file_descriptor_t* f, void* buf, uint32_t bytes);
 
 // Write to a pipe
-uint32_t pipe_write(int32_t fd, const void* buf, uint32_t bytes);
+uint32_t pipe_write(file_descriptor_t* f, const void* buf, uint32_t bytes);
 
 // Get info about a pipe
-uint32_t pipe_stat(int32_t fd, sys_stat_type* data);
+uint32_t pipe_stat(file_descriptor_t* f, sys_stat_type* data);
 
 // Seek a pipe (returns error)
-uint64_t pipe_llseek(int32_t fd, uint64_t offset, int whence);
+uint64_t pipe_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // Close a pipe
 uint32_t pipe_close(file_descriptor_t* fd);

@@ -142,6 +142,9 @@
 #define ESTRPIPE 143	/* Streams pipe error */
 #define EWOULDBLOCK EAGAIN	/* Operation would block */
 
+#define PAGE_FAULT_PAGE_PRESENT			0x1
+#define PAGE_FAULT_WRITE_VIOLATON		0x2
+
 //loads the interrupt descriptor table
 void load_idt();
 

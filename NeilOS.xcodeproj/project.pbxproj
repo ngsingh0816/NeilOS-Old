@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		280125F62000B35C00647962 /* mmap_list.c in Sources */ = {isa = PBXBuildFile; fileRef = 280125F52000B35C00647962 /* mmap_list.c */; };
 		280FE31A1F003E4F00E1A724 /* sysfile.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3181F003E4F00E1A724 /* sysfile.c */; };
 		280FE31D1F003EA100E1A724 /* sysfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE31B1F003EA100E1A724 /* sysfs.c */; };
 		280FE3201F003F4900E1A724 /* sysproc.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE31E1F003F4900E1A724 /* sysproc.c */; };
@@ -76,6 +77,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		280125F42000B35C00647962 /* mmap_list.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mmap_list.h; sourceTree = "<group>"; };
+		280125F52000B35C00647962 /* mmap_list.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mmap_list.c; sourceTree = "<group>"; };
 		280FE3181F003E4F00E1A724 /* sysfile.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfile.c; sourceTree = "<group>"; };
 		280FE3191F003E4F00E1A724 /* sysfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sysfile.h; sourceTree = "<group>"; };
 		280FE31B1F003EA100E1A724 /* sysfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfs.c; sourceTree = "<group>"; };
@@ -472,6 +475,8 @@
 				28DF5AB41EF3AB890009CA98 /* memory_asm.S */,
 				28E62BBB1F17289600538741 /* page_list.c */,
 				28E62BBC1F17289600538741 /* page_list.h */,
+				280125F52000B35C00647962 /* mmap_list.c */,
+				280125F42000B35C00647962 /* mmap_list.h */,
 			);
 			path = memory;
 			sourceTree = "<group>";
@@ -692,6 +697,7 @@
 				280FE3431F00735700E1A724 /* pipe.c in Sources */,
 				28DF5ACA1EF3AB890009CA98 /* spinlock.c in Sources */,
 				28EEC4621FFC6B78009BAD3B /* es1371.c in Sources */,
+				280125F62000B35C00647962 /* mmap_list.c in Sources */,
 				28DF5AC51EF3AB890009CA98 /* x86_desc.S in Sources */,
 				28DF5AD41EF3AB890009CA98 /* filesystem.c in Sources */,
 				28DF5AD31EF3AB890009CA98 /* inode.c in Sources */,

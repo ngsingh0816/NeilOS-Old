@@ -105,8 +105,13 @@ uint32_t read(uint32_t fd, void* buf, uint32_t nbytes) {
 	down(&d->lock);
 	up(&current_pcb->descriptor_lock);
 	
+	if (!(d->mode & FILE_MODE_READ)) {
+		up(&d->lock);
+		return -EACCES;
+	}
+	
 	// Call to the driver specific call
-	uint32_t ret = d->read(fd, buf, nbytes);
+	uint32_t ret = d->read(d, buf, nbytes);
 	
 	up(&d->lock);
 	return ret;
@@ -134,8 +139,13 @@ uint32_t write(uint32_t fd, const void* buf, uint32_t nbytes) {
 	down(&d->lock);
 	up(&current_pcb->descriptor_lock);
 	
+	if (!((d->mode & FILE_MODE_WRITE) || (d->mode & FILE_MODE_APPEND))) {
+		up(&d->lock);
+		return -EACCES;
+	}
+	
 	// Call to the driver specific call
-	uint32_t ret = d->write(fd, buf, nbytes);
+	uint32_t ret = d->write(d, buf, nbytes);
 	
 	up(&d->lock);
 	return ret;
@@ -165,7 +175,7 @@ uint32_t llseek(uint32_t fd, uint32_t offset_high, uint32_t offset_low, int when
 	
 	// Call to the driver specific call
 	// TODO: for now only return the lower 32 bits
-	uint32_t ret = d->llseek(fd, uint64_make(offset_high, offset_low), whence).low;
+	uint32_t ret = d->llseek(d, uint64_make(offset_high, offset_low), whence).low;
 	
 	up(&d->lock);
 	return ret;
@@ -193,7 +203,7 @@ uint32_t truncate(uint32_t fd, uint32_t length_high, uint32_t length_low) {
 	
 	// Call to the driver specific call
 	// TODO: for now just return the lower 32 bits
-	uint32_t ret = d->truncate(fd, uint64_make(length_high, length_low)).low;
+	uint32_t ret = d->truncate(d, uint64_make(length_high, length_low)).low;
 	
 	up(&d->lock);
 	return ret;
@@ -219,7 +229,7 @@ uint32_t stat(uint32_t fd, sys_stat_type* data) {
 	down(&d->lock);
 	up(&current_pcb->descriptor_lock);
 	
-	uint32_t ret = d->stat(fd, data);
+	uint32_t ret = d->stat(d, data);
 	
 	up(&d->lock);
 	return ret;
@@ -525,7 +535,7 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
 				if (!descriptors[z])
 					return -EBADF;
 				if (descriptors[z]->can_read) {
-					if (descriptors[z]->can_read()) {
+					if (descriptors[z]->can_read(descriptors[z])) {
 						readfds->bits[index] |= (1 << bit);
 						total++;
 					}
@@ -533,7 +543,7 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
 			}
 			if ((wc.bits[index] >> bit) & 0x1) {
 				if (descriptors[z] && descriptors[z]->can_write) {
-					if (descriptors[z]->can_write()) {
+					if (descriptors[z]->can_write(descriptors[z])) {
 						writefds->bits[index] |= (1 << bit);
 						total++;
 					}

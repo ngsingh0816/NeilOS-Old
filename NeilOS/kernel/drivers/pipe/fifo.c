@@ -131,8 +131,8 @@ file_descriptor_t* fifo_open(const char* filename, uint32_t mode) {
 }
 
 // Read a fifo
-uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
-	fifo_list_t* info = (fifo_list_t*)descriptors[fd]->info;
+uint32_t fifo_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
+	fifo_list_t* info = (fifo_list_t*)f->info;
 	
 	// Writer pipe was closed
 	down(&info->lock);
@@ -141,7 +141,7 @@ uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
 		return 0;
 	}
 	
-	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+	if ((f->mode & FILE_MODE_NONBLOCKING) &&
 		info->pos == 0) {
 		up(&info->lock);
 		return -1;
@@ -166,8 +166,8 @@ uint32_t fifo_read(int32_t fd, void* buf, uint32_t bytes) {
 }
 
 // Write to a fifo
-uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
-	fifo_list_t* info = (fifo_list_t*)descriptors[fd]->info;
+uint32_t fifo_write(file_descriptor_t* f, const void* buf, uint32_t bytes) {
+	fifo_list_t* info = (fifo_list_t*)f->info;
 	
 	// Reader pipe has been closed
 	down(&info->lock);
@@ -177,7 +177,7 @@ uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
 		return -1;
 	}
 	
-	if ((descriptors[fd]->mode & FILE_MODE_NONBLOCKING) &&
+	if ((f->mode & FILE_MODE_NONBLOCKING) &&
 		info->pos == PIPE_MAX_BUFFER_SIZE) {
 		up(&info->lock);
 		return -1;
@@ -203,8 +203,8 @@ uint32_t fifo_write(int32_t fd, const void* buf, uint32_t bytes) {
 }
 
 // Get info about a fifo
-uint32_t fifo_stat(int32_t fd, sys_stat_type* data) {
-	fifo_list_t* list = (fifo_list_t*)descriptors[fd]->info;
+uint32_t fifo_stat(file_descriptor_t* f, sys_stat_type* data) {
+	fifo_list_t* list = (fifo_list_t*)f->info;
 	memset(data, 0, sizeof(sys_stat_type));
 	data->dev_id = 1;
 	data->block_size = PIPE_MAX_BUFFER_SIZE;
@@ -215,7 +215,7 @@ uint32_t fifo_stat(int32_t fd, sys_stat_type* data) {
 		up(&list->lock);
 	}
 	data->num_512_blocks = data->size / 512;
-	data->mode = descriptors[fd]->mode;
+	data->mode = f->mode;
 	
 	return 0;
 }
@@ -250,7 +250,7 @@ uint32_t fifo_close(file_descriptor_t* fd) {
 }
 
 // Seek a pipe (returns error)
-uint64_t fifo_llseek(int32_t fd, uint64_t offset, int whence) {
+uint64_t fifo_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 	return uint64_make(-1, -ESPIPE);
 }
 

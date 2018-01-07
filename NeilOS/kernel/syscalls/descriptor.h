@@ -94,14 +94,14 @@ typedef struct file_descriptor {
 	void* info;
 	
 	// Pointers for the syscalls
-	uint32_t (*read)(int32_t fd, void* buf, uint32_t nbytes);
-	uint32_t (*write)(int32_t fd, const void* buf, uint32_t nbytes);
-	uint64_t (*llseek)(int32_t fd, uint64_t offset, int whence);
-	uint64_t (*truncate)(int32_t fd, uint64_t nsize);
-	uint32_t (*stat)(int32_t fd, sys_stat_type* data);
-	uint32_t (*ioctl)(int32_t fd, int request, uint32_t arg1, uint32_t arg2);
-	bool (*can_read)();
-	bool (*can_write)();
+	uint32_t (*read)(struct file_descriptor* f, void* buf, uint32_t nbytes);
+	uint32_t (*write)(struct file_descriptor* f, const void* buf, uint32_t nbytes);
+	uint64_t (*llseek)(struct file_descriptor* f, uint64_t offset, int whence);
+	uint64_t (*truncate)(struct file_descriptor* f, uint64_t nsize);
+	uint32_t (*stat)(struct file_descriptor* f, sys_stat_type* data);
+	uint32_t (*ioctl)(struct file_descriptor* f, int request, uint32_t arg1, uint32_t arg2);
+	bool (*can_read)(struct file_descriptor* f);
+	bool (*can_write)(struct file_descriptor* f);
 	struct file_descriptor* (*duplicate)(struct file_descriptor* f);
 	uint32_t (*close)(struct file_descriptor* f);	// Open allocates a file descriptor, but the syscall close frees it
 	

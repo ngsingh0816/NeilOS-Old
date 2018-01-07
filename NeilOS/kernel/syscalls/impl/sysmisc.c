@@ -233,7 +233,7 @@ int ioctl(uint32_t fd, int request, uint32_t arg1, uint32_t arg2) {
 	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
-	uint32_t ret = d->ioctl(fd, request, arg1, arg2);
+	uint32_t ret = d->ioctl(d, request, arg1, arg2);
 	
 	up(&d->lock);
 	return ret;

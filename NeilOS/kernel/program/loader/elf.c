@@ -502,7 +502,7 @@ bool elf_load(char* filename, pcb_t* pcb) {
 		uint32_t real_size = program_header->mem_size > program_header->size ?
 			program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
-			page_list_t* t = page_list_get(&pcb->page_list, pos, MEMORY_WRITE, true);
+			page_list_t* t = page_list_get(&pcb->page_list, pos, MEMORY_RW, true);
 			if (!t)
 				return false;
 			page_list_map(t, false);
@@ -630,7 +630,7 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 		program_header->mem_size : program_header->size;
 		for (; pos < program_header->vaddr + real_size; pos += FOUR_MB_SIZE) {
 			down(&dylib->lock);
-			page_list_t* t = page_list_get(&dylib->page_list, pos, MEMORY_WRITE, true);
+			page_list_t* t = page_list_get(&dylib->page_list, pos, MEMORY_RW, true);
 			up(&dylib->lock);
 			
 			if (!t)

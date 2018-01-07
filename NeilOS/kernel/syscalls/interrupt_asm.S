@@ -3,8 +3,8 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			46
-#define THREAD_EXIT_SYSCALL		45
+#define NUM_SYSCALLS			49
+#define THREAD_EXIT_SYSCALL		48
 
 #include <boot/x86_desc.h>
 
@@ -311,7 +311,12 @@ interrupt:
 
 		pushl %ebp
 		movl %esp, %ebp
-		addl $-4, %esp
+		addl $-8, %esp
+		// Save the ebp
+		pushl %eax
+		movl 12(%esp), %eax
+		movl %eax, -8(%ebp)
+		popl %eax
 
 		// Save the registers
 		pusha
@@ -355,6 +360,7 @@ interrupt:
 		popl %eax
 
 		// Push the arguments
+		pushl -8(%ebp)			// ebp
 		pushl %edi
 		pushl %esi
 		pushl %edx
@@ -368,6 +374,7 @@ interrupt:
 		// Save the return value
 		movl %eax, -4(%ebp)
 		// Pop the arguments
+		addl $4, %esp			// ebp
 		popl %ebx
 		popl %ecx
 		popl %edx
@@ -396,7 +403,7 @@ interrupt:
 		movl -4(%ebp), %eax
 
 		// Restore frame
-		addl $4, %esp
+		addl $8, %esp
 		popl %ebp
 
 	done_syscall:

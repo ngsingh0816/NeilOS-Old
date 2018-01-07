@@ -2,9 +2,10 @@
 #include <boot/x86_desc.h>
 #include <common/lib.h>
 #include <drivers/pic/i8259.h>
+#include <memory/mmap_list.h>
 
 // External defintions for the assembly interrupt functions
-extern int* intx80;
+extern int* intx80;\
 extern int* idt_vectors[NUMBER_OF_INTERRUPTS];
 extern int* idt_vectors_user[NUMBER_OF_USER_INTERRUPTS];
 extern void load_lidt();
@@ -22,7 +23,9 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	 du - "cannot read directory ., not a directory"
 	 timeout - hangs
  * More
- 	mmap, munmap
+ 	posix shared memory
+ 	posix message queues
+ 
 	timer_create, timer_delete, timer_settime
 	select (implemented for terminal, need others - files), poll
  	sockets stuff
@@ -31,7 +34,7 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	open, read, write, llseek, truncate, stat, close, isatty, pipe, fcntl, select,
 	mkdir, link, unlink, readdir, utime,
-	brk, sbrk,
+	brk, sbrk, mmap, munmap, msync,
 	dup, dup2,
 	times, gettimeofday,
 	kill, sigaction, sigsetmask, siggetmask, sigprocmask, sigsuspend, alarm,
@@ -54,7 +57,6 @@ void divide_error(uint32_t code, uint32_t eip) {
 #if DEBUG
 	blue_screen("Divide by 0 error (eip - 0x%x)", eip);
 #else
-	printf("Divide by 0.\n");
 	schedule();
 #endif
 }
@@ -90,7 +92,6 @@ void invalid_opcode(uint32_t code, uint32_t eip) {
 #if DEBUG
 	blue_screen("Invalid opcode");
 #else
-	printf("Invalid opcode error.\n");
 	schedule();
 #endif
 }
@@ -156,7 +157,6 @@ void stack_segment_fault(uint32_t code, uint32_t eip) {
 #if DEBUG
 	blue_screen("Stack segment fault");
 #else
-	printf("Stack segfault.\n");
 	schedule();
 #endif
 }
@@ -170,9 +170,6 @@ void general_protection(uint32_t code, uint32_t eip) {
 	
 	blue_screen("General protection fault - 0x%x (eip: 0x%x)", code, eip);
 }
-
-#define PAGE_PRESENT		0x1
-#define WRITE_VIOLATON		0x2
 
 #ifdef DEBUG
 context_state_t	page_fault_context;
@@ -191,7 +188,7 @@ void page_fault(uint32_t code, uint32_t eip) {
 #endif
 		
 	// Check if we were copying on write
-	if ((code & PAGE_PRESENT) && (code & WRITE_VIOLATON)) {
+	if ((code & PAGE_FAULT_PAGE_PRESENT) && (code & PAGE_FAULT_WRITE_VIOLATON)) {
 		pcb_t* pcb = current_pcb;
 		uint32_t addr_aligned = address & ~(FOUR_MB_SIZE - 1);
 		// Find the page that deals with this
@@ -214,12 +211,15 @@ void page_fault(uint32_t code, uint32_t eip) {
 		}
 	}
 	
+	// Check if this is from a mmap region
+	if (current_pcb && mmap_list_process(current_pcb->user_mappings, address, code, current_pcb))
+		return;
+	
 	signal_send(current_pcb, SIGSEGV);
 	
 #if DEBUG
 	blue_screen("Page fault - 0x%x at address 0x%x (eip: 0x%x)", code, address, eip);
 #else
-	printf("Segfault.\n");
 	schedule();
 #endif
 }
@@ -231,7 +231,6 @@ void floating_point_error(uint32_t code, uint32_t eip) {
 #if DEBUG
 	blue_screen("Floating point error");
 #else
-	printf("Floating point error.\n");
 	schedule();
 #endif
 }
@@ -263,7 +262,6 @@ void smid_floating_point_exception(uint32_t code, uint32_t eip) {
 #if DEBUG
 	blue_screen("SMID floating point exception");
 #else
-	printf("Floating point error.\n");
 	schedule();
 #endif
 }

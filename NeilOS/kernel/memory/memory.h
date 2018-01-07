@@ -17,8 +17,10 @@
 #define VM_KERNEL_ADDRESS			0xC0000000
 
 // Page permissions
-#define MEMORY_WRITE				(1 << 0)
-#define MEMORY_KERNEL				(1 << 1)
+#define MEMORY_READ					(1 << 0)
+#define MEMORY_WRITE				(1 << 1)
+#define MEMORY_RW					(MEMORY_READ | MEMORY_WRITE)
+#define MEMORY_KERNEL				(1 << 2)
 
 // Common sizes
 #define FOUR_KB_SIZE				4096
@@ -39,6 +41,9 @@ uint32_t vm_get_next_unmapped_page(uint32_t type);
 
 // Gets the address of the next unmapped 4MB pages of the specific type
 uint32_t vm_get_next_unmapped_pages(uint32_t pages, uint32_t type);
+
+// Gets the address of the next unmapped 4MB pages of the specific type
+uint32_t vm_get_next_unmapped_pages_from_back(uint32_t pages, uint32_t type);
 
 // Maps a virtual address (4MB aligned) to a physical address (4MB aligned)
 // If preserves context is set to true, the mapping will persist across context switches.
