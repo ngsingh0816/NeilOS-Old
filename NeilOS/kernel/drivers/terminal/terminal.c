@@ -743,7 +743,7 @@ uint32_t terminal_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) 
 
 // Get info
 uint32_t terminal_stat(file_descriptor_t* f, sys_stat_type* data) {
-	data->dev_id = 1;
+	data->dev_id = f->type;
 	data->size = 0;
 	data->mode = f->mode;
 	return 0;

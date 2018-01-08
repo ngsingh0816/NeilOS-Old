@@ -11,6 +11,7 @@
 #include <common/log.h>
 #include <memory/page_list.h>
 #include <syscalls/interrupt.h>
+#include <drivers/ipc/shmem.h>
 
 #define	PROT_NONE	0x00
 #define	PROT_READ	0x01
@@ -144,12 +145,13 @@ void* find_available_pages(pcb_t* pcb, uint32_t num, uint32_t min) {
 
 // Helper to map contiguous 4kb pages into a pcb (allocating physical memory as needed)
 bool map_contigous_pages(pcb_t* pcb, uint32_t start, uint32_t num_pages, uint32_t permissions, bool shared,
-						 uint32_t* paddrs, uint32_t paddr_length) {
+						 uint32_t* paddrs, uint32_t paddr_length, uint32_t initial_offset) {
 	// Get first page
 	page_list_t* current_page = NULL;
 	uint32_t prev_addr = 0;
 	uint32_t addr = start;
 	uint32_t count = 0;
+	uint32_t page_offset = initial_offset / FOUR_KB_SIZE;
 	while (num_pages) {
 		// If we have reached a different 4mb page, update the current page
 		if (prev_addr / FOUR_MB_SIZE != addr / FOUR_MB_SIZE) {
@@ -176,10 +178,12 @@ bool map_contigous_pages(pcb_t* pcb, uint32_t start, uint32_t num_pages, uint32_
 		uint32_t offset = (addr % FOUR_MB_SIZE) / FOUR_KB_SIZE;
 		uint32_t paddr = 0;
 		uint32_t perm = 0;
-		if (paddrs && count < paddr_length) {
+		bool paddr_used = false;
+		if (paddrs && count + page_offset < paddr_length) {
 			// Use the predetermined physical memory address if available
-			paddr = paddrs[count];
+			paddr = paddrs[count + page_offset];
 			perm = permissions;
+			paddr_used = true;
 		} else {
 			// Otherwise, allocate a 4kb page and set the corrosponding page table entry to it
 			paddr = (uint32_t)page_physical_get_aligned_four_kb(VIRTUAL_MEMORY_USER);
@@ -190,7 +194,7 @@ bool map_contigous_pages(pcb_t* pcb, uint32_t start, uint32_t num_pages, uint32_
 		}
 		down(&current_page->lock);
 		current_page->page_table->pages[offset] = vm_create_page_table_entry(paddr, perm);
-		page_list_write_bitmap(current_page->page_table->owners, offset, true);
+		page_list_write_bitmap(current_page->page_table->owners, offset, !paddr_used);
 		page_list_write_bitmap(current_page->page_table->cow, offset, !shared);
 		up(&current_page->lock);
 		
@@ -209,6 +213,8 @@ void* mmap(void* addr, uint32_t length, int prot, int flags, int fd, uint32_t of
 	
 	if (length == 0)
 		return (void*)-EINVAL;
+	if ((offset % FOUR_KB_SIZE) != 0)
+		return (void*)-EINVAL;
 	if (!(flags & MAP_ANONYMOUS) && !descriptors[fd])
 		return (void*)-EBADF;
 	if (((flags & MAP_PRIVATE) != 0) == ((flags & MAP_SHARED) != 0))
@@ -216,27 +222,36 @@ void* mmap(void* addr, uint32_t length, int prot, int flags, int fd, uint32_t of
 	
 	// Adjust addr to nearest 4kb
 	addr = (void*)((uint32_t)addr - ((uint32_t)addr % FOUR_KB_SIZE));
+	down(&descriptors[fd]->lock);
 	
 	// Only allow files that are seekable
 	if (!(flags & MAP_ANONYMOUS)) {
-		if (!descriptors[fd]->llseek)
+		if (!descriptors[fd]->llseek) {
+			up(&descriptors[fd]->lock);
 			return (void*)-EBADF;
+		}
 		uint64_t ret = descriptors[fd]->llseek(descriptors[fd], uint64_make(0, 0), SEEK_CUR);
-		if ((int32_t)ret.high < 0)
+		if ((int32_t)ret.high < 0) {
+			up(&descriptors[fd]->lock);
 			return (void*)-EBADF;
+		}
 	}
 	
 	// Setup permissions
 	uint32_t perm = 0;
 	if (prot & PROT_READ) {
-		if (!(flags & MAP_ANONYMOUS) && (!descriptors[fd]->read || !(descriptors[fd]->mode & FILE_MODE_READ)))
+		if (!(flags & MAP_ANONYMOUS) && (!descriptors[fd]->read || !(descriptors[fd]->mode & FILE_MODE_READ))) {
+			up(&descriptors[fd]->lock);
 			return (void*)-EACCES;
+		}
 		perm |= MEMORY_READ;
 	}
 	if (prot & PROT_WRITE) {
 		if (!(flags & MAP_ANONYMOUS) && (!descriptors[fd]->write || !(descriptors[fd]->mode & FILE_MODE_WRITE)
-										 || descriptors[fd]->mode & FILE_MODE_APPEND))
+										 || descriptors[fd]->mode & FILE_MODE_APPEND)) {
+			up(&descriptors[fd]->lock);
 			return (void*)-EACCES;
+		}
 		perm |= MEMORY_WRITE;
 	}
 	
@@ -244,8 +259,10 @@ void* mmap(void* addr, uint32_t length, int prot, int flags, int fd, uint32_t of
 	mmap_list_t* mapping = mmap_list_create((uint32_t)addr, (uint32_t)addr + length,
 											perm, (flags & MAP_ANONYMOUS) ? NULL : descriptors[fd],
 											offset, (flags & MAP_SHARED) != 0);
-	if (!mapping)
+	up(&descriptors[fd]->lock);
+	if (!mapping) {
 		return (void*)-ENOMEM;
+	}
 	
 	down(&current_pcb->lock);
 	uint32_t num_4k_pages = (length - 1) / FOUR_KB_SIZE + 1;
@@ -286,14 +303,28 @@ void* mmap(void* addr, uint32_t length, int prot, int flags, int fd, uint32_t of
 	}
 	
 	// Map this region into memory
+	uint32_t paddr_count = 0;
+	uint32_t* paddrs = NULL;
+	if ((flags & MAP_SHARED) != 0 && mapping->file && mapping->file->type == SHARED_MEMORY_FILE_TYPE) {
+		paddrs = shm_get_paddrs(mapping->file, &paddr_count);
+		if (!paddrs) {
+			up(&current_pcb->lock);
+			mmap_list_dealloc(mapping, &current_pcb->user_mappings, NULL);
+			return (void*)-ENOMEM;
+		}
+	}
 	mapping->start = (uint32_t)addr;
 	mapping->end = (uint32_t)addr + length;
 	if (!map_contigous_pages(current_pcb, (uint32_t)addr, num_4k_pages, perm,
-							 (flags & MAP_SHARED) != 0, NULL, 0)) {
+							 (flags & MAP_SHARED) != 0, paddrs, paddr_count, offset)) {
 		up(&current_pcb->lock);
+		if (paddrs)
+			kfree(paddrs);
 		mmap_list_dealloc(mapping, &current_pcb->user_mappings, NULL);
 		return (void*)-ENOMEM;
 	}
+	if (paddrs)
+		kfree(paddrs);
 	
 	// Include the new memory user mappings
 	mmap_list_link(mapping, &current_pcb->user_mappings);

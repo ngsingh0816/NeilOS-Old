@@ -53,7 +53,7 @@ uint64_t zero_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 
 // Get info
 uint32_t zero_stat(file_descriptor_t* f, sys_stat_type* data) {
-	data->dev_id = 1;
+	data->dev_id = f->type;
 	data->size = 0;
 	data->mode = f->mode;
 	data->inode = filesystem_get_inode("/dev/zero");

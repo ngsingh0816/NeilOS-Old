@@ -46,6 +46,7 @@
  * Mouse Driver
  * Audio Driver (Ensoniq AudioPCI 1370/1371)
  * mmap (also munmap, msync)
+ * Posix Shared Memory
  */
 
 /* TODO (could be improved):
@@ -54,8 +55,6 @@
 	that aren't CPU intensive will call schedule() and sleep so they will not use up
 	their whole alloted time), and compare it to their alloted time. If they use all of it,
 	give them more time next quantum (to a limit), otherwise give them less.
- 	* Could also change time to be 1ms (a quantum) and have each task allocated some number of quantums
- 		so we could then manage time to the 1ms level
  * Signals - make the signal execute in user space, not kernel space (same with dylib init's)
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
  * Disk Scheduling / Improvements

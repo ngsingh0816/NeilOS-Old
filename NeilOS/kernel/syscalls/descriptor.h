@@ -13,13 +13,14 @@
 #include <common/concurrency/semaphore.h>
 
 // File types
-#define RTC_FILE_TYPE		0
+#define FILE_FILE_TYPE		0
 #define DIRECTORY_FILE_TYPE	1
-#define FILE_FILE_TYPE		2
-#define STANDARD_INOUT_TYPE	3
+#define STANDARD_INOUT_TYPE	2
+#define RTC_FILE_TYPE		3
 #define DISK_FILE_TYPE		4
 #define MOUSE_FILE_TYPE		5
 #define AUDIO_FILE_TYPE		6
+#define SHARED_MEMORY_FILE_TYPE	7
 
 // File Modes
 #define FILE_MODE_READ				0x001
@@ -29,6 +30,7 @@
 #define FILE_MODE_CREATE			0x200
 #define	FILE_MODE_TRUNCATE			0x400
 #define FILE_MODE_DELETE_ON_CLOSE	0x100
+#define FILE_MODE_EXCLUSIVE			0x800
 #define FILE_MODE_NONBLOCKING		0x4000
 
 // Types of device (goes in mode)

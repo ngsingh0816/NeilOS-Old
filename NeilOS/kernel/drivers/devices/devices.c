@@ -19,9 +19,21 @@
 #include <drivers/rtc/rtc.h>
 #include <drivers/terminal/terminal.h>
 #include <memory/allocation/heap.h>
+#include <drivers/ipc/shmem.h>
+
+// Pointers to open functions
+file_descriptor_t* (*device_open_functions[NUM_DEVICE_TYPES])(const char* filename, uint32_t mode);
+// Pointers to unlink functions
+uint32_t (*device_unlink_functions[NUM_DEVICE_TYPES])(const char* filename);
 
 // Initialize the /dev directory
 bool devices_init() {
+	// Populate the open handle functions
+	device_open_functions[DEVICE_SHARED_MEMORY_TYPE-1] = shm_open;
+	device_unlink_functions[DEVICE_SHARED_MEMORY_TYPE-1] = shm_unlink;
+	device_open_functions[DEVICE_MESSAGE_QUEUE_TYPE-1] = NULL;
+	device_unlink_functions[DEVICE_MESSAGE_QUEUE_TYPE-1] = NULL;
+	
 	const char* prefix = "/dev/";
 	// Remove the contents of /dev
 	file_descriptor_t file;

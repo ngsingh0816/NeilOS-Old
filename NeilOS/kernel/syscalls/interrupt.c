@@ -23,7 +23,6 @@ void (*pic_table[NUMBER_OF_USER_INTERRUPTS])() = {
 	 du - "cannot read directory ., not a directory"
 	 timeout - hangs
  * More
- 	posix shared memory
  	posix message queues
  
 	timer_create, timer_delete, timer_settime

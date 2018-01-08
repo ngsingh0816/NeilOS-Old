@@ -20,12 +20,6 @@ build/./kernel/drivers/pci/pci.o: kernel/drivers/pci/pci.c \
 build/./kernel/drivers/video/video.o: kernel/drivers/video/video.c \
  kernel/drivers/video/video.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/video/video.o ./kernel/drivers/video/video.c
-build/./kernel/drivers/pipe/pipe.o: kernel/drivers/pipe/pipe.c \
- kernel/drivers/pipe/pipe.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pipe/pipe.o ./kernel/drivers/pipe/pipe.c
-build/./kernel/drivers/pipe/fifo.o: kernel/drivers/pipe/fifo.c \
- kernel/drivers/pipe/fifo.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pipe/fifo.o ./kernel/drivers/pipe/fifo.c
 build/./kernel/drivers/terminal/terminal.o: \
  kernel/drivers/terminal/terminal.c kernel/drivers/terminal/terminal.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/terminal/terminal.o ./kernel/drivers/terminal/terminal.c
@@ -73,6 +67,15 @@ build/./kernel/drivers/audio/es1371.o: kernel/drivers/audio/es1371.c \
 build/./kernel/drivers/rtc/rtc.o: kernel/drivers/rtc/rtc.c \
  kernel/drivers/rtc/rtc.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/rtc/rtc.o ./kernel/drivers/rtc/rtc.c
+build/./kernel/drivers/ipc/pipe/pipe.o: kernel/drivers/ipc/pipe/pipe.c \
+ kernel/drivers/ipc/pipe/pipe.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/pipe/pipe.o ./kernel/drivers/ipc/pipe/pipe.c
+build/./kernel/drivers/ipc/pipe/fifo.o: kernel/drivers/ipc/pipe/fifo.c \
+ kernel/drivers/ipc/pipe/fifo.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/pipe/fifo.o ./kernel/drivers/ipc/pipe/fifo.c
+build/./kernel/drivers/ipc/shmem.o: kernel/drivers/ipc/shmem.c \
+ kernel/drivers/ipc/shmem.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/shmem.o ./kernel/drivers/ipc/shmem.c
 build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
  kernel/drivers/ATA/ata.h kernel/drivers/ATA/pio.h \
  kernel/drivers/ATA/dma.h

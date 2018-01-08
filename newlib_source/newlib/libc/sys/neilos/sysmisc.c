@@ -18,7 +18,7 @@
 #include <pwd.h>
 #include <string.h>
 
-extern unsigned int sys_open(const char* filename, unsigned int mode);
+extern unsigned int sys_open(const char* filename, unsigned int mode, unsigned int type);
 extern unsigned int sys_close(int fd);
 extern unsigned int sys_errno();
 
@@ -58,7 +58,7 @@ long sysconf(int name) {
 }
 
 long pathconf(const char* path, int name) {
-	int fd = sys_open(path, O_RDONLY + 1);
+	int fd = sys_open(path, O_RDONLY + 1, 0);
     if (fd < 0) {
         errno = -fd;
         return -1;

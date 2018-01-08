@@ -30,7 +30,7 @@ typedef struct {
 	time_t ctime;
 } __sys_stat_type;
 
-extern unsigned int sys_open(const char* filename, unsigned int mode);
+extern unsigned int sys_open(const char* filename, unsigned int mode, unsigned int type);
 extern unsigned int sys_read(int fd, void* buf, unsigned int nbytes);
 extern unsigned int sys_write(int fd, const void* buf, unsigned int nbytes);
 extern unsigned int sys_llseek(int fd, uint32_t offset_high, uint32_t offset_low, int whence);
@@ -46,8 +46,10 @@ extern unsigned int sys_ioctl(int fd, int cmd, ...);
 extern unsigned int sys_select(int nfds, fd_set* readfds, fd_set* writefds,
 							   fd_set* exceptfds, struct timeval* timeout);
 
-int open(const char* name, int mode, ...) {
-	int ret = sys_open(name, mode + 1);
+extern unsigned int sys_unlink(const char* filename, char dir, int type);
+
+int open(const char* name, int flags, ...) {
+	int ret = sys_open(name, flags + 1, 0);
     if (ret < 0) {
         errno = -ret;
         return -1;
@@ -55,8 +57,8 @@ int open(const char* name, int mode, ...) {
 	return ret;
 }
 
-int _open(const char* name, int mode, ...) {
-	return open(name, mode);
+int _open(const char* name, int flags, ...) {
+	return open(name, flags);
 }
 
 int read(int file, char* ptr, int len) {
@@ -92,11 +94,11 @@ int ftruncate(int fd, unsigned int length) {
         errno = -ret;
         return -1;
     }
-	return ret;
+	return 0;
 }
 
 int truncate(const char* path, unsigned int length) {
-	int fd = sys_open(path, O_RDONLY + 1);
+	int fd = sys_open(path, O_RDONLY + 1, 0);
     if (fd < 0) {
         errno = -fd;
         return -1;
@@ -113,11 +115,11 @@ int truncate(const char* path, unsigned int length) {
         return -1;
     }
 	
-	return ret;
+	return 0;
 }
 
 int stat(const char* file, struct stat* st) {
-	int fd = sys_open(file, O_RDONLY | 0x1 | _FNONBLOCK);
+	int fd = sys_open(file, O_RDONLY | 0x1 | _FNONBLOCK, 0);
     if (fd < 0) {
         errno = -fd;
         return -1;
@@ -235,7 +237,7 @@ int pipe(int pipefd[2]) {
 
 int mkfifo(const char* filename, unsigned int mode) {
 	// Read = 0x1
-	int fd = sys_open(filename, 0x1 | _IFIFO | _FCREAT | _FNONBLOCK);
+	int fd = sys_open(filename, 0x1 | _IFIFO | _FCREAT | _FNONBLOCK, 0);
     if (fd < 0) {
         errno = -fd;
         return -1;
@@ -299,4 +301,25 @@ int pselect (int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
 		sigprocmask(SIG_SETMASK, &origmask, NULL);
 	return ready;
 	
+}
+
+#define SHARED_MEMORY_TYPE		1
+#define MESSAGE_QUEUE_TYPE		2
+
+int shm_open(const char* name, int oflag, ...) {
+	int ret = sys_open(name, oflag + 1, SHARED_MEMORY_TYPE);
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
+}
+
+int shm_unlink(const char* name) {
+	int ret = sys_unlink(name, 0, SHARED_MEMORY_TYPE);
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
 }

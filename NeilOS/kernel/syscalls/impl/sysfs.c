@@ -12,6 +12,7 @@
 #include <program/task.h>
 #include <common/log.h>
 #include <syscalls/interrupt.h>
+#include <drivers/devices/devices.h>
 
 // Make a directory
 uint32_t mkdir(const char* name) {
@@ -65,12 +66,15 @@ uint32_t readdir(uint32_t fd, void* buf, int size, dirent_t* dirent) {
 }
 
 // Unlink a file or directory (note: deletes the file if it is the last remaining link)
-uint32_t unlink(const char* filename, bool dir) {
+uint32_t unlink(const char* filename, bool dir, uint32_t type) {
 	LOG_DEBUG_INFO_STR("(%s)", filename);
 	
     if (!filename)
 		return -EFAULT;
-    
+	
+	if (type != 0 && type <= NUM_DEVICE_TYPES)
+		return device_unlink_functions[type-1](filename);
+	
 	char* path = path_absolute(filename, current_pcb->working_dir);
 	
 	// Verify it is a dir if needed

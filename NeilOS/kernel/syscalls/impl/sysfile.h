@@ -14,9 +14,9 @@
 #include <common/time.h>
 
 // Helper for open
-file_descriptor_t* open_handle(const char* filename, uint32_t mode);
+file_descriptor_t* open_handle(const char* filename, uint32_t mode, uint32_t type);
 // Open a file descriptor
-uint32_t open(const char* filename, uint32_t mode);
+uint32_t open(const char* filename, uint32_t mode, uint32_t type);
 
 // Read from a file descriptor
 uint32_t read(uint32_t fd, void* buf, uint32_t nbytes);

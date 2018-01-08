@@ -2,7 +2,7 @@
 #include <common/lib.h>
 #include <memory/memory.h>
 #include <drivers/ATA/ata.h>
-#include <drivers/pipe/fifo.h>
+#include <drivers/ipc/pipe/fifo.h>
 #include "ext2/ext2.h"
 #include "path.h"
 #include <syscalls/interrupt.h>
@@ -675,7 +675,7 @@ uint32_t filesystem_stat(file_descriptor_t* f, sys_stat_type* ret) {
 	if (!info)
 		return -1;
 	
-	ret->dev_id = 0;
+	ret->dev_id = f->type;
 	ret->mode = f->mode;
 	ret->num_links = info->link_count;
 	ret->size = info->size;

@@ -112,7 +112,7 @@ void remove_page_table_mappings(pcb_t* pcb, uint32_t start, uint32_t end) {
 		uint32_t page = (start % FOUR_MB_SIZE) / FOUR_KB_SIZE;
 		down(&current_page->lock);
 		if (page_list_read_bitmap(current_page->page_table->owners, page)) {
-			page_physical_free((void*)current_page->page_table->pages[page]);
+			page_physical_free_aligned_four_kb((void*)current_page->page_table->pages[page]);
 			page_list_write_bitmap(current_page->page_table->owners, page, false);
 		}
 		current_page->page_table->pages[page] = 0;

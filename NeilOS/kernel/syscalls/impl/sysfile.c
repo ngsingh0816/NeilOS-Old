@@ -14,15 +14,23 @@
 #include <drivers/filesystem/path.h>
 #include <drivers/ATA/ata.h>
 #include <drivers/rtc/rtc.h>
-#include <drivers/pipe/pipe.h>
-#include <drivers/pipe/fifo.h>
+#include <drivers/ipc/pipe/pipe.h>
+#include <drivers/ipc/pipe/fifo.h>
 #include <common/log.h>
 #include <syscalls/interrupt.h>
+#include <drivers/devices/devices.h>
 
 file_descriptor_t** descriptors = NULL;
 
-file_descriptor_t* open_handle(const char* filename, uint32_t mode) {
+file_descriptor_t* open_handle(const char* filename, uint32_t mode, uint32_t type) {
 	file_descriptor_t* f = NULL;
+	
+	if (type != 0 && type <= NUM_DEVICE_TYPES) {
+		f = device_open_functions[type-1](filename, mode);
+		if (f)
+			f->ref_count = 1;
+		return f;
+	}
 	
 	// Fifo
 	if ((mode & FILE_TYPE_PIPE) && (mode & FILE_MODE_CREATE)) {
@@ -41,17 +49,14 @@ file_descriptor_t* open_handle(const char* filename, uint32_t mode) {
 	
 	// Default to the filesystem if no device was found
 	f = filesystem_open(filename, mode);
-	if (f) {
+	if (f)
 		f->ref_count = 1;
-		return f;
-	}
-	
-	return NULL;
+	return f;
 }
 
 // Open a file descriptor
-uint32_t open(const char* filename, uint32_t mode) {
-	LOG_DEBUG_INFO_STR("(%s, %d)", filename, mode);
+uint32_t open(const char* filename, uint32_t mode, uint32_t type) {
+	LOG_DEBUG_INFO_STR("(%s, %d, %d)", filename, mode, type);
 	
 	// Find and open descriptor
 	pcb_t* pcb = current_pcb;
@@ -73,7 +78,7 @@ uint32_t open(const char* filename, uint32_t mode) {
 	
 	char* path = path_absolute(filename, pcb->working_dir);
 
-	pcb->descriptors[current_fd] = open_handle(path, mode);
+	pcb->descriptors[current_fd] = open_handle(path, mode, type);
 	up(&pcb->descriptor_lock);
 	kfree(path);
 	

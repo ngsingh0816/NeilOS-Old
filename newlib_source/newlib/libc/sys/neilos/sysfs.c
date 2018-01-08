@@ -23,12 +23,12 @@ extern unsigned int sys_errno();
 
 extern unsigned int sys_mkdir(const char* name);
 extern unsigned int sys_link(const char* filename, const char* new_name);
-extern unsigned int sys_unlink(const char* filename, char dir);
+extern unsigned int sys_unlink(const char* filename, char dir, int type);
 extern unsigned int sys_readdir(int fd, void* buf, int size, struct dirent* dirent);
 extern unsigned int sys_utime(const char* filename, unsigned int* times);
 
 // Helpers
-extern unsigned int sys_open(const char* filename, unsigned int mode);
+extern unsigned int sys_open(const char* filename, unsigned int mode, unsigned int type);
 extern unsigned int sys_close(int fd);
 
 int mkdir(const char* name, mode_t mode) {
@@ -50,7 +50,7 @@ int link(const char* old, const char* new) {
 }
 
 int unlink(const char* name) {
-	int ret = sys_unlink(name, 0);
+	int ret = sys_unlink(name, 0, 0);
     if (ret < 0) {
         errno = -ret;
         return -1;
@@ -59,7 +59,7 @@ int unlink(const char* name) {
 }
 
 int rmdir(const char* path) {
-	int ret = sys_unlink(path, 1);
+	int ret = sys_unlink(path, 1, 0);
     if (ret < 0) {
         errno = -ret;
         return -1;
@@ -96,7 +96,7 @@ int access(const char* path, int mode) {
 	// Permissions aren't supported, so just check if the file exists
 	if (mode == 0)
 		return 0;
-	int fd = sys_open(path, O_RDONLY + 1);
+	int fd = sys_open(path, O_RDONLY + 1, 0);
     if (fd < 0) {
         errno = -fd;
         return -1;
@@ -150,7 +150,7 @@ DIR *opendir(const char* filename) {
 	}
 	ret->dd_size = 256;
 		
-	int fd = sys_open(filename, O_RDONLY);
+	int fd = sys_open(filename, O_RDONLY, 0);
 	if (fd < 0) {
 		errno = ENOENT;
 		free(ret->dd_buf);
@@ -241,7 +241,7 @@ int endmntent(FILE* filep) {
 int statfs(const char* path , struct statfs* buf) {
 	errno = ENOSYS;
 	return -1;
-	/*int fd = sys_open(file, O_RDONLY + 1);
+	/*int fd = sys_open(file, O_RDONLY + 1, 0);
     if (fd < 0) {
         errno = -fd;
         return -1;
