@@ -138,7 +138,7 @@ file_descriptor_t* shm_open(const char* filename, uint32_t mode) {
 	// Mark in use
 	d->lock = MUTEX_UNLOCKED;
 	d->type = SHARED_MEMORY_FILE_TYPE;
-	d->mode = ((mode & ~FILE_MODE_CREATE & ~FILE_MODE_TRUNCATE)) | FILE_TYPE_CHARACTER;
+	d->mode = ((mode & ~FILE_MODE_CREATE & ~FILE_MODE_TRUNCATE & ~FILE_MODE_EXCLUSIVE)) | FILE_TYPE_CHARACTER;
 	int namelen = strlen(filename);
 	d->filename = kmalloc(namelen + 1);
 	if (!d->filename) {

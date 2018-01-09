@@ -30,7 +30,7 @@ uint32_t es_stat(file_descriptor_t* f, sys_stat_type* data);
 uint64_t es_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // ioctl
-uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2);
+uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4);
 
 // Duplicate the file handle
 file_descriptor_t* es_duplicate(file_descriptor_t* f);

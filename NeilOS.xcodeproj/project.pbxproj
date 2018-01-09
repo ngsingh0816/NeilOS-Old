@@ -11,6 +11,7 @@
 		280126042002E3F900647962 /* pipe.c in Sources */ = {isa = PBXBuildFile; fileRef = 280125FF2002DC6900647962 /* pipe.c */; };
 		280126052002E3FD00647962 /* fifo.c in Sources */ = {isa = PBXBuildFile; fileRef = 280126002002DC6900647962 /* fifo.c */; };
 		280126062002E40300647962 /* shmem.c in Sources */ = {isa = PBXBuildFile; fileRef = 280126022002DC6900647962 /* shmem.c */; };
+		2801260B200329AB00647962 /* mq.c in Sources */ = {isa = PBXBuildFile; fileRef = 2801260A200329AB00647962 /* mq.c */; };
 		280FE31A1F003E4F00E1A724 /* sysfile.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3181F003E4F00E1A724 /* sysfile.c */; };
 		280FE31D1F003EA100E1A724 /* sysfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE31B1F003EA100E1A724 /* sysfs.c */; };
 		280FE3201F003F4900E1A724 /* sysproc.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE31E1F003F4900E1A724 /* sysproc.c */; };
@@ -86,6 +87,8 @@
 		280126012002DC6900647962 /* pipe.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pipe.h; sourceTree = "<group>"; };
 		280126022002DC6900647962 /* shmem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = shmem.c; sourceTree = "<group>"; };
 		280126032002DC6900647962 /* shmem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = shmem.h; sourceTree = "<group>"; };
+		28012609200329AB00647962 /* mq.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mq.h; sourceTree = "<group>"; };
+		2801260A200329AB00647962 /* mq.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mq.c; sourceTree = "<group>"; };
 		280FE3181F003E4F00E1A724 /* sysfile.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfile.c; sourceTree = "<group>"; };
 		280FE3191F003E4F00E1A724 /* sysfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sysfile.h; sourceTree = "<group>"; };
 		280FE31B1F003EA100E1A724 /* sysfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfs.c; sourceTree = "<group>"; };
@@ -212,6 +215,8 @@
 			isa = PBXGroup;
 			children = (
 				280125FD2002DC6900647962 /* pipe */,
+				2801260A200329AB00647962 /* mq.c */,
+				28012609200329AB00647962 /* mq.h */,
 				280126022002DC6900647962 /* shmem.c */,
 				280126032002DC6900647962 /* shmem.h */,
 			);
@@ -222,8 +227,8 @@
 			isa = PBXGroup;
 			children = (
 				280125FE2002DC6900647962 /* fifo.h */,
-				280125FF2002DC6900647962 /* pipe.c */,
 				280126002002DC6900647962 /* fifo.c */,
+				280125FF2002DC6900647962 /* pipe.c */,
 				280126012002DC6900647962 /* pipe.h */,
 			);
 			path = pipe;
@@ -660,6 +665,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2801260B200329AB00647962 /* mq.c in Sources */,
 				28DF5AD11EF3AB890009CA98 /* block.c in Sources */,
 				280FE3291F00422000E1A724 /* systime.c in Sources */,
 				28DF5ACE1EF3AB890009CA98 /* ata.c in Sources */,

@@ -347,7 +347,7 @@ uint64_t es_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 #define ES_IOCTL_GET_MASTER_VOLUME	3
 
 // ioctl
-uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2) {
+uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
 	es_info* info = f->info;
 	switch (request) {
 		case ES_IOCTL_SET_VOLUME: {
@@ -371,7 +371,8 @@ uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg
 			break;
 		}
 	}
-	return 0;
+	
+	return -EINVAL;
 }
 
 // Duplicate the file handle

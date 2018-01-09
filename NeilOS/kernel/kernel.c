@@ -47,6 +47,7 @@
  * Audio Driver (Ensoniq AudioPCI 1370/1371)
  * mmap (also munmap, msync)
  * Posix Shared Memory
+ * Posix Message Queues
  */
 
 /* TODO (could be improved):
@@ -62,13 +63,12 @@
  * Filesystem - multiple processes or threads writing to the same inode (i.e. fmkdir("/hi") and fmkdir("/bye")
 	may cause an issue because they both modify the "." inode's contents at the same time
  		* can probably be fixed by r/w lock per inode
- * Implement MS_INVALIDATE for msync (needs way to easily located all other mapped versions of the same file)
+ * Implement MS_INVALIDATE for msync (needs way to easily located all other mapped versions of the same file^^^^)
  * Thread Local Storage (TLS)
+ * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there
  */
 
 /* TODO (bugs)
- * scheduler can take too long and have another interrupt start pending so that as soon as interrupts are enabled
-	we go back to the scheduler (it doesn't though)
  * bin/dash -> control-c -> ls crashes
  	* This is because the signal handler executes in kernel space for now, and dash does a longjmp to
  		get out of the signal, so it remains in kernel mode for dash execution so then calls to intx80
@@ -81,14 +81,11 @@
  */
 
 /* TODO:
- * More system calls
  * API (add user level support for all new features continuing - also make a user level program to
  		test each of these functionalities)
  * Dylib Lazy Linking
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
  * Scheduler Rework
- * Graphics (QEMU VBE) Driver?
- * Message Queues?
  * GUI (Compositing Window Manager)
 	* Interacts through message queues (or maybe pipes + shared memory for big data transfers)?
  * Ethernet Driver

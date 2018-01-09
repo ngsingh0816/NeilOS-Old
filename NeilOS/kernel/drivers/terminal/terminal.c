@@ -760,7 +760,7 @@ uint64_t terminal_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 #define TCGETATTR		2
 #define TCSETATTR		3
 #define TTYNAME			4
-uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2) {
+uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
 	switch (request) {
 		case TCFLUSH: {
 			if (arg1 == TCIFLUSH || arg1 == TCIOFLUSH)
@@ -790,6 +790,8 @@ uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32
 			memcpy((void*)arg1, "/dev/tty", 9);
 			break;
 		}
+		default:
+			return -EINVAL;
 	}
 	
 	return 0;

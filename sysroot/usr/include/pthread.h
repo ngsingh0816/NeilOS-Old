@@ -13,8 +13,8 @@
 #include <sched.h>
 #include <time.h>
 
-#define PTHREAD_THREADS_MAX	64
-#define PTHREAD_CANCELLED ((void*)-1)
+#define PTHREAD_THREADS_MAX			128
+#define PTHREAD_CANCELLED 			((void*)-1)
 
 enum {
 	PTHREAD_CANCEL_ENABLE,

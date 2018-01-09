@@ -114,7 +114,7 @@ uint32_t terminal_stat(file_descriptor_t* f, sys_stat_type* data);
 uint64_t terminal_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 
 // ioctl
-uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2);
+uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4);
 
 // Used for select
 bool terminal_can_read(file_descriptor_t* f);

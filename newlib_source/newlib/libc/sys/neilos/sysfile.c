@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/signal.h>
+#include "include/mqueue.h"
 
 typedef struct {
 	uint32_t dev_id;
@@ -269,7 +270,7 @@ int _fcntl(int fd, int cmd, ...) {
 
 int ioctl(int fd, int request, ...) {
 	uint32_t* esp = ((uint32_t*)&request) + 1;
-	int ret = sys_ioctl(fd, request, *esp, *(esp + 1));
+	int ret = sys_ioctl(fd, request, *esp, *(esp + 1), *(esp + 2), *(esp + 3));
     if (ret < 0) {
         errno = -ret;
         return -1;
@@ -303,6 +304,8 @@ int pselect (int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
 	
 }
 
+// Shared Memory
+
 #define SHARED_MEMORY_TYPE		1
 #define MESSAGE_QUEUE_TYPE		2
 
@@ -317,6 +320,52 @@ int shm_open(const char* name, int oflag, ...) {
 
 int shm_unlink(const char* name) {
 	int ret = sys_unlink(name, 0, SHARED_MEMORY_TYPE);
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
+}
+
+// Message Queues
+
+#define MQ_IOCTL_SEND		1
+#define MQ_IOCTL_RECEIVE	2
+#define MQ_IOCTL_GETATTR	3
+#define MQ_IOCTL_SETATTR	4
+
+mqd_t mq_open (const char* name, int oflag, ...) {
+	int ret = sys_open(name, oflag + 1, MESSAGE_QUEUE_TYPE);
+	if (ret < 0) {
+		errno = -ret;
+		return -1;
+	}
+	return ret;
+}
+
+int mq_close (mqd_t mq) {
+	return close(mq);
+}
+
+int mq_send (mqd_t msgid, const char* msg, size_t msg_len, unsigned int msg_prio) {
+	return ioctl(msgid, MQ_IOCTL_SEND, msg, msg_len, msg_prio);
+}
+
+ssize_t mq_receive (mqd_t msgid, char *msg, size_t msg_len, unsigned int* msg_prio) {
+	return ioctl(msgid, MQ_IOCTL_RECEIVE, msg, msg_len, msg_prio);
+}
+
+
+int mq_getattr (mqd_t msgid, struct mq_attr* mqstat) {
+	return ioctl(msgid, MQ_IOCTL_GETATTR, mqstat);
+}
+
+int mq_setattr (mqd_t msgid, const struct mq_attr* mqstat, struct mq_attr* omqattr) {
+	return ioctl(msgid, MQ_IOCTL_SETATTR, mqstat, omqattr);
+}
+
+int mq_unlink (const char *name) {
+	int ret = sys_unlink(name, 0, MESSAGE_QUEUE_TYPE);
 	if (ret < 0) {
 		errno = -ret;
 		return -1;

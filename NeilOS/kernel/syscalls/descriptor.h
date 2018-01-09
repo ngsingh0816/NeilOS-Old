@@ -13,14 +13,15 @@
 #include <common/concurrency/semaphore.h>
 
 // File types
-#define FILE_FILE_TYPE		0
-#define DIRECTORY_FILE_TYPE	1
-#define STANDARD_INOUT_TYPE	2
-#define RTC_FILE_TYPE		3
-#define DISK_FILE_TYPE		4
-#define MOUSE_FILE_TYPE		5
-#define AUDIO_FILE_TYPE		6
+#define FILE_FILE_TYPE			0
+#define DIRECTORY_FILE_TYPE		1
+#define STANDARD_INOUT_TYPE		2
+#define RTC_FILE_TYPE			3
+#define DISK_FILE_TYPE			4
+#define MOUSE_FILE_TYPE			5
+#define AUDIO_FILE_TYPE			6
 #define SHARED_MEMORY_FILE_TYPE	7
+#define MESSAGE_QUEUE_FILE_TYPE	8
 
 // File Modes
 #define FILE_MODE_READ				0x001
@@ -101,7 +102,7 @@ typedef struct file_descriptor {
 	uint64_t (*llseek)(struct file_descriptor* f, uint64_t offset, int whence);
 	uint64_t (*truncate)(struct file_descriptor* f, uint64_t nsize);
 	uint32_t (*stat)(struct file_descriptor* f, sys_stat_type* data);
-	uint32_t (*ioctl)(struct file_descriptor* f, int request, uint32_t arg1, uint32_t arg2);
+	uint32_t (*ioctl)(struct file_descriptor* f, int request, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4);
 	bool (*can_read)(struct file_descriptor* f);
 	bool (*can_write)(struct file_descriptor* f);
 	struct file_descriptor* (*duplicate)(struct file_descriptor* f);

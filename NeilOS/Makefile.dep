@@ -76,6 +76,9 @@ build/./kernel/drivers/ipc/pipe/fifo.o: kernel/drivers/ipc/pipe/fifo.c \
 build/./kernel/drivers/ipc/shmem.o: kernel/drivers/ipc/shmem.c \
  kernel/drivers/ipc/shmem.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/shmem.o ./kernel/drivers/ipc/shmem.c
+build/./kernel/drivers/ipc/mq.o: kernel/drivers/ipc/mq.c \
+ kernel/drivers/ipc/mq.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/mq.o ./kernel/drivers/ipc/mq.c
 build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
  kernel/drivers/ATA/ata.h kernel/drivers/ATA/pio.h \
  kernel/drivers/ATA/dma.h
