@@ -437,7 +437,7 @@ void* dylib_get_symbol_address_hash(dylib_t* dylib, uint32_t hash, char* name, b
 		index = dylib->hash.chains[index];
 	}
 	up(&dylib->lock);
-	return dylib_get_symbol_address_name(dylib, name, found);
+	return NULL;
 }
 
 // Get the symbol address for a specific symbol
