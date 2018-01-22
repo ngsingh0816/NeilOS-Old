@@ -9,6 +9,10 @@
 #ifndef pthread_h
 #define pthread_h
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 #include <unistd.h>
 #include <sched.h>
 #include <time.h>
@@ -241,5 +245,8 @@ void *pthread_getspecific(pthread_key_t);
 int   pthread_key_create(pthread_key_t *, void (*)(void *));
 int   pthread_key_delete(pthread_key_t);*/
 
-
+#ifdef __cplusplus
+}
+#endif
+	
 #endif /* pthread_h */

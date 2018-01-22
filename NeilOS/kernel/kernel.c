@@ -48,6 +48,7 @@
  * mmap (also munmap, msync)
  * Posix Shared Memory
  * Posix Message Queues
+ * API
  */
 
 /* TODO (could be improved):
@@ -66,6 +67,8 @@
  * Implement MS_INVALIDATE for msync (needs way to easily located all other mapped versions of the same file^^^^)
  * Thread Local Storage (TLS)
  * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there
+ * Could improve read speed of large reads by reading entire block and caching it (because fread only
+ 	does 0x400 at a time)
  */
 
 /* TODO (bugs)
@@ -81,8 +84,6 @@
  */
 
 /* TODO:
- * API (add user level support for all new features continuing - also make a user level program to
- 		test each of these functionalities)
  * Dylib Lazy Linking
  * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
  * Scheduler Rework

@@ -228,6 +228,37 @@ bool dylib_load_for_task_by_name(char* name, pcb_t* pcb) {
 	return dylib_load_for_task(dylib, pcb);
 }
 
+// Helper that returns true if the pcb contains a dylib with the given name
+bool dylib_task_contains_dylib_by_name(char* name, pcb_t* pcb, bool full_name) {
+	char* realname = full_name ? name : dylib_get_real_name(name);
+	
+	dylib_list_t* t = pcb->dylibs;
+	if (t)
+		down(&t->lock);
+	uint32_t len = strlen(realname) + 1;
+	while (t) {
+		down(&t->dylib->lock);
+		if (t->dylib->name && strncmp(realname, t->dylib->name, len) == 0) {
+			up(&t->dylib->lock);
+			up(&t->lock);
+			if (!full_name)
+				kfree(realname);
+			return true;
+		}
+		up(&t->dylib->lock);
+		
+		dylib_list_t* prev = t;
+		t = t->next;
+		if (t)
+			down(&t->lock);
+		up(&prev->lock);
+	}
+	
+	if (!full_name)
+		kfree(realname);
+	return false;
+}
+
 bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	dylib_list_t* list = kmalloc(sizeof(dylib_list_t));
 	if (!list)
@@ -311,7 +342,26 @@ bool dylib_load_for_task(dylib_t* dylib, pcb_t* pcb) {
 	
 	down(&dylib->lock);
 	dylib->num_instances++;
+	if (dylib->dylibs)
+		down(&dylib->dylibs->lock);
+	dylib_list_t* d = dylib->dylibs;
 	up(&dylib->lock);
+	
+	// Link dependent dylibs if they haven't already been linked
+	while (d) {
+		down(&d->dylib->lock);
+		char* name = d->dylib->name;
+		up(&d->dylib->lock);
+		
+		if (!dylib_task_contains_dylib_by_name(name, pcb, true))
+			dylib_load_for_task_by_name(name, pcb);
+		
+		dylib_list_t* prev = d;
+		d = d->next;
+		if (d)
+			down(&d->lock);
+		up(&prev->lock);
+	}
 		
 	return true;
 }
@@ -324,6 +374,29 @@ void dylib_unload_for_task(dylib_t* dylib) {
 		dylib_unload(dylib->name);
 	} else
 		up(&dylib->lock);
+}
+
+// Load a dylib for another dylib by name
+bool dylib_load_for_dylib_by_name(char* name, dylib_t* dylib) {
+	dylib_t* d = dylib_get(name, true);
+	if (!d)
+		return false;
+	
+	return dylib_load_for_dylib(d, dylib);
+}
+
+// Load a dylib for another dylib
+bool dylib_load_for_dylib(dylib_t* n, dylib_t* dylib) {
+	dylib_list_t* t = kmalloc(sizeof(dylib_list_t));
+	if (!t)
+		return false;
+	memset(t, 0, sizeof(dylib_list_t));
+	t->lock = MUTEX_UNLOCKED;
+	t->dylib = n;
+	
+	dylib_list_push_back(&dylib->dylibs, t);
+	
+	return true;
 }
 
 // Get the symbol address for a specific symbol by name
@@ -418,11 +491,17 @@ void dylib_unload(char* name) {
 		if (t->dylib && strncmp(realname, t->dylib->name, len) == 0) {
 			up(&t->dylib->lock);
 			dylib = t->dylib;
+			if (t->next)
+				down(&t->next->lock);
 			// Unlink it
 			if (t->prev)
 				t->prev->next = t->next;
 			else
 				dylibs = t->next;
+			if (t->next) {
+				t->next->prev = t->prev;
+				up(&t->next->lock);
+			}
 			
 			if (t->prev)
 				up(&t->prev->lock);
@@ -473,6 +552,13 @@ void dylib_dealloc(dylib_t* dylib) {
 	if (dylib->hash.chains)
 		kfree(dylib->hash.chains);
 	page_list_dealloc(dylib->page_list);
+	
+	dylib_list_t* t = dylib->dylibs;
+	while (t) {
+		dylib_list_t* prev = t;
+		t = t->next;
+		kfree(prev);
+	}
 	
 	up(&dylib->lock);
 	kfree(dylib);

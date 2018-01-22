@@ -106,6 +106,15 @@ bool dylib_load_for_task(dylib_t* dylib, struct pcb* pcb);
 // Unload a dylib for a specific application
 void dylib_unload_for_task(dylib_t* dylib);
 
+// Helper that returns true if the pcb contains a dylib with the given name
+bool dylib_task_contains_dylib_by_name(char* name, struct pcb* pcb, bool full_name);
+
+// Load a dylib for another dylib by name
+bool dylib_load_for_dylib_by_name(char* name, dylib_t* dylib);
+
+// Load a dylib for another dylib
+bool dylib_load_for_dylib(dylib_t* n, dylib_t* dylib);
+
 // Get the symbol address for a specific symbol
 void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* found);
 

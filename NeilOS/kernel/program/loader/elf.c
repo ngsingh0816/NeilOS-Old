@@ -544,9 +544,10 @@ bool elf_load(char* filename, pcb_t* pcb) {
 			}
 			
 			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
-				if (tags[i].tag == ELF_DYNAMIC_NEEDED) {
-					if (!dylib_load_for_task_by_name(&strtab[tags[i].value], pcb)) {
-						printf("Could not load needed library: %s\n", &strtab[tags[i].value]);
+				char* name = &strtab[tags[i].value];
+				if (tags[i].tag == ELF_DYNAMIC_NEEDED && !dylib_task_contains_dylib_by_name(name, pcb, false)) {
+					if (!dylib_load_for_task_by_name(name, pcb)) {
+						printf("Could not load needed library: %s\n", name);
 						kfree(tags);
 						goto cleanup;
 					}
@@ -789,6 +790,41 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 		}
 	}
 	
+	// Load dynamic info
+	for (z = 0; z < header.section_header_num_entries; z++) {
+		elf_section_header_t* section_header = &section_headers[z];
+		if (section_header->type == ELF_SECTION_DYNAMIC) {
+			elf_dynamic_tag_t* tags = elf_read_data(&file, section_header->offset, section_header->size);
+			if (!tags)
+				goto cleanup;
+			
+			// Find strtab
+			char* strtab = NULL;
+			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
+				if (tags[i].tag == ELF_DYNAMIC_STRTAB) {
+					strtab = elf_get_strtab(section_headers, header.section_header_num_entries, tags[i].value, strtabs);
+					if (!strtab) {
+						kfree(tags);
+						goto cleanup;
+					}
+					break;
+				}
+			}
+			
+			for (uint32_t i = 0; i < section_header->size / sizeof(elf_dynamic_tag_t); i++) {
+				if (tags[i].tag == ELF_DYNAMIC_NEEDED) {
+					if (!dylib_load_for_dylib_by_name(&strtab[tags[i].value], dylib)) {
+						printf("Could not load needed library: %s\n", &strtab[tags[i].value]);
+						kfree(tags);
+						goto cleanup;
+					}
+				}
+			}
+			
+			kfree(tags);
+		}
+	}
+	
 	ret = true;
 	
 cleanup:
@@ -809,9 +845,12 @@ cleanup:
 
 // Copy information and perform relocation for a dylib
 bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb, uint32_t offset) {
+	//struct timeval time = time_get();
 	if (!elf_perform_relocation_dylib(dylib->rel_sections, dylib->num_rel_sections,
 										pcb->dylibs, offset))
 		return false;
+	/*struct timeval t2 = time_subtract(time_get(), time);
+	printf("%d ms - %s\n", t2.tv_sec * 1000 + t2.tv_usec / 1000, dylib->name ? dylib->name : "");*/
 	
 	// Perform the initialization function
 	down(&dylib->lock);
