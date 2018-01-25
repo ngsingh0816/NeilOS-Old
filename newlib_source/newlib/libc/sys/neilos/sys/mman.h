@@ -2,6 +2,10 @@
 #ifndef	_SYS_MMAN_H_
 #define _SYS_MMAN_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define	PROT_NONE	0x00
 #define	PROT_READ	0x01
 #define	PROT_WRITE	0x02
@@ -79,5 +83,9 @@ int	mincore __P((const void *, size_t, char *));
 int	minherit __P((void *, size_t, int));
 #endif
 __END_DECLS
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_SYS_MMAN_H_ */

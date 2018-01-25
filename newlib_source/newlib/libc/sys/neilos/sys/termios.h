@@ -9,6 +9,10 @@
 #ifndef _SYS_TERMIOS_H
 #define _SYS_TERMIOS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define __MAX_BAUD B4000000
 
 #define B0	0x00000000
@@ -115,5 +119,9 @@ int	tcflush(int fd, int queue_selector);
 int	tcgetattr(int fd, struct termios* termios_p);
 int	tcsendbreak(int fd, int duration);
 int	tcsetattr(int fd, int optional_actions, const struct termios* termios_p);
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SYS_TERMIOS_H */

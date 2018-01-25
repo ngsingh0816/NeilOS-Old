@@ -197,7 +197,7 @@ void time_increment_ms(int ms) {
 }
 
 struct timeval time_add(struct timeval t1, struct timeval t2) {
-	current_time.tv_usec += t2.tv_usec;
+	t1.tv_usec += t2.tv_usec;
 	unsigned int sec = t1.tv_usec / US_IN_SEC;
 	t1.tv_usec -= sec * US_IN_SEC;
 	t1.tv_sec += sec + t2.tv_sec;

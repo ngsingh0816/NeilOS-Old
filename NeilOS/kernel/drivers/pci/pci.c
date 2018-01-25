@@ -47,6 +47,10 @@ static inline uint16_t pci_get_vendor_id(uint8_t bus, uint8_t device, uint8_t fu
 	return (pci_config_read(bus, device, func, VENDOR_ID_REGISTER) & 0xFFFF);
 }
 
+static inline uint16_t pci_get_device_id(uint8_t bus, uint8_t device, uint8_t func) {
+	return (pci_config_read(bus, device, func, DEVICE_ID_REGISTER) >> 16) & 0xFFFF;
+}
+
 static inline uint16_t pci_get_header_type(uint8_t bus, uint8_t device, uint8_t func) {
 	return ((pci_config_read(bus, device, func, HEADER_TYPE_REGISTER) >> 16) & 0xFF);
 }
@@ -114,6 +118,47 @@ pci_device_t pci_device_info(uint8_t class_code, uint8_t subclass) {
 						continue;
 					
 					if (check_function(class_code, subclass, bus, device, func))
+						return pci_get_info(bus, device, func);
+				}
+			}
+		}
+	}
+	
+	// Return an invalid header
+	pci_device_t ret;
+	ret.bus = -1;
+	ret.device = -1;
+	return ret;
+}
+
+// Retrieve the info for a specific device by vendor id
+pci_device_t pci_device_info_vendor(uint16_t vendor, uint16_t dev) {
+	// Do a brute force search
+	uint32_t bus, device;
+	
+	for (bus = 0; bus < NUMBER_OF_BUSES; bus++) {
+		for (device = 0; device < NUMBER_OF_DEVICES; device++) {
+			// Check if this device is valid
+			uint16_t vend = pci_get_vendor_id(bus, device, 0);
+			if (vend == INVALID_DEVICE)
+				continue;
+			
+			uint16_t d = pci_get_device_id(bus, device, 0);
+			if (vend == vendor && d == dev)
+				return pci_get_info(bus, device, 0);
+			
+			// Check for a multi funciton device
+			uint8_t header_type = pci_get_header_type(bus, device, 0);
+			if ((header_type >> 7) & 0x1) {
+				// Check the remaining functions
+				uint32_t func;
+				for (func = 1; func < NUMBER_OF_FUNCTIONS; func++) {
+					vend = pci_get_vendor_id(bus, device, func);
+					if (vend == INVALID_DEVICE)
+						continue;
+					
+					d = pci_get_device_id(bus, device, func);
+					if (vend == vendor && d == dev)
 						return pci_get_info(bus, device, func);
 				}
 			}

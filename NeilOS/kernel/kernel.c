@@ -20,6 +20,7 @@
 #include <drivers/devices/devices.h>
 #include <drivers/mouse/mouse.h>
 #include <drivers/audio/es1371.h>
+#include <drivers/graphics/graphics.h>
 
 /* Features:
  * Memory Allocator
@@ -49,6 +50,7 @@
  * Posix Shared Memory
  * Posix Message Queues
  * API
+ * VMWare Graphics Driver (2D)
  */
 
 /* TODO (could be improved):
@@ -69,6 +71,7 @@
  * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there
  * Could improve read speed of large reads by reading entire block and caching it (because fread only
  	does 0x400 at a time)
+ * Implement 2D accelerated graphics commands (fill, copy)
  */
 
 /* TODO (bugs)
@@ -76,21 +79,44 @@
  	* This is because the signal handler executes in kernel space for now, and dash does a longjmp to
  		get out of the signal, so it remains in kernel mode for dash execution so then calls to intx80
  		don't use the correct esp because there is no ring switch
- * Very rarely, ls | grep cat will crash during elf_perform_relocation_dylib because for some reason
- 	the extra page_list entries from the dylibs do not get linked into pcb->page_list so there is a page fault
  * bin/dash -> / -> / -> etc, eventually crashes
  * bin/bash crashes if TERM!=dumb
  * Implement CLOSE_ON_EXEC
+ * cat "binary file" crashes because it tries to output nonexistant escape sequences
+ */
+
+/* TODO (API)
+ * Port libmpg123
+ 	* Finish NSSound implementation
+ * Port libpng, libjpeg, libtiff(?), giflib
+ 	* Create NSImage
+ * Port FreeType (done) then create NSFont
+ * NSTime, NSDate, NSTimer, NSFileManager
+ * NSThread (NSLock, etc.) -> NSHandler
+ 	* NSHandler can be a way to post handlers to a certain thread (ex: from background thread,
+ 		handler->post(NSThread::mainThread())
+ 		* This means that each NSThread must have its own NSRunLoop
+ * GUI
+ 	* NSPoint, NSSize, NSRect, NSRange
+	* NSWindow, NSView, NSControl, NSButton, etc.
+ * NSUndoManager
+ * Implement sockets
+ 	* NSURL*
  */
 
 /* TODO:
- * Dylib Lazy Linking
- * Graphics (VMWare) Driver (VMWare SVGA-II - can be used in qemu by doing -vga vmware)
  * Scheduler Rework
  * GUI (Compositing Window Manager)
-	* Interacts through message queues (or maybe pipes + shared memory for big data transfers)?
+	* Interacts through message queues
+ 	How it will work
+ 		1) Client requests access to WindowServer, WindowServer opens message queue and returns it
+ 		2) Client requests window, WindowServer sets up shared memory for window and buffer
+		3) Client will draw it things into buffer, sends Update Rect to WindowServer, which composites results to screen
+ 			* View writes into window's buffer, then sends update request to window, which sends to WindowServer
+ 
  * Ethernet Driver
  * Sockets
+ * Dylib Lazy Linking?
  * Get libtool working?
  * SMP?
  * Page files on disk?
@@ -191,268 +217,20 @@ entry (unsigned long magic, unsigned long addr)
 	
 	clear();
 	
-	// Basic file command prompt
-	const char* shell_argv[] = { "shell", NULL };
-	queue_task_load("shell", shell_argv, NULL, NULL);
-	
-	descriptors = (file_descriptor_t**)kmalloc(sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
-	file_descriptor_t** descriptors_backup = descriptors;
-	memset(descriptors, 0, sizeof(file_descriptor_t*) * NUMBER_OF_DESCRIPTORS);
-	descriptors[STDIN] = terminal_open("stdin", FILE_MODE_READ);
-	descriptors[STDOUT] = terminal_open("stdout", FILE_MODE_WRITE);
-	descriptors[STDERR] = terminal_open("stderr", FILE_MODE_WRITE);
-	
-	char input[128];
-	for (;;) {
-		printf("NeilOS> ");
-		uint32_t num = terminal_read(descriptors[STDIN], input, 128);
-		input[num - 1] = 0;
-		if (strncmp(input, "stat ", strlen("stat ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[5], FILE_MODE_READ, &file)) {
-				printf("File not found.\n");
-				continue;
-			}
-			
-			uint32_t size = fseek(&file, uint64_make(0, 0), SEEK_END).low;
-			printf("Filename: %s\n", &input[5]);
-			printf("Size: 0x%x bytes\n", size);
-			ext_inode_t inode = ext2_open(&input[5]);
-			printf("Inode: 0x%x\n", inode);
-			printf("Blocks: ");
-			int q;
-			for (q = 0; q < 15; q++)
-				printf("0x%x ", inode.info.blocks[q]);
-			printf("\n");
-			
-			fclose(&file);
-		}/* else if (strncmp(input, "ls", strlen("ls")) == 0) {
-			char* name = "";
-			if (strlen(input) > 2)
-				name = &input[3];
-			
-			file_descriptor_t file;
-			if (!fopen(name, FILE_MODE_READ, &file)) {
-				printf("File not found.\n");
-				continue;
-			}
-			
-			char buffer[256];
-			uint32_t len = 0;
-			while ((len = fread(buffer, 1, 256, &file)) != 0)
-				printf("%s/%s\n", name, buffer);
-			
-			fclose(&file);
-			
-		}*//* else if (strncmp(input, "cat ", strlen("cat ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[4], FILE_MODE_READ, &file)) {
-				printf("File not found.\n");
-				continue;
-			}
-			
-			char buffer[256];
-			uint32_t len = 0;
-			while ((len = fread(buffer, 1, 256, &file)) != 0) {
-				int z;
-				for (z = 0; z < len; z++)
-					printf("%c", buffer[z]);
-			}
-			
-			fclose(&file);
-			
-		} */else if (strncmp(input, "append ", strlen("append ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[7], FILE_MODE_READ_WRITE, &file)) {
-				printf("File not found.\n");
-				continue;
-			}
-			
-			num = terminal_read(STDIN, input, 128);
-			fseek(&file, uint64_make(0, 0), SEEK_END);
-			fwrite(input, num, 1, &file);
-			
-			fclose(&file);
-		} else if (strncmp(input, "touch ", strlen("touch ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[6], FILE_MODE_READ | FILE_MODE_CREATE, &file)) {
-				printf("Could not create file.\n");
-				continue;
-			}
-			fclose(&file);
-		} else if (strncmp(input, "rm ", strlen("rm ")) == 0) {
-			if (!fsunlink(&input[3]))
-				printf("File not found.\n");
-		} else if (strncmp(input, "link ", strlen("link ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[5], FILE_MODE_READ, &file)) {
-				printf("File not found.\n");
-				continue;
-			}
-			
-			char buffer[128];
-			num = terminal_read(STDIN, buffer, 128);
-			buffer[num - 1] = 0;
-			
-			if (flink(&file, buffer) < 0)
-				printf("Could not rename %s to %s", &input[5], buffer);
-			
-			fclose(&file);
-		} else if (strncmp(input, "mkdir ", strlen("mkdir ")) == 0) {
-			file_descriptor_t file;
-			if (fopen(&input[6], FILE_MODE_READ, &file)) {
-				printf("File or directory already exists.\n");
-				fclose(&file);
-				continue;
-			}
-			
-			int ret = fmkdir(&input[6]);
-			if (ret < 0)
-				printf("Could not create directory\n");
-		} else if (strncmp(input, "rmdir ", strlen("rmdir ")) == 0) {
-			if (!fsunlink(&input[6]))
-				printf("File not found.\n");
-		} else if (strncmp(input, "truncate ", strlen("truncate ")) == 0) {
-			file_descriptor_t file;
-			if (!fopen(&input[9], FILE_MODE_READ_WRITE, &file)) {
-				printf("File not found.\n");
-				continue;
-			}
-			
-			num = terminal_read(STDIN, input, 128);
-			input[num - 1] = 0;
-			int32_t pos = strlen(input) - 1;
-			bool hex = (pos > 2) && (input[0] == '0' && input[1] == 'x');
-			int32_t start = hex ? 2 : 0;
-			uint32_t value = 0;
-			uint32_t base = hex ? 16 : 10;
-			uint32_t bit = 1;
-			bool valid = true;
-			while (pos != (start - 1)) {
-				uint32_t v = 0;
-				if (input[pos] >= '0' && input[pos] <= '9')
-					v = input[pos] - '0';
-				else if (input[pos] >= 'a' && input[pos] <= 'f')
-					v = input[pos] - 'a' + 0xA;
-				else if (input[pos] >= 'A' && input[pos] <= 'F')
-					v = input[pos] - 'A' + 0xA;
-				else {
-					valid = false;
-					break;
-				}
-				
-				value += bit * v;
-				bit *= base;
-				
-				pos--;
-			}
-			
-			if (!valid) {
-				printf("Invalid argument.\n");
-				fclose(&file);
-				continue;
-			}
-			
-			if (hex)
-				printf("Truncating to size=0x%x\n", value);
-			else
-				printf("Truncating to size=%d\n", value);
-			
-			if (value != ftruncate(&file, uint64_make(0, value)).low)
-				printf("Could not truncate correctly.\n");
-			
-			fclose(&file);
-		} else if (strncmp(input, "blocks", strlen("blocks")) == 0) {
-			printf("0x%x blocks remaining.\n", ext2_superblock()->free_block_count);
-		} else if (strncmp(input, "inodes", strlen("inodes")) == 0) {
-			printf("0x%x inodes remaining.\n", ext2_superblock()->free_inode_count);
-		} else if (strncmp(input, "exit", strlen("exit")) == 0) {
-			task_list_t* t = tasks->pcb->children;
-			while (t) {
-				if (t->pcb)
-					t->pcb->parent = NULL;
-				task_list_t* next = t->next;
-				kfree(t);
-				t = next;
-			}
-			tasks->pcb->children = NULL;
-			break;
-		} else if (strncmp(input, "time", strlen("time")) == 0) {
-#include <common/time.h>
-			date_t date = get_current_date();
-			printf("%d:%d:%d on %d/%d/%d\n", date.hour, date.minute, date.second, date.month, date.day, date.year);
-			
-			printf("UNIX time: %d\n", get_current_unix_time().val);
-		} else {
-			if (num == 1)
-				continue;
-			
-			uint32_t argc = 1;
-			uint32_t ptr;
-			uint32_t first = num - 1;
-			bool was_space = false;
-			for (ptr = 0; ptr < num; ptr++) {
-				if (input[ptr] == ' ') {
-					first = ptr;
-					break;
-				}
-			}
-			for (ptr = 0; ptr < num; ptr++) {
-				if (input[ptr] == ' ') {
-					was_space = true;
-				} else if (was_space) {
-					argc++;
-					was_space = false;
-				}
-			}
-			
-			char** argv = (char**)kmalloc(sizeof(char*) * (argc + 1));
-			argv[argc] = NULL;
-			argv[0] = (char*)kmalloc(first + 1);
-			memcpy(argv[0], input, first);
-			argv[0][first] = 0;
-			
-			argc = 0;
-			for (ptr = first; ptr < num; ptr++) {
-				if (input[ptr] == ' ') {
-					was_space = true;
-				} else if (was_space) {
-					argc++;
-					was_space = false;
-					uint32_t z = 0;
-					for (z = 0; ptr + z < num; z++) {
-						if (input[ptr + z] == ' ')
-							break;
-					}
-					argv[argc] = (char*)kmalloc(z + 1);
-					argv[argc][z] = 0;
-					memcpy(argv[argc], &input[ptr], z);
-				}
-			}
-			
-			pcb_t* p = NULL;
-			int res = queue_task_load(argv[0], (const char**)argv, NULL, &p);
-			uint32_t z;
-			for (z = 0; z < argc; z++)
-				kfree(argv[z]);
-			kfree(argv);
-			if (res == 0) {
-				p->parent = tasks->pcb;
-				run(p);
-				tasks->pcb->threads->state = READY;
-				tasks->pcb->state = UNLOADED;
-				signal_set_pending(tasks->pcb, SIGCHLD, false);
-				tasks->pcb->signal_occurred	= false;
-			}
-			else
-				printf("Command not found.\n");
-			current_pcb = NULL;
-			descriptors = descriptors_backup;
-		}
+	// Setup the graphics mode
+	pcb_t* pcb = NULL;
+	if (!graphics_init()) {
+		// Start with bash if graphics aren't supported
+		const char* shell_argv[] = { "bash", NULL };
+		queue_task_load("/bin/bash", shell_argv, NULL, &pcb);
+	} else {
+		// Otherwise, start the GUI
+		const char* server_argv[] = { "WindowServer", NULL };
+		queue_task_load("/system/apps/WindowServer", server_argv, NULL, &pcb);
 	}
 	
 	// Run the first shell (auto enables interrupts)
-	run(pcb_from_pid(0));
+	run(pcb);
 	
 	// Avoids error in Xcode
 #ifndef __APPLE__

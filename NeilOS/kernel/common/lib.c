@@ -4,7 +4,7 @@
 
 #include "lib.h"
 #include <memory/memory.h>
-#include <drivers/video/video.h>
+#include <drivers/graphics/graphics.h>
 
 #define VIDEO 0xB8000
 #define NUM_COLS 80//(RESOLUTION_X / 8)
@@ -74,8 +74,6 @@ void backspace(uint8_t key) {
 		// Place an empty space
 		*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = ' ';
 		*(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1) + 1) = current_attrib;
-		
-		set_rectangle(screen_x * 8, screen_y * 16, 8, 16, 0, 0, 0);
 	}
 	
 	// Update the cursor
@@ -167,9 +165,7 @@ clear(void)
         *(uint8_t *)(video_mem + (i << 1)) = ' ';
         *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
     }
-	
-	set_rectangle(0, 0, RESOLUTION_X, RESOLUTION_Y, 0, 0, 0);
-	
+		
 	// Reset the cursor position
 	cursor_position_set(0, 0);
 	current_attrib = ATTRIB;
@@ -233,9 +229,9 @@ void show_cursor(bool show) {
  *	Function: shows that an exception has occurred in a fun way!
  */
 void blue_screen(char* message, ...) {
-	// Go back to vga
-	video_deinit();
-
+	// Go back to text mode
+	graphics_disable();
+	
 	// Diable any more interrupts
 	cli();
 		
@@ -680,8 +676,6 @@ putc(uint8_t c)
         *(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1)) = c;
         *(uint8_t *)(video_mem + ((NUM_COLS*screen_y + screen_x) << 1) + 1) = current_attrib;
 		
-		set_rectangle(screen_x * 8, screen_y * 16, 8, 16, 255, 255, 255);
-		
         screen_x++;
         screen_y = (screen_y + (screen_x / NUM_COLS));
 		screen_x %= NUM_COLS;
@@ -700,8 +694,6 @@ putc(uint8_t c)
 				*(uint8_t *)(video_mem + ((NUM_COLS*y_pos + x_pos) << 1)) = last_char;
 				*(uint8_t *)(video_mem + ((NUM_COLS*y_pos + x_pos) << 1) + 1) =
 				last_attrib;
-				
-				set_rectangle(x_pos * 8, y_pos * 16, 8, 16, 255, 255, 255);
 			}
 		}
 		
@@ -710,8 +702,6 @@ putc(uint8_t c)
 			*(uint8_t *)(video_mem + ((NUM_COLS*(NUM_ROWS-1) + x_pos) << 1)) = ' ';
 			*(uint8_t *)(video_mem + ((NUM_COLS*(NUM_ROWS-1) + x_pos) << 1) + 1) =
 				current_attrib;
-			
-			set_rectangle(x_pos * 8, y_pos * 16, 8, 16, 0, 0, 0);
 		}
 		
 		// Update the new screen position

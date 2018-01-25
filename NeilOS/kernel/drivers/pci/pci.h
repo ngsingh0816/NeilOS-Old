@@ -21,6 +21,7 @@
 #define AUDIO_SUBCLASS	0x1
 
 // Header information
+#define DEVICE_ID_REGISTER		0x00
 #define VENDOR_ID_REGISTER		0x00
 #define COMMAND_REGISTER		0x04
 #define CLASS_REGISTER			0x08
@@ -68,6 +69,9 @@ typedef struct {
 
 // Retrieve the info for a specific device (returns a header with class_code = -1 on failure)
 pci_device_t pci_device_info(uint8_t class_code, uint8_t subclass);
+// Retrieve the info for a specific device by vendor id
+pci_device_t pci_device_info_vendor(uint16_t vendor, uint16_t device);
+
 // Set the command value for a device
 void pci_set_command(pci_device_t* device, uint16_t cmd);
 

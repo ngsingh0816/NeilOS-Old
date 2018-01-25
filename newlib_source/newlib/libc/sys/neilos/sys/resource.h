@@ -36,6 +36,10 @@
 #ifndef _RESOURCE_H_
 #define	_RESOURCE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Process priority specifications to get/setpriority.
  */
@@ -105,5 +109,9 @@ int	getrusage __P((int, struct rusage *));
 int	setpriority __P((int, int, int));
 int	setrlimit __P((int, const struct rlimit *));
 __END_DECLS
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* !_RESOURCE_H_ */

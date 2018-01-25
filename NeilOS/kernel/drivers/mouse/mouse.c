@@ -10,6 +10,7 @@
 #include <syscalls/interrupt.h>
 #include <drivers/pic/i8259.h>
 #include <drivers/keyboard/keyboard.h>
+#include <drivers/graphics/graphics.h>
 
 #define COMMAND_PORT			0x64
 #define DATA_PORT				0x60
@@ -78,9 +79,9 @@ void mouse_handle() {
 			else
 				mouse_x += mouse_bytes[MOUSE_BYTE_X_MOVEMENT];
 			if (Y_SIGN_BIT(mouse_bytes[MOUSE_BYTE_STATUS]))
-				mouse_y += mouse_bytes[MOUSE_BYTE_Y_MOVEMENT] | NEG_VALUE;
+				mouse_y -= mouse_bytes[MOUSE_BYTE_Y_MOVEMENT] | NEG_VALUE;
 			else
-				mouse_y += mouse_bytes[MOUSE_BYTE_Y_MOVEMENT];
+				mouse_y -= mouse_bytes[MOUSE_BYTE_Y_MOVEMENT];
 			middle_down = MIDDLE_BUTTON_BIT(mouse_bytes[MOUSE_BYTE_STATUS]);
 			left_down = LEFT_BUTTON_BIT(mouse_bytes[MOUSE_BYTE_STATUS]);
 			right_down = RIGHT_BUTTON_BIT(mouse_bytes[MOUSE_BYTE_STATUS]);
@@ -108,6 +109,10 @@ void mouse_handle() {
 				scroll_dx != 0 || scroll_dy != 0) {
 				// Update
 				mouse_packet_id++;
+				
+				// Tell the graphics to update the cursor position
+				if (graphics_enabled())
+					graphics_cursor_position_set(mouse_x, mouse_y, true);
 			}
 		}
 	}
@@ -270,6 +275,10 @@ uint32_t mouse_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	scroll_dx = (val >> 3) & 0x1;
 	scroll_dy = (val >> 4) & 0x1;
 	up(&mouse_lock);
+	
+	// Tell the graphics to update the cursor position
+	if (graphics_enabled())
+		graphics_cursor_position_set(mouse_x, mouse_y, true);
 	
 	return MOUSE_STRUCT_SIZE;
 }

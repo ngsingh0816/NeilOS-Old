@@ -6,6 +6,10 @@
 #ifndef _SYS_UTSNAME_H
 #define _SYS_UTSNAME_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define __UTSNAMELEN 65	/* synchronize with kernel */
 
 struct utsname {
@@ -19,5 +23,9 @@ struct utsname {
 
 
 int uname(struct utsname *name);
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -29,6 +29,10 @@
 #ifndef _SYS_VFS_H_
 #define _SYS_VFS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
@@ -99,5 +103,9 @@ extern int statfs(const char *, struct statfs *);
 extern int fstatfs(int, struct statfs *);
 
 __END_DECLS
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SYS_VFS_H_ */

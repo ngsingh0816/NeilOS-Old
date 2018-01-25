@@ -37,6 +37,10 @@
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include <sys/_types.h>
 #include <netinet/in.h>
@@ -444,5 +448,9 @@ int	shutdown(int, int);
 int	socket(int, int, int);
 int	socketpair(int, int, int, int *);
 __END_DECLS
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_SYS_SOCKET_H_ */

@@ -3,6 +3,7 @@
 #include <common/lib.h>
 #include <drivers/pic/i8259.h>
 #include <memory/mmap_list.h>
+#include <drivers/graphics/graphics.h>
 
 // External defintions for the assembly interrupt functions
 extern int* intx80;\
@@ -40,6 +41,8 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	getwd, chdir,
 	ioctl,
 	sys_thread_create, gettid, thread_wait, thread_exit,
+	graphics_fb_map, graphics_fb_unmap, graphics_info_get, graphics_info_set, graphics_update_rect,
+		graphics_cursor_image_set, graphics_fence_create, graphics_fence_sync, graphics_fence_passed,
 };
 
 

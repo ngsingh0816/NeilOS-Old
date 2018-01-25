@@ -17,9 +17,6 @@ build/./kernel/drivers/pit/pit.o: kernel/drivers/pit/pit.c \
 build/./kernel/drivers/pci/pci.o: kernel/drivers/pci/pci.c \
  kernel/drivers/pci/pci.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/pci/pci.o ./kernel/drivers/pci/pci.c
-build/./kernel/drivers/video/video.o: kernel/drivers/video/video.c \
- kernel/drivers/video/video.h
-	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/video/video.o ./kernel/drivers/video/video.c
 build/./kernel/drivers/terminal/terminal.o: \
  kernel/drivers/terminal/terminal.c kernel/drivers/terminal/terminal.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/terminal/terminal.o ./kernel/drivers/terminal/terminal.c
@@ -79,6 +76,14 @@ build/./kernel/drivers/ipc/shmem.o: kernel/drivers/ipc/shmem.c \
 build/./kernel/drivers/ipc/mq.o: kernel/drivers/ipc/mq.c \
  kernel/drivers/ipc/mq.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/mq.o ./kernel/drivers/ipc/mq.c
+build/./kernel/drivers/graphics/graphics.o: \
+ kernel/drivers/graphics/graphics.c kernel/drivers/graphics/graphics.h \
+ kernel/drivers/graphics/svga/svga.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/graphics/graphics.o ./kernel/drivers/graphics/graphics.c
+build/./kernel/drivers/graphics/svga/svga.o: \
+ kernel/drivers/graphics/svga/svga.c kernel/drivers/graphics/svga/svga.h \
+ kernel/drivers/graphics/svga/svga_reg.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/graphics/svga/svga.o ./kernel/drivers/graphics/svga/svga.c
 build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
  kernel/drivers/ATA/ata.h kernel/drivers/ATA/pio.h \
  kernel/drivers/ATA/dma.h

@@ -2,6 +2,10 @@
 #ifndef _SYS_DIRENT_H
 #define _SYS_DIRENT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include <bits/dirent.h>
 #define _LIBC 1
@@ -29,5 +33,9 @@ void rewinddir(DIR *);
 long telldir (DIR *);
 void seekdir (DIR *, off_t loc);
 int closedir(DIR *);
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif

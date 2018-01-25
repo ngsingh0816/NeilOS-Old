@@ -12,6 +12,8 @@
 		280126052002E3FD00647962 /* fifo.c in Sources */ = {isa = PBXBuildFile; fileRef = 280126002002DC6900647962 /* fifo.c */; };
 		280126062002E40300647962 /* shmem.c in Sources */ = {isa = PBXBuildFile; fileRef = 280126022002DC6900647962 /* shmem.c */; };
 		2801260B200329AB00647962 /* mq.c in Sources */ = {isa = PBXBuildFile; fileRef = 2801260A200329AB00647962 /* mq.c */; };
+		2801262F2016BE9200647962 /* svga.c in Sources */ = {isa = PBXBuildFile; fileRef = 2801262E2016BE9200647962 /* svga.c */; };
+		280126332019A24E00647962 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 280126322019A24E00647962 /* graphics.c */; };
 		280FE31A1F003E4F00E1A724 /* sysfile.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3181F003E4F00E1A724 /* sysfile.c */; };
 		280FE31D1F003EA100E1A724 /* sysfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE31B1F003EA100E1A724 /* sysfs.c */; };
 		280FE3201F003F4900E1A724 /* sysproc.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE31E1F003F4900E1A724 /* sysproc.c */; };
@@ -50,7 +52,6 @@
 		28DF5AD91EF3AB890009CA98 /* pit.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5A9F1EF3AB880009CA98 /* pit.c */; };
 		28DF5ADA1EF3AB890009CA98 /* rtc.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AA21EF3AB880009CA98 /* rtc.c */; };
 		28DF5ADB1EF3AB890009CA98 /* terminal.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AA51EF3AB890009CA98 /* terminal.c */; };
-		28DF5ADC1EF3AB890009CA98 /* video.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AA81EF3AB890009CA98 /* video.c */; };
 		28DF5ADD1EF3AB890009CA98 /* kernel.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AAA1EF3AB890009CA98 /* kernel.c */; };
 		28DF5ADE1EF3AB890009CA98 /* heap.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AAE1EF3AB890009CA98 /* heap.c */; };
 		28DF5ADF1EF3AB890009CA98 /* page_allocator.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AB01EF3AB890009CA98 /* page_allocator.c */; };
@@ -89,6 +90,11 @@
 		280126032002DC6900647962 /* shmem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = shmem.h; sourceTree = "<group>"; };
 		28012609200329AB00647962 /* mq.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mq.h; sourceTree = "<group>"; };
 		2801260A200329AB00647962 /* mq.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mq.c; sourceTree = "<group>"; };
+		2801262D2016BE9200647962 /* svga.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga.h; sourceTree = "<group>"; };
+		2801262E2016BE9200647962 /* svga.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = svga.c; sourceTree = "<group>"; };
+		280126302016C15300647962 /* svga_reg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga_reg.h; sourceTree = "<group>"; };
+		280126312019A24E00647962 /* graphics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics.h; sourceTree = "<group>"; };
+		280126322019A24E00647962 /* graphics.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics.c; sourceTree = "<group>"; };
 		280FE3181F003E4F00E1A724 /* sysfile.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfile.c; sourceTree = "<group>"; };
 		280FE3191F003E4F00E1A724 /* sysfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sysfile.h; sourceTree = "<group>"; };
 		280FE31B1F003EA100E1A724 /* sysfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfs.c; sourceTree = "<group>"; };
@@ -168,8 +174,6 @@
 		28DF5AA31EF3AB890009CA98 /* rtc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rtc.h; sourceTree = "<group>"; };
 		28DF5AA51EF3AB890009CA98 /* terminal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = terminal.c; sourceTree = "<group>"; };
 		28DF5AA61EF3AB890009CA98 /* terminal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = terminal.h; sourceTree = "<group>"; };
-		28DF5AA81EF3AB890009CA98 /* video.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = video.c; sourceTree = "<group>"; };
-		28DF5AA91EF3AB890009CA98 /* video.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = video.h; sourceTree = "<group>"; };
 		28DF5AAA1EF3AB890009CA98 /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = kernel.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		28DF5AAD1EF3AB890009CA98 /* buddy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = buddy.h; sourceTree = "<group>"; };
 		28DF5AAE1EF3AB890009CA98 /* heap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = heap.c; sourceTree = "<group>"; };
@@ -232,6 +236,16 @@
 				280126012002DC6900647962 /* pipe.h */,
 			);
 			path = pipe;
+			sourceTree = "<group>";
+		};
+		2801262C2016BE8600647962 /* svga */ = {
+			isa = PBXGroup;
+			children = (
+				280126302016C15300647962 /* svga_reg.h */,
+				2801262D2016BE9200647962 /* svga.h */,
+				2801262E2016BE9200647962 /* svga.c */,
+			);
+			path = svga;
 			sourceTree = "<group>";
 		};
 		280FE3171F003E4F00E1A724 /* impl */ = {
@@ -395,7 +409,7 @@
 				28DF5A9E1EF3AB880009CA98 /* pit */,
 				28DF5AA11EF3AB880009CA98 /* rtc */,
 				28DF5AA41EF3AB890009CA98 /* terminal */,
-				28DF5AA71EF3AB890009CA98 /* video */,
+				28DF5AA71EF3AB890009CA98 /* graphics */,
 			);
 			path = drivers;
 			sourceTree = "<group>";
@@ -475,13 +489,14 @@
 			path = terminal;
 			sourceTree = "<group>";
 		};
-		28DF5AA71EF3AB890009CA98 /* video */ = {
+		28DF5AA71EF3AB890009CA98 /* graphics */ = {
 			isa = PBXGroup;
 			children = (
-				28DF5AA81EF3AB890009CA98 /* video.c */,
-				28DF5AA91EF3AB890009CA98 /* video.h */,
+				2801262C2016BE8600647962 /* svga */,
+				280126312019A24E00647962 /* graphics.h */,
+				280126322019A24E00647962 /* graphics.c */,
 			);
-			path = video;
+			path = graphics;
 			sourceTree = "<group>";
 		};
 		28DF5AAB1EF3AB890009CA98 /* memory */ = {
@@ -669,10 +684,10 @@
 				28DF5AD11EF3AB890009CA98 /* block.c in Sources */,
 				280FE3291F00422000E1A724 /* systime.c in Sources */,
 				28DF5ACE1EF3AB890009CA98 /* ata.c in Sources */,
-				28DF5ADC1EF3AB890009CA98 /* video.c in Sources */,
 				28E62BBD1F17289600538741 /* page_list.c in Sources */,
 				28DF5ACC1EF3AB890009CA98 /* time.c in Sources */,
 				28DF5ACD1EF3AB890009CA98 /* types.c in Sources */,
+				2801262F2016BE9200647962 /* svga.c in Sources */,
 				28DF5AC81EF3AB890009CA98 /* rwsem.c in Sources */,
 				28DF5AE51EF3AB890009CA98 /* interrupt.c in Sources */,
 				28DF5AD71EF3AB890009CA98 /* keyboard.c in Sources */,
@@ -702,6 +717,7 @@
 				280FE33F1F00487900E1A724 /* i8259.c in Sources */,
 				28B7B58A1F062BAA00020F32 /* sysmisc.c in Sources */,
 				280126052002E3FD00647962 /* fifo.c in Sources */,
+				280126332019A24E00647962 /* graphics.c in Sources */,
 				28DF5AC41EF3AB890009CA98 /* boot.S in Sources */,
 				280FE3231F0040C800E1A724 /* sysmem.c in Sources */,
 				28DF5AD01EF3AB890009CA98 /* pio.c in Sources */,
