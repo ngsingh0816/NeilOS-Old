@@ -18,6 +18,7 @@
 #define TCGETATTR		2
 #define TCSETATTR		3
 #define TTYNAME			4
+#define TIOCGWINSZ		5
 
 // Termios defines
 #define BRKINT	0x00000100

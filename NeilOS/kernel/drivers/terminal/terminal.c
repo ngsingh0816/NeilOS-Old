@@ -790,6 +790,22 @@ uint32_t terminal_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32
 			memcpy((void*)arg1, "/dev/tty", 9);
 			break;
 		}
+		case TIOCGWINSZ: {
+			if (arg1 == (uint32_t)NULL)
+				return -EINVAL;
+			struct winsize {
+				uint16_t width;
+				uint16_t height;
+				uint16_t x_pixels;
+				uint16_t y_pixels;
+			};
+			struct winsize* size = (struct winsize*)arg1;
+			size->width = 80;
+			size->height = 25;
+			size->x_pixels = size->width * 8;
+			size->y_pixels = size->height * 16;
+			return 0;
+		}
 		default:
 			return -EINVAL;
 	}
