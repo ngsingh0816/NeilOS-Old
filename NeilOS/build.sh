@@ -8,4 +8,3 @@
 
 cd NeilOS
 make CC=/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc
-./vmware.sh

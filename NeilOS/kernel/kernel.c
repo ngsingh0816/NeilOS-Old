@@ -50,7 +50,7 @@
  * Posix Shared Memory
  * Posix Message Queues
  * API
- * VMWare Graphics Driver (2D)
+ * VMWare Graphics Driver (2D and 3D)
  */
 
 /* TODO (could be improved):
@@ -71,7 +71,8 @@
  * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there
  * Could improve read speed of large reads by reading entire block and caching it (because fread only
  	does 0x400 at a time)
- * Implement 2D accelerated graphics commands (fill, copy)
+ * Make libpthread work with -O3
+ * Make asynchrous version of graphics3d_surface_dma and make it actually alloc GMR regions
  */
 
 /* TODO (bugs)
@@ -86,36 +87,43 @@
  */
 
 /* TODO (API)
- * Port libmpg123
- 	* Finish NSSound implementation
- * Port libpng, libjpeg, libtiff(?), giflib
- 	* Create NSImage
- * Port FreeType (done) then create NSFont
- * NSTime, NSDate, NSTimer, NSFileManager
- * NSThread (NSLock, etc.) -> NSHandler
+ * Finish NSSound
+ * NSDate, NSFileManager
+ * NSTimer, NSThread (NSLock, etc.) -> NSHandler
  	* NSHandler can be a way to post handlers to a certain thread (ex: from background thread,
  		handler->post(NSThread::mainThread())
  		* This means that each NSThread must have its own NSRunLoop
  * GUI
  	* NSPoint, NSSize, NSRect, NSRange
+ 	* Event handling?
+ 		NSEvent?, Run loops?????
 	* NSWindow, NSView, NSControl, NSButton, etc.
  * NSUndoManager
  * Implement sockets
  	* NSURL*
+ 
+ * Implement NSImage (TIFF and GIF)?
  */
 
 /* TODO:
- * Scheduler Rework
- * GUI (Compositing Window Manager)
+ * GUI (Compositing Window Manager) - http://designmodo.github.io/Flat-UI/
 	* Interacts through message queues
  	How it will work
  		1) Client requests access to WindowServer, WindowServer opens message queue and returns it
  		2) Client requests window, WindowServer sets up shared memory for window and buffer
 		3) Client will draw it things into buffer, sends Update Rect to WindowServer, which composites results to screen
  			* View writes into window's buffer, then sends update request to window, which sends to WindowServer
- 
+ 		* Every application will have personal message queue, where other processes send a message to the app's message
+ 			queue and the application reads those messages. This supports things such as opening files with certain apps,
+ 			click + drag, etc. The WindowServer will keep track of which application has the focused window and will only
+ 			keep that application's message queue open so that it can send events to the focused application. The message
+ 			queue will be named by the process's pid
+ * FIX ALL BUGS (TODO bugs and could be improved)
+ * Scheduler Rework
  * Ethernet Driver
  * Sockets
+ * Open vm-tools
+ 	* Mouse automatically capturing in VMWare (and shared files??)
  * Dylib Lazy Linking?
  * Get libtool working?
  * SMP?
@@ -229,7 +237,7 @@ entry (unsigned long magic, unsigned long addr)
 		queue_task_load("/system/apps/WindowServer", server_argv, NULL, &pcb);
 	}
 	
-	// Run the first shell (auto enables interrupts)
+	// Run the first program (auto enables interrupts)
 	run(pcb);
 	
 	// Avoids error in Xcode

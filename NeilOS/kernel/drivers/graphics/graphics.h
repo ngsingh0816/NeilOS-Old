@@ -10,6 +10,7 @@
 #define GRAPHICS_H
 
 #include <common/types.h>
+#include "svga/svga3d_reg.h"
 
 typedef struct {
 	uint32_t resolution_x;
@@ -52,5 +53,9 @@ uint32_t graphics_fence_sync(uint32_t fence);
 
 // Has a fence passed
 bool graphics_fence_passed(uint32_t fence);
+
+// 3D
+// Synchronously DMA data to surface
+void graphics3d_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* host_image, SVGA3dTransferType transfer, SVGA3dCopyBox* boxes, uint32_t num_boxes);
 
 #endif /* GRAPHICS_H */

@@ -3,7 +3,7 @@
 
 #define ASM     1
 
-#define NUM_SYSCALLS			58
+#define NUM_SYSCALLS			84
 #define THREAD_EXIT_SYSCALL		48
 
 #include <boot/x86_desc.h>
@@ -445,17 +445,37 @@ enable_sse:
 	mov %eax, %cr0
 	mov %cr4, %eax
 	or $(3 << 9), %eax		// set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	or $(1 << 18), %eax		// set CR4.OSXSAVE to 1 to enable xgetbv
 	mov %eax, %cr4
+
+	// Enable AVX
+	push %ecx
+	xor %ecx, %ecx
+	xgetbv
+	or $7, %eax
+	xsetbv
+	pop %ecx
+
 	ret
 
 disable_sse:
+	// Disable AVX (causes a GPF)
+	/*push %ecx
+	xor %ecx, %ecx
+	xgetbv
+	and $(~7), %eax
+	xsetbv
+	pop %ecx*/
+
 	mov %cr0, %eax
 	or $0x4, %eax		    // set coprocessor emulation CR0.EM
 	and  $0xFFFFFFFD, %eax	// clear coprocessor monitoring  CR0.MP
 	mov %eax, %cr0
 	mov %cr4, %eax
 	and $(~(3 << 9)), %eax	// clear CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	and $(~(1 << 18)), %eax	// clear CR4.OSXSAVE
 	mov %eax, %cr4
+
 	ret
 
 // Interrupt handlers (call through to a common function)

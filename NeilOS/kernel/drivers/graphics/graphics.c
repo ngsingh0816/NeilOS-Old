@@ -9,6 +9,7 @@
 #include "graphics.h"
 #include <syscalls/interrupt.h>
 #include "svga/svga.h"
+#include "svga/svga_3d.h"
 
 // Initialize the graphics
 bool graphics_init() {
@@ -117,4 +118,44 @@ uint32_t graphics_fence_sync(uint32_t fence) {
 // Has a fence passed
 bool graphics_fence_passed(uint32_t fence) {
 	return svga_fence_passed(fence);
+}
+
+void graphics3d_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* host_image, SVGA3dTransferType transfer, SVGA3dCopyBox* boxes, uint32_t num_boxes) {
+	// TODO: actually alloc GMR memory
+	// TODO: make asynchronous version of this
+	SVGA3dGuestImage img;
+	img.ptr.gmrId = SVGA_GMR_FRAMEBUFFER;
+	img.ptr.offset = 0;
+	img.pitch = 0;
+	
+	// TODO: get rid of this hack
+	if (num_boxes == 1 && boxes->h != 1) {
+		SVGA3dCopyBox b = *boxes;
+		b.h = 1;
+		uint8_t* buf = (uint8_t*)buffer;
+		uint32_t step = FOUR_MB_SIZE / 2 / (size / boxes->h);
+		uint32_t off = 0;
+		for (int z = 0; z < boxes->h; z += step) {
+			uint32_t steps = step;
+			if (boxes->h - z < steps)
+				steps = boxes->h - z;
+			uint32_t s = size / boxes->h * steps;
+			b.h = steps;
+			if (transfer == SVGA3D_WRITE_HOST_VRAM)
+				memcpy(svga_framebuffer(), &buf[off], s);
+			svga3d_surface_dma(&img, host_image, transfer, &b, num_boxes);
+			svga_fence_sync(svga_fence_insert());
+			if (transfer == SVGA3D_READ_HOST_VRAM)
+				memcpy(&buf[off], svga_framebuffer(), s);
+			b.y += step;
+			off += s;
+		}
+	} else {
+		if (transfer == SVGA3D_WRITE_HOST_VRAM)
+			memcpy(svga_framebuffer(), buffer, size);
+		svga3d_surface_dma(&img, host_image, transfer, boxes, num_boxes);
+		svga_fence_sync(svga_fence_insert());
+		if (transfer == SVGA3D_READ_HOST_VRAM)
+			memcpy(buffer, svga_framebuffer(), size);
+	}
 }

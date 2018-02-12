@@ -22,6 +22,7 @@
 		280FE3291F00422000E1A724 /* systime.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3271F00422000E1A724 /* systime.c */; };
 		280FE33E1F00487900E1A724 /* pci.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3391F00487900E1A724 /* pci.c */; };
 		280FE33F1F00487900E1A724 /* i8259.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE33C1F00487900E1A724 /* i8259.c */; };
+		281CEB3B2024FA5C00C7D407 /* svga_3d.c in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB3A2024FA5C00C7D407 /* svga_3d.c */; };
 		2881223E1F10949B00A4D504 /* log.c in Sources */ = {isa = PBXBuildFile; fileRef = 2881223C1F10949B00A4D504 /* log.c */; };
 		28823B7D1F16002700089F67 /* dylib.c in Sources */ = {isa = PBXBuildFile; fileRef = 28823B7B1F16002700089F67 /* dylib.c */; };
 		288B119F1DFCC0FD00473413 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 284828F11DFCC07600E4FC62 /* main.c */; };
@@ -111,6 +112,15 @@
 		280FE33A1F00487900E1A724 /* pci.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pci.h; sourceTree = "<group>"; };
 		280FE33C1F00487900E1A724 /* i8259.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = i8259.c; sourceTree = "<group>"; };
 		280FE33D1F00487900E1A724 /* i8259.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = i8259.h; sourceTree = "<group>"; };
+		281CEB322024FA2100C7D407 /* svga_escape.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga_escape.h; sourceTree = "<group>"; };
+		281CEB332024FA2400C7D407 /* svga3d_caps.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga3d_caps.h; sourceTree = "<group>"; };
+		281CEB342024FA2800C7D407 /* svga3d_reg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga3d_reg.h; sourceTree = "<group>"; };
+		281CEB352024FA2B00C7D407 /* backdoor_def.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = backdoor_def.h; sourceTree = "<group>"; };
+		281CEB362024FA2E00C7D407 /* svga_overlay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga_overlay.h; sourceTree = "<group>"; };
+		281CEB372024FA3100C7D407 /* vmmouse_defs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vmmouse_defs.h; sourceTree = "<group>"; };
+		281CEB382024FA3500C7D407 /* svga3d_shaderdefs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga3d_shaderdefs.h; sourceTree = "<group>"; };
+		281CEB392024FA5C00C7D407 /* svga_3d.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga_3d.h; sourceTree = "<group>"; };
+		281CEB3A2024FA5C00C7D407 /* svga_3d.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = svga_3d.c; sourceTree = "<group>"; };
 		284828821DFCBDF500E4FC62 /* product */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = product; sourceTree = BUILT_PRODUCTS_DIR; };
 		284828F11DFCC07600E4FC62 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		287747261F46122D00818EBE /* linker.ld */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = linker.ld; path = NeilOS/linker.ld; sourceTree = SOURCE_ROOT; };
@@ -118,6 +128,7 @@
 		2881223D1F10949B00A4D504 /* log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = log.h; sourceTree = "<group>"; };
 		28823B7B1F16002700089F67 /* dylib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dylib.c; sourceTree = "<group>"; };
 		28823B7C1F16002700089F67 /* dylib.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = dylib.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
+		28A3B9E9203148780091A44E /* refresh.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = refresh.sh; path = NeilOS/refresh.sh; sourceTree = SOURCE_ROOT; };
 		28A52EC81F58BB110087ADA9 /* syssched.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = syssched.c; sourceTree = "<group>"; };
 		28A52EC91F58BB110087ADA9 /* syssched.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = syssched.h; sourceTree = "<group>"; };
 		28B7B5881F062BAA00020F32 /* sysmisc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysmisc.c; sourceTree = "<group>"; };
@@ -241,9 +252,18 @@
 		2801262C2016BE8600647962 /* svga */ = {
 			isa = PBXGroup;
 			children = (
+				281CEB352024FA2B00C7D407 /* backdoor_def.h */,
+				281CEB322024FA2100C7D407 /* svga_escape.h */,
+				281CEB362024FA2E00C7D407 /* svga_overlay.h */,
 				280126302016C15300647962 /* svga_reg.h */,
+				281CEB332024FA2400C7D407 /* svga3d_caps.h */,
+				281CEB342024FA2800C7D407 /* svga3d_reg.h */,
+				281CEB382024FA3500C7D407 /* svga3d_shaderdefs.h */,
+				281CEB372024FA3100C7D407 /* vmmouse_defs.h */,
 				2801262D2016BE9200647962 /* svga.h */,
 				2801262E2016BE9200647962 /* svga.c */,
+				281CEB392024FA5C00C7D407 /* svga_3d.h */,
+				281CEB3A2024FA5C00C7D407 /* svga_3d.c */,
 			);
 			path = svga;
 			sourceTree = "<group>";
@@ -569,6 +589,7 @@
 				28DF5AEA1EF3AB970009CA98 /* vmware.sh */,
 				287747261F46122D00818EBE /* linker.ld */,
 				28D796411FC778B20086FDC9 /* fs.sh */,
+				28A3B9E9203148780091A44E /* refresh.sh */,
 			);
 			name = build;
 			sourceTree = "<group>";
@@ -688,6 +709,7 @@
 				28DF5ACC1EF3AB890009CA98 /* time.c in Sources */,
 				28DF5ACD1EF3AB890009CA98 /* types.c in Sources */,
 				2801262F2016BE9200647962 /* svga.c in Sources */,
+				281CEB3B2024FA5C00C7D407 /* svga_3d.c in Sources */,
 				28DF5AC81EF3AB890009CA98 /* rwsem.c in Sources */,
 				28DF5AE51EF3AB890009CA98 /* interrupt.c in Sources */,
 				28DF5AD71EF3AB890009CA98 /* keyboard.c in Sources */,

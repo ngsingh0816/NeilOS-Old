@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		281CEB182019B21800C7D407 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB0B2019B1DF00C7D407 /* main.cpp */; };
+		283A743B202FC79B0025F555 /* load.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 283A7439202FC79B0025F555 /* load.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -26,6 +27,8 @@
 		281CEB0A2019B1B100C7D407 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		281CEB0B2019B1DF00C7D407 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
 		281CEB102019B20300C7D407 /* product */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = product; sourceTree = BUILT_PRODUCTS_DIR; };
+		283A7439202FC79B0025F555 /* load.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = load.cpp; sourceTree = "<group>"; };
+		283A743A202FC79B0025F555 /* load.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = load.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,6 +45,8 @@
 		281CEAFF2019B19F00C7D407 = {
 			isa = PBXGroup;
 			children = (
+				283A7439202FC79B0025F555 /* load.cpp */,
+				283A743A202FC79B0025F555 /* load.h */,
 				281CEB0B2019B1DF00C7D407 /* main.cpp */,
 				281CEB0A2019B1B100C7D407 /* Makefile */,
 				281CEB122019B20300C7D407 /* product */,
@@ -143,6 +148,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				281CEB182019B21800C7D407 /* main.cpp in Sources */,
+				283A743B202FC79B0025F555 /* load.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,6 +202,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = /Users/Neil/NeilOS/sysroot/usr/include/;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 			};
@@ -242,6 +249,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = /Users/Neil/NeilOS/sysroot/usr/include/;
 				MTL_ENABLE_DEBUG_INFO = NO;
 			};
 			name = Release;

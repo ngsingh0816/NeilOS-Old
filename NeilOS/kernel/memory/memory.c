@@ -308,7 +308,8 @@ void complete_paging_setup() {
 				 :
 				 : "r"(esp), "r"(ebp));
 	// Adjust saved ebp too
-	*((uint32_t*)ebp) += VM_KERNEL_ADDRESS;
+	if (ebp != VM_KERNEL_ADDRESS)
+		*((uint32_t*)ebp) += VM_KERNEL_ADDRESS;
 		
 	// Unmap lower half kernel
 	vm_unmap_pages(FOUR_MB_SIZE, 4 * FOUR_MB_SIZE);

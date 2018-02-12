@@ -290,7 +290,7 @@ uint32_t es_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	while (id == sound_buffer_id && !(pcb && pcb->should_terminate)) {
 		if (signal_occurring(pcb))
 			return -EINTR;
-		//schedule();
+		schedule();
 	}
 	
 	return SECTION_SIZE * sizeof(int16_t);

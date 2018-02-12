@@ -4,6 +4,7 @@
 #include <drivers/pic/i8259.h>
 #include <memory/mmap_list.h>
 #include <drivers/graphics/graphics.h>
+#include <drivers/graphics/svga/svga_3d.h>
 
 // External defintions for the assembly interrupt functions
 extern int* intx80;\
@@ -41,8 +42,17 @@ void* syscalls[] = { fork, execve, getpid, getppid, waitpid, exit,
 	getwd, chdir,
 	ioctl,
 	sys_thread_create, gettid, thread_wait, thread_exit,
+	// 2D Graphics
 	graphics_fb_map, graphics_fb_unmap, graphics_info_get, graphics_info_set, graphics_update_rect,
 		graphics_cursor_image_set, graphics_fence_create, graphics_fence_sync, graphics_fence_passed,
+	// 3D Graphics
+	svga3d_present, svga3d_present_readback, svga3d_surface_create, graphics3d_surface_dma, svga3d_surface_copy,
+		svga3d_surface_stretch_copy, svga3d_surface_destroy, svga3d_context_create, svga3d_context_destroy,
+		svga3d_clear, svga3d_draw, svga3d_state_render_target, svga3d_state_z_range, svga3d_state_viewport,
+		svga3d_state_scissor_rect, svga3d_state_clip_plane, svga3d_state_texture_state, svga3d_state_render_state,
+		svga3d_transform_set, svga3d_light_material, svga3d_light_data, svga3d_light_enabled,
+		svga3d_shader_create, svga3d_shader_const, svga3d_shader_set_active, svga3d_shader_destroy,
+	
 };
 
 
@@ -104,6 +114,7 @@ void device_not_available(uint32_t code, uint32_t eip) {
 	// Restore sse registers and enable sse
 	down(&current_thread->lock);
 	enable_sse();
+	// probably need to enable AVX??
 	if (current_thread->sse_init)
 		asm volatile(" fxrstor (%0); "::"r"(current_thread->sse_registers));
 	current_thread->sse_used = true;
