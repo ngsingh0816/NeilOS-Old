@@ -87,16 +87,14 @@
  */
 
 /* TODO (API)
- * Finish NSSound
- * NSDate, NSFileManager
  * NSTimer, NSThread (NSLock, etc.) -> NSHandler
  	* NSHandler can be a way to post handlers to a certain thread (ex: from background thread,
  		handler->post(NSThread::mainThread())
  		* This means that each NSThread must have its own NSRunLoop
+	 * Event handling?
+	 NSEvent?, Run loops?????
  * GUI
  	* NSPoint, NSSize, NSRect, NSRange
- 	* Event handling?
- 		NSEvent?, Run loops?????
 	* NSWindow, NSView, NSControl, NSButton, etc.
  * NSUndoManager
  * Implement sockets
