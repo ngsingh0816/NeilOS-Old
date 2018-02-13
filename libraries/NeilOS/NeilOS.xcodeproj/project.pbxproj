@@ -14,8 +14,6 @@
 		281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB21201FF09D00C7D407 /* NSTypes.cpp */; };
 		281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB23201FF7FA00C7D407 /* NSColor.cpp */; };
 		281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB2920211F1400C7D407 /* NSFont.cpp */; };
-		281CEB2E20219F8300C7D407 /* NSLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB2C20219F8300C7D407 /* NSLayer.cpp */; };
-		281CEB312022892A00C7D407 /* NSGradient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB2F2022892A00C7D407 /* NSGradient.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,10 +44,6 @@
 		281CEB24201FF7FA00C7D407 /* NSColor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSColor.h; sourceTree = "<group>"; };
 		281CEB2920211F1400C7D407 /* NSFont.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSFont.cpp; sourceTree = "<group>"; };
 		281CEB2A20211F1400C7D407 /* NSFont.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSFont.h; sourceTree = "<group>"; };
-		281CEB2C20219F8300C7D407 /* NSLayer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLayer.cpp; sourceTree = "<group>"; };
-		281CEB2D20219F8300C7D407 /* NSLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLayer.h; sourceTree = "<group>"; };
-		281CEB2F2022892A00C7D407 /* NSGradient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSGradient.cpp; sourceTree = "<group>"; };
-		281CEB302022892A00C7D407 /* NSGradient.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSGradient.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,12 +75,8 @@
 				281CEB24201FF7FA00C7D407 /* NSColor.h */,
 				281CEB2920211F1400C7D407 /* NSFont.cpp */,
 				281CEB2A20211F1400C7D407 /* NSFont.h */,
-				281CEB2F2022892A00C7D407 /* NSGradient.cpp */,
-				281CEB302022892A00C7D407 /* NSGradient.h */,
 				281CEB1D201FEF3200C7D407 /* NSImage.cpp */,
 				281CEB1E201FEF3200C7D407 /* NSImage.h */,
-				281CEB2C20219F8300C7D407 /* NSLayer.cpp */,
-				281CEB2D20219F8300C7D407 /* NSLayer.h */,
 				281CEB1A201FB63D00C7D407 /* NSLog.cpp */,
 				281CEB1B201FB63D00C7D407 /* NSLog.h */,
 				2801261C200720B200647962 /* NSSound.cpp */,
@@ -198,10 +188,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				281CEB2E20219F8300C7D407 /* NSLayer.cpp in Sources */,
 				281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */,
 				281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */,
-				281CEB312022892A00C7D407 /* NSGradient.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
 				281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */,
 				2801262B2007261500647962 /* NSSound.cpp in Sources */,

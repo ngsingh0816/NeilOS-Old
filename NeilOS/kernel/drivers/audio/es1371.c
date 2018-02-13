@@ -85,10 +85,10 @@ bool sound_first = true;
 uint32_t es_base_port = 0;
 es_dev_type es_type = ES1370;
 
-float master_volume = 1.0;
+double master_volume = 1.0;
 
 typedef struct {
-	float volume;
+	double volume;
 } es_info;
 
 void src_set_enabled(bool enabled) {
@@ -220,7 +220,7 @@ void increment_dev_open() {
 		memset(sound_data, 0, sizeof(int16_t) * NUM_SAMPLES * 2);
 		
 		// Start playing things
-		outl((uint32_t)sound_data - VM_KERNEL_ADDRESS, es_base_port + PLAYBACK2_BUFFER_ADDR);
+		outl((uint32_t)vm_virtual_to_physical((uint32_t)sound_data), es_base_port + PLAYBACK2_BUFFER_ADDR);
 		// Buffer size in dwords - 1
 		outl(NUM_SAMPLES - 1, es_base_port + PLAYBACK2_BUFFER_DEF);
 		// Number of samples per interrupt - 1
@@ -337,13 +337,13 @@ uint64_t es_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
 	return uint64_make(-1, -ESPIPE);
 }
 
-// set_volume(float volume [0:1])
+// set_volume(double volume [0:1])
 #define ES_IOCTL_SET_VOLUME		0
-// get_volume(float* volume)
+// get_volume(double* volume)
 #define ES_IOCTL_GET_VOLUME		1
-// set_master_volume(float volume [0:1])
+// set_master_volume(double volume [0:1])
 #define ES_IOCTL_SET_MASTER_VOLUME	2
-// get_master_volume(float* volume)
+// get_master_volume(double* volume)
 #define ES_IOCTL_GET_MASTER_VOLUME	3
 
 // ioctl
@@ -351,17 +351,17 @@ uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg
 	es_info* info = f->info;
 	switch (request) {
 		case ES_IOCTL_SET_VOLUME: {
-			info->volume = *((float*)&arg1);
+			info->volume = *((double*)&arg1);
 			break;
 		}
 		case ES_IOCTL_GET_VOLUME: {
 			if (!arg1)
 				return -EINVAL;
-			*((float*)arg1) = info->volume;
+			*((double*)arg1) = info->volume;
 			break;
 		}
 		case ES_IOCTL_SET_MASTER_VOLUME: {
-			master_volume = *((float*)&arg1);
+			master_volume = *((double*)&arg1);
 			break;
 		}
 		case ES_IOCTL_GET_MASTER_VOLUME: {

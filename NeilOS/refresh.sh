@@ -9,5 +9,8 @@
 cd NeilOS
 rm NeilOS.img
 cp orig_large.img NeilOS.img
-cd ..
-./NeilOS/fs.sh
+hdiutil attach ./NeilOS.img
+cp -f ./bootimg /Volumes/NeilOS/
+rsync -au ../sysroot/. /Volumes/NeilOS/
+hdiutil detach ./NeilOS.img
+./vmware.sh

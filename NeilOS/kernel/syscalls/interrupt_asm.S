@@ -448,6 +448,15 @@ enable_sse:
 	or $(1 << 18), %eax		// set CR4.OSXSAVE to 1 to enable xgetbv
 	mov %eax, %cr4
 
+	// Check if AVX is supported
+	pusha
+	movl $1, %eax
+	cpuid
+	movl $(7 << 26), %eax
+	and %ecx, %eax
+	cmp $(7 << 26), %eax
+	jne done_sse
+
 	// Enable AVX
 	push %ecx
 	xor %ecx, %ecx
@@ -455,7 +464,8 @@ enable_sse:
 	or $7, %eax
 	xsetbv
 	pop %ecx
-
+done_sse:
+	popa
 	ret
 
 disable_sse:
