@@ -2,6 +2,10 @@
 #ifndef	MNTENT_H
 #define	MNTENT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 
 /* File listing canonical interesting mount points. */
@@ -36,5 +40,9 @@ struct mntent {
 FILE *setmntent(const char *filename, const char *type);
 struct mntent *getmntent(FILE *fp);
 int endmntent(FILE * filep);
+	
+#ifdef __cplusplus
+}
+#endif
 
 #endif

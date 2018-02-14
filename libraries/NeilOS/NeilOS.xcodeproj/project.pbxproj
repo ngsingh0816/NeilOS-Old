@@ -14,6 +14,13 @@
 		281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB21201FF09D00C7D407 /* NSTypes.cpp */; };
 		281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB23201FF7FA00C7D407 /* NSColor.cpp */; };
 		281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB2920211F1400C7D407 /* NSFont.cpp */; };
+		28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9ED2032CCE20091A44E /* NSEvent.cpp */; };
+		28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F02032CD0D0091A44E /* NSTimer.cpp */; };
+		28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F32032CD340091A44E /* NSRunLoop.cpp */; };
+		28A3B9F82032CD6D0091A44E /* NSThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F62032CD6D0091A44E /* NSThread.cpp */; };
+		28A3B9FB2032CD930091A44E /* NSHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F92032CD930091A44E /* NSHandler.cpp */; };
+		28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9FC2032CFC10091A44E /* NSLock.cpp */; };
+		28A3BA012033DE7C0091A44E /* NSApplication.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9FF2033DE7C0091A44E /* NSApplication.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -44,6 +51,21 @@
 		281CEB24201FF7FA00C7D407 /* NSColor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSColor.h; sourceTree = "<group>"; };
 		281CEB2920211F1400C7D407 /* NSFont.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSFont.cpp; sourceTree = "<group>"; };
 		281CEB2A20211F1400C7D407 /* NSFont.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSFont.h; sourceTree = "<group>"; };
+		28A3B9ED2032CCE20091A44E /* NSEvent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEvent.cpp; sourceTree = "<group>"; };
+		28A3B9EE2032CCE20091A44E /* NSEvent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSEvent.h; sourceTree = "<group>"; };
+		28A3B9F02032CD0D0091A44E /* NSTimer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSTimer.cpp; sourceTree = "<group>"; };
+		28A3B9F12032CD0D0091A44E /* NSTimer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSTimer.h; sourceTree = "<group>"; };
+		28A3B9F32032CD340091A44E /* NSRunLoop.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSRunLoop.cpp; sourceTree = "<group>"; };
+		28A3B9F42032CD340091A44E /* NSRunLoop.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSRunLoop.h; sourceTree = "<group>"; };
+		28A3B9F62032CD6D0091A44E /* NSThread.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSThread.cpp; sourceTree = "<group>"; };
+		28A3B9F72032CD6D0091A44E /* NSThread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSThread.h; sourceTree = "<group>"; };
+		28A3B9F92032CD930091A44E /* NSHandler.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSHandler.cpp; sourceTree = "<group>"; };
+		28A3B9FA2032CD930091A44E /* NSHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSHandler.h; sourceTree = "<group>"; };
+		28A3B9FC2032CFC10091A44E /* NSLock.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLock.cpp; sourceTree = "<group>"; };
+		28A3B9FD2032CFC10091A44E /* NSLock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLock.h; sourceTree = "<group>"; };
+		28A3B9FF2033DE7C0091A44E /* NSApplication.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSApplication.cpp; sourceTree = "<group>"; };
+		28A3BA002033DE7C0091A44E /* NSApplication.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSApplication.h; sourceTree = "<group>"; };
+		28A3BA022033EA9F0091A44E /* NeilOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NeilOS.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				2801261E200720E400647962 /* Makefile */,
+				28A3BA022033EA9F0091A44E /* NeilOS.h */,
 				2801261A2007209500647962 /* Core */,
 				2801261B2007209A00647962 /* GUI */,
 				280126252007260B00647962 /* product */,
@@ -71,16 +94,30 @@
 		2801261A2007209500647962 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				28A3B9FF2033DE7C0091A44E /* NSApplication.cpp */,
+				28A3BA002033DE7C0091A44E /* NSApplication.h */,
 				281CEB23201FF7FA00C7D407 /* NSColor.cpp */,
 				281CEB24201FF7FA00C7D407 /* NSColor.h */,
+				28A3B9ED2032CCE20091A44E /* NSEvent.cpp */,
+				28A3B9EE2032CCE20091A44E /* NSEvent.h */,
 				281CEB2920211F1400C7D407 /* NSFont.cpp */,
 				281CEB2A20211F1400C7D407 /* NSFont.h */,
+				28A3B9F92032CD930091A44E /* NSHandler.cpp */,
+				28A3B9FA2032CD930091A44E /* NSHandler.h */,
 				281CEB1D201FEF3200C7D407 /* NSImage.cpp */,
 				281CEB1E201FEF3200C7D407 /* NSImage.h */,
+				28A3B9FC2032CFC10091A44E /* NSLock.cpp */,
+				28A3B9FD2032CFC10091A44E /* NSLock.h */,
 				281CEB1A201FB63D00C7D407 /* NSLog.cpp */,
 				281CEB1B201FB63D00C7D407 /* NSLog.h */,
+				28A3B9F32032CD340091A44E /* NSRunLoop.cpp */,
+				28A3B9F42032CD340091A44E /* NSRunLoop.h */,
 				2801261C200720B200647962 /* NSSound.cpp */,
 				2801261D200720B200647962 /* NSSound.h */,
+				28A3B9F62032CD6D0091A44E /* NSThread.cpp */,
+				28A3B9F72032CD6D0091A44E /* NSThread.h */,
+				28A3B9F02032CD0D0091A44E /* NSTimer.cpp */,
+				28A3B9F12032CD0D0091A44E /* NSTimer.h */,
 				281CEB20201FF04800C7D407 /* NSTypes.h */,
 				281CEB21201FF09D00C7D407 /* NSTypes.cpp */,
 			);
@@ -189,12 +226,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */,
+				28A3BA012033DE7C0091A44E /* NSApplication.cpp in Sources */,
+				28A3B9FB2032CD930091A44E /* NSHandler.cpp in Sources */,
+				28A3B9F82032CD6D0091A44E /* NSThread.cpp in Sources */,
 				281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */,
+				28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */,
+				28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
 				281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */,
 				2801262B2007261500647962 /* NSSound.cpp in Sources */,
 				280126272007260B00647962 /* main.cpp in Sources */,
 				281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */,
+				28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */,
+				28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

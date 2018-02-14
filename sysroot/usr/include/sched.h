@@ -2,6 +2,10 @@
 #ifndef	SCHED_H
 #define	SCHED_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 
 // Threads
@@ -17,4 +21,8 @@ struct sched_param {
 
 int sched_yield();
 
+#ifdef __cplusplus
+}
+#endif
+	
 #endif

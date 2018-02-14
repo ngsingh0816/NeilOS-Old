@@ -17,7 +17,7 @@ ext_inode_info_t ext2_get_inode_info(uint32_t inode) {
 	ext_inode_info_t info;
 	
 	// Find which block group the inode resides in
-	uint32_t block_group = (inode - 1) / ext2_superblock()->blocks_per_group;
+	uint32_t block_group = (inode - 1) / ext2_superblock()->inodes_per_group;
 	uint32_t local_inode = (inode - 1) % ext2_superblock()->inodes_per_group;
 	
 	// Read the inode relative to its inode table
@@ -38,7 +38,7 @@ ext_inode_info_t ext2_get_inode_info(uint32_t inode) {
 // Set information about an inode
 void ext2_set_inode_info(uint32_t inode, ext_inode_info_t* data) {
 	// Find which block group the inode resides in
-	uint32_t block_group = (inode - 1) / ext2_superblock()->blocks_per_group;
+	uint32_t block_group = (inode - 1) / ext2_superblock()->inodes_per_group;
 	uint32_t local_inode = (inode - 1) % ext2_superblock()->inodes_per_group;
 	
 	// Read the inode relative to its inode table

@@ -59,6 +59,7 @@
 	that aren't CPU intensive will call schedule() and sleep so they will not use up
 	their whole alloted time), and compare it to their alloted time. If they use all of it,
 	give them more time next quantum (to a limit), otherwise give them less.
+ 	* Process / thread user priorities?
  * Signals - make the signal execute in user space, not kernel space (same with dylib init's)
  * Dynamic libraries - lazy linking, dynamic constructors / destructors
  * Disk Scheduling / Improvements
@@ -72,6 +73,8 @@
  * Could improve read speed of large reads by reading entire block and caching it (because fread only
  	does 0x400 at a time)
  * Make libpthread work with -O3
+ * Make pthread_cond variables put the thread to sleep in the kernel (also for NSConditionalLock)
+ 	* needs some syscalls like thread_pause, thread_continue
  * Make asynchrous version of graphics3d_surface_dma and make it actually alloc GMR regions
  */
 

@@ -30,6 +30,8 @@ libNeilOS: Makefile $(OBJS)
 	$(foreach var, $(FOLDERS), \
 		mkdir -p /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/$(var)/; \
 	find ./$(var)/ -name \*.h -exec cp -prf {} /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/$(var)/ ';' ;)
+	# Copy over NeilOS.h
+	cp NeilOS.h /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/
 
 dep: Makefile.dep
 
