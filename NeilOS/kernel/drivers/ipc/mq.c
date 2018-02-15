@@ -188,7 +188,7 @@ uint32_t mq_send(file_descriptor_t* f, const void* buf, uint32_t bytes, uint32_t
 	// Block until there is room
 	mq_list_t* info = f->info;
 	down(&info->lock);
-	while (!(f->mode & FILE_MODE_NONBLOCKING) && !(current_pcb && current_pcb->should_terminate)) {
+	while (!(f->mode & FILE_MODE_NONBLOCKING) && !(current_pcb && current_pcb->should_terminate) && !f->closed) {
 		if (signal_occurring(current_pcb)) {
 			kfree(msg->buffer);
 			kfree(msg);
@@ -197,7 +197,9 @@ uint32_t mq_send(file_descriptor_t* f, const void* buf, uint32_t bytes, uint32_t
 		if (info->attr.mq_curmsgs < MAX_NUM_MESSAGES)
 			break;
 		up(&info->lock);
+		up(&f->lock);
 		schedule();
+		down(&f->lock);
 		down(&info->lock);
 	}
 	if (info->attr.mq_curmsgs >= MAX_NUM_MESSAGES) {
@@ -245,13 +247,15 @@ uint32_t mq_receive(file_descriptor_t* f, void* buf, uint32_t bytes, uint32_t* p
 	mq_list_t* info = f->info;
 	down(&info->lock);
 	// Block until there is a message
-	while (!(f->mode & FILE_MODE_NONBLOCKING) && !(current_pcb && current_pcb->should_terminate)) {
+	while (!(f->mode & FILE_MODE_NONBLOCKING) && !(current_pcb && current_pcb->should_terminate) && !f->closed) {
 		if (signal_occurring(current_pcb))
 			return -EINTR;
 		if (info->attr.mq_curmsgs != 0)
 			break;
 		up(&info->lock);
+		up(&f->lock);
 		schedule();
+		down(&f->lock);
 		down(&info->lock);
 	}
 	if (info->attr.mq_curmsgs == 0) {
@@ -397,8 +401,10 @@ uint32_t mq_close(file_descriptor_t* f) {
 	
 	mq_list_t* t = f->info;
 	down(&t->lock);
-	if ((--t->num_open) == 0 && t->dealloc_on_close)
+	if ((--t->num_open) == 0 && t->dealloc_on_close) {
 		mq_dealloc_mem(t);
+		f->info = NULL;
+	}
 	else
 		up(&t->lock);
 	

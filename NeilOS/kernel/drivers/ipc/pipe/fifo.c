@@ -148,9 +148,11 @@ uint32_t fifo_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	}
 	
 	// Block until there is data
-	while (info->pos == 0 && !current_pcb->should_terminate) {
+	while (info->pos == 0 && !current_pcb->should_terminate && !f->closed) {
 		up(&info->lock);
+		up(&f->lock);
 		schedule();
+		down(&f->lock);
 		down(&info->lock);
 	}
 	
@@ -184,11 +186,13 @@ uint32_t fifo_write(file_descriptor_t* f, const void* buf, uint32_t bytes) {
 	}
 	
 	// Block until the pipe isn't full
-	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate) {
+	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate && !f->closed) {
 		if (signal_occurring(current_pcb))
 			return -EINTR;
 		up(&info->lock);
+		up(&f->lock);
 		schedule();
+		down(&f->lock);
 		down(&info->lock);
 	}
 	

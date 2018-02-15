@@ -26,6 +26,7 @@
 		2881223E1F10949B00A4D504 /* log.c in Sources */ = {isa = PBXBuildFile; fileRef = 2881223C1F10949B00A4D504 /* log.c */; };
 		28823B7D1F16002700089F67 /* dylib.c in Sources */ = {isa = PBXBuildFile; fileRef = 28823B7B1F16002700089F67 /* dylib.c */; };
 		288B119F1DFCC0FD00473413 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 284828F11DFCC07600E4FC62 /* main.c */; };
+		28A3BA042036306B0091A44E /* descriptor.c in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA032036306B0091A44E /* descriptor.c */; };
 		28A52ECA1F58BB110087ADA9 /* syssched.c in Sources */ = {isa = PBXBuildFile; fileRef = 28A52EC81F58BB110087ADA9 /* syssched.c */; };
 		28B7B58A1F062BAA00020F32 /* sysmisc.c in Sources */ = {isa = PBXBuildFile; fileRef = 28B7B5881F062BAA00020F32 /* sysmisc.c */; };
 		28C4CD8E1F5E6BDB00512DBC /* null.c in Sources */ = {isa = PBXBuildFile; fileRef = 28C4CD8C1F5E6BDB00512DBC /* null.c */; };
@@ -129,6 +130,7 @@
 		28823B7B1F16002700089F67 /* dylib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dylib.c; sourceTree = "<group>"; };
 		28823B7C1F16002700089F67 /* dylib.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = dylib.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		28A3B9E9203148780091A44E /* refresh.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = refresh.sh; path = NeilOS/refresh.sh; sourceTree = SOURCE_ROOT; };
+		28A3BA032036306B0091A44E /* descriptor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = descriptor.c; sourceTree = "<group>"; };
 		28A52EC81F58BB110087ADA9 /* syssched.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = syssched.c; sourceTree = "<group>"; };
 		28A52EC91F58BB110087ADA9 /* syssched.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = syssched.h; sourceTree = "<group>"; };
 		28B7B5881F062BAA00020F32 /* sysmisc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysmisc.c; sourceTree = "<group>"; };
@@ -574,6 +576,7 @@
 			children = (
 				280FE3171F003E4F00E1A724 /* impl */,
 				28DF5ABE1EF3AB890009CA98 /* descriptor.h */,
+				28A3BA032036306B0091A44E /* descriptor.c */,
 				28DF5ABF1EF3AB890009CA98 /* interrupt.c */,
 				28DF5AC01EF3AB890009CA98 /* interrupt.h */,
 				28DF5AC11EF3AB890009CA98 /* interrupt_asm.S */,
@@ -745,6 +748,7 @@
 				28DF5AD01EF3AB890009CA98 /* pio.c in Sources */,
 				280FE3201F003F4900E1A724 /* sysproc.c in Sources */,
 				28A52ECA1F58BB110087ADA9 /* syssched.c in Sources */,
+				28A3BA042036306B0091A44E /* descriptor.c in Sources */,
 				28DF5ADF1EF3AB890009CA98 /* page_allocator.c in Sources */,
 				280126062002E40300647962 /* shmem.c in Sources */,
 				28C4CD941F5E7C9D00512DBC /* zero.c in Sources */,

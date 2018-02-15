@@ -624,7 +624,7 @@ uint32_t read_helper(void* buf, uint32_t bytes) {
 uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	pcb_t* pcb = current_pcb;
 	if (termios.lflag & ICANON) {
-		while (!(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+		while (!(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate) && !f->closed) {
 			if (signal_occurring(pcb))
 				return -EINTR;
 			
@@ -640,7 +640,9 @@ uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 			if (found)
 				break;
 			
+			up(&f->lock);
 			schedule();
+			down(&f->lock);
 		}
 		
 		// Copy bytes one by one, stopping at NULL terminating character or newline
@@ -671,11 +673,13 @@ uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 			// Block until data available or timeout expires (in 1/10th second units)
 			struct timeval end = time_add(time_get(), (struct timeval){ time / 10, (time % 10) * US_IN_MS });
 			while (buffer_size == 0 && time_less(time_get(), end) &&
-				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate) && !f->closed) {
 				if (signal_occurring(pcb))
 					return -EINTR;
 				
+				up(&f->lock);
 				schedule();
+				down(&f->lock);
 			}
 			return read_helper(buf, bytes);
 		} else if (min > 0 && time == 0) {
@@ -684,11 +688,13 @@ uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 			if (less > bytes)
 				less = bytes;
 			while (buffer_size < less &&
-				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate) && !f->closed) {
 				if (signal_occurring(pcb))
 					return -EINTR;
 				
+				up(&f->lock);
 				schedule();
+				down(&f->lock);
 			}
 			return read_helper(buf, less);
 		} else {
@@ -698,21 +704,25 @@ uint32_t terminal_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 			if (less > bytes)
 				less = bytes;
 			while (buffer_size == 0 &&
-				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+				   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate) && !f->closed) {
 				if (signal_occurring(pcb))
 					return -EINTR;
 				
+				up(&f->lock);
 				schedule();
+				down(&f->lock);
 			}
 			uint32_t orig = buffer_size;
 			while (orig < less) {
 				struct timeval end = time_add(time_get(), (struct timeval){ time / 10, (time % 10) * US_IN_MS });
 				while (buffer_size == orig && time_less(time_get(), end) &&
-					   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate)) {
+					   !(f->mode & FILE_MODE_NONBLOCKING) && !(pcb && pcb->should_terminate) && !f->closed) {
 					if (signal_occurring(pcb))
 						return -EINTR;
 					
+					up(&f->lock);
 					schedule();
+					down(&f->lock);
 				}
 				if (buffer_size == orig)
 					break;

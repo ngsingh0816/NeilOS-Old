@@ -212,3 +212,6 @@ build/./kernel/syscalls/impl/syssignal.o: \
 build/./kernel/syscalls/interrupt.o: kernel/syscalls/interrupt.c \
  kernel/syscalls/interrupt.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/interrupt.o ./kernel/syscalls/interrupt.c
+build/./kernel/syscalls/descriptor.o: kernel/syscalls/descriptor.c \
+ kernel/syscalls/descriptor.h
+	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/syscalls/descriptor.o ./kernel/syscalls/descriptor.c

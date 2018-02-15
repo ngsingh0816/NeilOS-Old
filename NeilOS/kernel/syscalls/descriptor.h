@@ -92,6 +92,7 @@ typedef struct file_descriptor {
 	int32_t type;				// TODO: get rid of this
 	uint32_t mode;				// Access modes
 	uint8_t ref_count;			// Number of references to this descriptor
+	volatile bool closed;		// Whether the fd has been closed
 	
 	// File dependent data
 	void* info;
@@ -110,6 +111,13 @@ typedef struct file_descriptor {
 	
 	mutex_t lock;
 } file_descriptor_t;
+
+// Reference counting
+static inline void file_descriptor_retain(file_descriptor_t* f) {
+	f->ref_count++;
+}
+
+bool file_descriptor_release(file_descriptor_t* f);
 
 // Avaiable descriptors
 #define NUMBER_OF_DESCRIPTORS	64

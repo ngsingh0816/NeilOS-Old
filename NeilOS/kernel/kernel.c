@@ -67,6 +67,7 @@
  * Filesystem - multiple processes or threads writing to the same inode (i.e. fmkdir("/hi") and fmkdir("/bye")
 	may cause an issue because they both modify the "." inode's contents at the same time
  		* can probably be fixed by r/w lock per inode
+ * Store working directory as inode and have relative opens relative to the inode instead of path
  * Implement MS_INVALIDATE for msync (needs way to easily located all other mapped versions of the same file^^^^)
  * Thread Local Storage (TLS)
  * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there

@@ -108,17 +108,20 @@ uint32_t read(uint32_t fd, void* buf, uint32_t nbytes) {
 	
 	file_descriptor_t* d = descriptors[fd];
 	down(&d->lock);
+	file_descriptor_retain(d);
 	up(&current_pcb->descriptor_lock);
 	
 	if (!(d->mode & FILE_MODE_READ)) {
-		up(&d->lock);
+		if (!file_descriptor_release(d))
+			up(&d->lock);
 		return -EACCES;
 	}
 	
 	// Call to the driver specific call
 	uint32_t ret = d->read(d, buf, nbytes);
+	if (!file_descriptor_release(d))
+		up(&d->lock);
 	
-	up(&d->lock);
 	return ret;
 }
 
@@ -142,17 +145,20 @@ uint32_t write(uint32_t fd, const void* buf, uint32_t nbytes) {
 	
 	file_descriptor_t* d = descriptors[fd];
 	down(&d->lock);
+	file_descriptor_retain(d);
 	up(&current_pcb->descriptor_lock);
 	
 	if (!((d->mode & FILE_MODE_WRITE) || (d->mode & FILE_MODE_APPEND))) {
-		up(&d->lock);
+		if (!file_descriptor_release(d))
+			up(&d->lock);
 		return -EACCES;
 	}
 	
 	// Call to the driver specific call
 	uint32_t ret = d->write(d, buf, nbytes);
+	if (!file_descriptor_release(d))
+		up(&d->lock);
 	
-	up(&d->lock);
 	return ret;
 }
 
@@ -176,13 +182,15 @@ uint32_t llseek(uint32_t fd, uint32_t offset_high, uint32_t offset_low, int when
 	
 	file_descriptor_t* d = descriptors[fd];
 	down(&d->lock);
+	file_descriptor_retain(d);
 	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
 	// TODO: for now only return the lower 32 bits
 	uint32_t ret = d->llseek(d, uint64_make(offset_high, offset_low), whence).low;
+	if (!file_descriptor_release(d))
+		up(&d->lock);
 	
-	up(&d->lock);
 	return ret;
 }
 
@@ -204,13 +212,15 @@ uint32_t truncate(uint32_t fd, uint32_t length_high, uint32_t length_low) {
 	
 	file_descriptor_t* d = descriptors[fd];
 	down(&d->lock);
+	file_descriptor_retain(d);
 	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
 	// TODO: for now just return the lower 32 bits
 	uint32_t ret = d->truncate(d, uint64_make(length_high, length_low)).low;
+	if (!file_descriptor_release(d))
+		up(&d->lock);
 	
-	up(&d->lock);
 	return ret;
 }
 
@@ -232,11 +242,13 @@ uint32_t stat(uint32_t fd, sys_stat_type* data) {
 	
 	file_descriptor_t* d = descriptors[fd];
 	down(&d->lock);
+	file_descriptor_retain(d);
 	up(&current_pcb->descriptor_lock);
 	
 	uint32_t ret = d->stat(d, data);
+	if (!file_descriptor_release(d))
+		up(&d->lock);
 	
-	up(&d->lock);
 	return ret;
 }
 
@@ -255,19 +267,16 @@ uint32_t close(uint32_t fd) {
 		return -EBADF;
 	}
 	
-	uint32_t ret = 0;
-	if ((--descriptors[fd]->ref_count) == 0) {
-		down(&descriptors[fd]->lock);
-		ret = descriptors[fd]->close((void*)descriptors[fd]);
-		up(&descriptors[fd]->lock);
-		kfree(descriptors[fd]);
-	}
-	pcb_t* pcb = current_pcb;
-	pcb->descriptors[fd] = NULL;
+	file_descriptor_t* d = descriptors[fd];
+	down(&d->lock);
+	d->closed = true;
+	if (!file_descriptor_release(d))
+		up(&d->lock);
+	current_pcb->descriptors[fd] = NULL;
 	
 	up(&current_pcb->descriptor_lock);
 	
-	return ret;
+	return 0;
 }
 
 // Is the file descriptor a terminal?
@@ -319,7 +328,7 @@ uint32_t dup(uint32_t fd) {
 	
 	// Point the new file handle to the old one
 	descriptors[current_fd] = descriptors[fd];
-	descriptors[current_fd]->ref_count++;
+	file_descriptor_retain(descriptors[current_fd]);
 	
 	up(&current_pcb->descriptor_lock);
 	
@@ -342,7 +351,7 @@ uint32_t dup2_greater(int32_t fd, int32_t new_fd) {
 	
 	// Point the new file handle to the old one
 	descriptors[new_fd] = descriptors[fd];
-	descriptors[new_fd]->ref_count++;
+	file_descriptor_retain(descriptors[new_fd]);
 	
 	up(&current_pcb->descriptor_lock);
 	
@@ -377,7 +386,7 @@ uint32_t dup2(uint32_t fd, uint32_t new_fd) {
 	}
 	// Point the new file handle to the old one
 	pcb->descriptors[new_fd] = pcb->descriptors[fd];
-	pcb->descriptors[new_fd]->ref_count++;
+	file_descriptor_retain(pcb->descriptors[new_fd]);
 	
 	up(&pcb->descriptor_lock);
 	
@@ -524,36 +533,68 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
 		memset(&wc, 0, sizeof(fd_set));
 	clear_fds(readfds, writefds, exceptfds);
 	
+	down(&current_pcb->descriptor_lock);
+	uint32_t num_desc = 0;
+	for (int z = 0; z < nfds; z++) {
+		int index = z / 32;
+		int bit = z % 32;
+		if ((rc.bits[index] >> bit) & 0x1 || (wc.bits[index] >> bit) & 0x1) {
+			num_desc++;
+			if (!descriptors[z]) {
+				up(&current_pcb->descriptor_lock);
+				return -EBADF;
+			}
+		}
+	}
+	file_descriptor_t* select_desc[num_desc];
+	uint32_t desc_num = 0;
+	for (int z = 0; z < nfds; z++) {
+		int index = z / 32;
+		int bit = z % 32;
+		if ((rc.bits[index] >> bit) & 0x1 || (wc.bits[index] >> bit) & 0x1) {
+			select_desc[desc_num++] = descriptors[z];
+			file_descriptor_retain(descriptors[z]);
+		}
+	}
+	up(&current_pcb->descriptor_lock);
+	
 	// Keep on checking until something works or the timeout has expired
 	struct timeval end = { 0, 0 };
 	if (timeout)
 		end = time_add(time_get(), *timeout);
 	int total = 0;
 	while (!current_pcb->should_terminate) {
-		if (signal_occurring(current_pcb))
-			return -EINTR;
+		if (signal_occurring(current_pcb)) {
+			total = -EINTR;
+			break;
+		}
 		// Check all file descriptors and see if they can read or write
+		desc_num = 0;
 		for (int z = 0; z < nfds; z++) {
 			int index = z / 32;
 			int bit = z % 32;
-			if ((rc.bits[index] >> bit) & 0x1) {
-				if (!descriptors[z])
-					return -EBADF;
-				if (descriptors[z]->can_read) {
-					if (descriptors[z]->can_read(descriptors[z])) {
-						readfds->bits[index] |= (1 << bit);
-						total++;
-					}
-				}
+			bool rb = (rc.bits[index] >> bit) & 0x1;
+			bool wb = (wc.bits[index] >> bit) & 0x1;
+			if (!rb && !wb)
+				continue;
+			
+			file_descriptor_t* d = select_desc[desc_num++];
+			down(&d->lock);
+			if (d->closed) {
+				up(&d->lock);
+				total = -EBADF;
+				goto cleanup;
 			}
-			if ((wc.bits[index] >> bit) & 0x1) {
-				if (descriptors[z] && descriptors[z]->can_write) {
-					if (descriptors[z]->can_write(descriptors[z])) {
-						writefds->bits[index] |= (1 << bit);
-						total++;
-					}
-				}
+			
+			if (rb && d->can_read && d->can_read(d)) {
+				readfds->bits[index] |= (1 << bit);
+				total++;
 			}
+			if (wb && d->can_write && d->can_write(d)) {
+				writefds->bits[index] |= (1 << bit);
+				total++;
+			}
+			up(&d->lock);
 		}
 		if (total != 0)
 			break;
@@ -562,6 +603,13 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
 			break;
 		
 		schedule();
+	}
+	
+cleanup:
+	for (uint32_t z = 0; z < num_desc; z++) {
+		down(&select_desc[z]->lock);
+		if (!file_descriptor_release(select_desc[z]))
+			up(&select_desc[z]->lock);
 	}
 	
 	return total;

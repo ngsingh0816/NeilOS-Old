@@ -287,10 +287,12 @@ file_descriptor_t* es_open(const char* filename, uint32_t mode) {
 uint32_t es_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	int id = sound_buffer_id;
 	pcb_t* pcb = current_pcb;
-	while (id == sound_buffer_id && !(pcb && pcb->should_terminate)) {
+	while (id == sound_buffer_id && !(pcb && pcb->should_terminate) && !f->closed) {
 		if (signal_occurring(pcb))
 			return -EINTR;
+		up(&f->lock);
 		schedule();
+		down(&f->lock);
 	}
 	
 	return SECTION_SIZE * sizeof(int16_t);

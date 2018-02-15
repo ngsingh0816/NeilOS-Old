@@ -245,10 +245,12 @@ uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	if (!(f->mode & FILE_MODE_NONBLOCKING)) {
 		unsigned int id = mouse_packet_id;
 		pcb_t* pcb = current_pcb;
-		while (id == mouse_packet_id && !(pcb && pcb->should_terminate)) {
+		while (id == mouse_packet_id && !(pcb && pcb->should_terminate) && !f->closed) {
 			if (signal_occurring(pcb))
 				return -EINTR;
+			up(&f->lock);
 			schedule();
+			down(&f->lock);
 		}
 		
 	}

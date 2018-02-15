@@ -339,10 +339,8 @@ void pcb_free_descriptors(pcb_t* pcb) {
 	down(&pcb->descriptor_lock);
 	for (z = 0; z < NUMBER_OF_DESCRIPTORS; z++) {
 		if (pcb->descriptors[z]) {
-			if ((--pcb->descriptors[z]->ref_count) == 0) {
-				pcb->descriptors[z]->close((void*)pcb->descriptors[z]);
-				kfree(pcb->descriptors[z]);
-			}
+			pcb->descriptors[z]->closed = true;
+			file_descriptor_release(pcb->descriptors[z]);
 			pcb->descriptors[z] = NULL;
 		}
 	}

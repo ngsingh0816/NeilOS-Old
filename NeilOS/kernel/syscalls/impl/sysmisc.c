@@ -230,13 +230,13 @@ int ioctl(uint32_t fd, int request, uint32_t arg1, uint32_t arg2, uint32_t arg3,
 	
 	file_descriptor_t* d = descriptors[fd];
 	down(&d->lock);
+	file_descriptor_retain(d);
 	up(&current_pcb->descriptor_lock);
 	
 	// Call to the driver specific call
 	uint32_t ret = d->ioctl(d, request, arg1, arg2, arg3, arg4);
+	if (!file_descriptor_release(d))
+		up(&d->lock);
 	
-	up(&d->lock);
 	return ret;
-	
-	return -1;
 }
