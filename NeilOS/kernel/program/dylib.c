@@ -441,14 +441,17 @@ void* dylib_get_symbol_address_hash(dylib_t* dylib, uint32_t hash, char* name, b
 }
 
 // Get the symbol address for a specific symbol
+void* dylib_get_symbol_address(dylib_t* dylib, char* name, bool* found) {
+	return dylib_get_symbol_address_hash(dylib, elf_compute_hash(name), name, found);
+}
+
+// Get the symbol address for a specific symbol
 void* dylib_get_symbol_address_list(dylib_list_t* list, char* name, bool* found) {
 	*found = false;
 	uint32_t hash = elf_compute_hash(name);
-	down(&dylib_lock);
 	dylib_list_t* t = list;
 	if (t)
 		down(&t->lock);
-	up(&dylib_lock);
 	while (t) {
 		void* ret = NULL;
 		if (t->dylib) {
@@ -469,6 +472,39 @@ void* dylib_get_symbol_address_list(dylib_list_t* list, char* name, bool* found)
 		up(&prev->lock);
 	}
 	return NULL;
+}
+
+// Perform initialization functions for a list of dylibs
+void dylib_list_perform_init(dylib_list_t* list) {
+	// Initialize all the dylibs
+	dylib_list_t* dylib_list = list;
+	if (dylib_list)
+		down(&dylib_list->lock);
+	while (dylib_list) {
+		dylib_t* dylib = dylib_list->dylib;
+		
+		// Perform the initialization function
+		down(&dylib->lock);
+		uint32_t dinit = dylib->init;
+		uint32_t array_length = dylib->init_array_length;
+		void (**arrays)() = dylib->init_array;
+		up(&dylib->lock);
+		// TODO: do these in user space
+		if (dinit) {
+			void (*init)() = (void (*)())(dylib_list->offset + dinit);
+			init();
+		}
+		for (uint32_t z = 0; z < array_length; z++) {
+			void (*init)() = (void (*)())(dylib_list->offset + (uint32_t)arrays[z]);
+			init();
+		}
+		
+		dylib_list_t* prev = dylib_list;
+		dylib_list = dylib_list->next;
+		if (dylib_list)
+			down(&dylib_list->lock);
+		up(&prev->lock);
+	}
 }
 
 // Unload a dylib
@@ -551,6 +587,8 @@ void dylib_dealloc(dylib_t* dylib) {
 		kfree(dylib->hash.buckets);
 	if (dylib->hash.chains)
 		kfree(dylib->hash.chains);
+	if (dylib->init_array)
+		kfree(dylib->init_array);
 	page_list_dealloc(dylib->page_list);
 	
 	dylib_list_t* t = dylib->dylibs;

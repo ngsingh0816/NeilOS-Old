@@ -654,6 +654,16 @@ pcb_t* load_task(char* filename, const char** argv, const char** envp) {
 		return NULL;
 	}
 	
+	// Initialize the dylibs
+	pcb_t* backup_pcb = current_pcb;
+	thread_t* backup_thread = current_thread;
+	current_pcb = pcb;
+	current_thread = pcb->threads;
+	page_list_map_list(pcb->page_list, false);
+	dylib_list_perform_init(pcb->dylibs->next);
+	current_pcb = backup_pcb;
+	current_thread = backup_thread;
+	
 	if (parent)
 		map_task_into_memory(pcb->parent);
 	
@@ -840,6 +850,12 @@ pcb_t* load_task_replace(char* filename, const char** argv, const char** envp) {
 		up(&current_pcb->lock);
 		return NULL;
 	}
+	
+	// Initialize the dylibs (TODO: perform this in userspace)
+	page_list_map_list(current_pcb->page_list, false);
+	up(&current_pcb->lock);
+	dylib_list_perform_init(current_pcb->dylibs->next);
+	down(&current_pcb->lock);
 	
 	// Make the current thread the only thread
 	thread_t* next = current_thread->next, *prev = current_thread->prev;

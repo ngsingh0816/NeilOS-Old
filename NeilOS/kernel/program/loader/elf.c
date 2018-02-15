@@ -787,6 +787,11 @@ bool elf_load_dylib(char* filename, dylib_t* dylib) {
 			}
 			
 			kfree(tags);
+		} else if (section_header->type == ELF_SECTION_INIT_ARRAY) {
+			down(&dylib->lock);
+			dylib->init_array = elf_read_data(&file, section_header->offset, section_header->size);
+			dylib->init_array_length = section_header->size / sizeof(uint32_t);
+			up(&dylib->lock);
 		}
 	}
 	
@@ -851,16 +856,6 @@ bool elf_load_dylib_for_task(dylib_t* dylib, pcb_t* pcb, uint32_t offset) {
 		return false;
 	/*struct timeval t2 = time_subtract(time_get(), time);
 	printf("%d ms - %s\n", t2.tv_sec * 1000 + t2.tv_usec / 1000, dylib->name ? dylib->name : "");*/
-	
-	// Perform the initialization function
-	down(&dylib->lock);
-	uint32_t dinit = dylib->init;
-	up(&dylib->lock);
-	if (dinit) {
-		// TODO: do this in userspace
-		void (*init)() = (void (*)())(offset + dinit);
-		init();
-	}
 	
 	return true;
 }

@@ -81,6 +81,8 @@ typedef struct dylib {
 	
 	// Init function
 	uint32_t init;
+	void (**init_array)();
+	uint32_t init_array_length;
 	
 	mutex_t lock;
 } dylib_t;
@@ -116,7 +118,13 @@ bool dylib_load_for_dylib_by_name(char* name, dylib_t* dylib);
 bool dylib_load_for_dylib(dylib_t* n, dylib_t* dylib);
 
 // Get the symbol address for a specific symbol
+void* dylib_get_symbol_address(dylib_t* dylib, char* name, bool* found);
+
+// Get the symbol address for a specific symbol
 void* dylib_get_symbol_address_list(dylib_list_t* dylibs, char* name, bool* found);
+
+// Perform initialization functions for a list of dylibs
+void dylib_list_perform_init(dylib_list_t* list);
 
 // Unload a dylib
 void dylib_unload(char* name);
