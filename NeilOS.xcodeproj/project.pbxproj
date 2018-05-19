@@ -423,6 +423,7 @@
 				28EEC45F1FFC6B46009BAD3B /* audio */,
 				28C4CD8B1F5E6BD100512DBC /* devices */,
 				28DF5A8A1EF3AB880009CA98 /* filesystem */,
+				28DF5AA71EF3AB890009CA98 /* graphics */,
 				280125FC2002DC6900647962 /* ipc */,
 				28DF5A991EF3AB880009CA98 /* keyboard */,
 				28F409CD1FFC391E006288CB /* mouse */,
@@ -431,7 +432,6 @@
 				28DF5A9E1EF3AB880009CA98 /* pit */,
 				28DF5AA11EF3AB880009CA98 /* rtc */,
 				28DF5AA41EF3AB890009CA98 /* terminal */,
-				28DF5AA71EF3AB890009CA98 /* graphics */,
 			);
 			path = drivers;
 			sourceTree = "<group>";

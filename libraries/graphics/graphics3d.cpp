@@ -31,6 +31,9 @@ extern "C" void sys_graphics_surface_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfa
 // Copy a rectangle from one surface to another (stretch the image if necessary)
 extern "C" void sys_graphics_surface_stretch_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest,
 												  SVGA3dBox* src_box, SVGA3dBox* dst_box, uint32_t mode);
+// Reformat a surface
+extern "C" uint32_t sys_graphics_surface_reformat(uint32_t sid, uint32_t flags, uint32_t format,
+												SVGA3dSurfaceFace* faces, SVGA3dSize* mipSizes, uint32_t num_mips);
 // Destroy a surface
 extern "C" void sys_graphics_surface_destroy(uint32_t sid);
 extern "C" uint32_t sys_graphics_context_create();
@@ -83,6 +86,9 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 	context.cid = sys_graphics_context_create();
 	if (context.cid == 0)
 		return context;
+	
+	context.width = width;
+	context.height = height;
 	
 	// Create the surfaces
 	if (color_bits) {
@@ -147,6 +153,7 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 		context.depth_bits = depth_bits;
 		context.stencil_bits = stencil_bits;
 	}
+	graphics_fence_sync(graphics_fence_create());
 	
 	// Set render targets
 	SVGA3dSurfaceImageId img;
@@ -240,47 +247,93 @@ uint32_t graphics_buffer_create(uint32_t width, uint32_t height, uint32_t flags,
 	mip_sizes.height = height;
 	mip_sizes.depth = 1;
 	uint32_t sid = sys_graphics_surface_create(flags, format, faces, &mip_sizes, 1);
+	graphics_fence_sync(graphics_fence_create());
 	return sid;
 }
 
 // Upload data to a buffer
-void graphics_buffer_data(uint32_t bid, void* data, uint32_t size) {
+void graphics_buffer_data(uint32_t bid, const void* data, uint32_t size) {
 	graphics_buffer_sub_data(bid, data, 0, size);
 }
 
 // Upload data to a buffer at an offset
-void graphics_buffer_sub_data(uint32_t bid, void* data, uint32_t offset, uint32_t size) {
+void graphics_buffer_sub_data(uint32_t bid, const void* data, uint32_t offset, uint32_t size) {
 	SVGA3dSurfaceImageId img;
 	memset(&img, 0, sizeof(SVGA3dSurfaceImageId));
 	img.sid = bid;
 	SVGA3dCopyBox box;
 	memset(&box, 0, sizeof(SVGA3dCopyBox));
-	box.x = offset;	// TODO: might be box.srcx??
+	box.x = offset;
 	box.w = size;
 	box.h = 1;
 	box.d = 1;
-	sys_graphics_surface_dma(data, size, &img, SVGA3D_WRITE_HOST_VRAM, &box, 1);
+	sys_graphics_surface_dma((void*)data, size, &img, SVGA3D_WRITE_HOST_VRAM, &box, 1);
 }
 
 // Upload 2d data to a buffer
-void graphics_buffer_data(uint32_t bid, void* data, uint32_t width, uint32_t height, uint32_t size) {
+void graphics_buffer_data(uint32_t bid, const void* data, uint32_t width, uint32_t height, uint32_t size) {
 	graphics_buffer_sub_data(bid, data, 0, 0, width, height, size);
 }
 
 // Upload 2d data to a buffer at an offset
-void graphics_buffer_sub_data(uint32_t bid, void* data, uint32_t x, uint32_t y,
+void graphics_buffer_sub_data(uint32_t bid, const void* data, uint32_t x, uint32_t y,
 							  uint32_t width, uint32_t height, uint32_t size) {
 	SVGA3dSurfaceImageId img;
 	memset(&img, 0, sizeof(SVGA3dSurfaceImageId));
 	img.sid = bid;
 	SVGA3dCopyBox box;
 	memset(&box, 0, sizeof(SVGA3dCopyBox));
-	box.x = x;	// TODO: might be box.srcx??
+	box.x = x;
 	box.y = y;
 	box.w = width;
 	box.h = height;
 	box.d = 1;
-	sys_graphics_surface_dma(data, size, &img, SVGA3D_WRITE_HOST_VRAM, &box, 1);
+	sys_graphics_surface_dma((void*)data, size, &img, SVGA3D_WRITE_HOST_VRAM, &box, 1);
+}
+
+// Change size / format of buffer
+// Note: may invalidate buffer contents
+void graphics_buffer_reformat(uint32_t bid, uint32_t size, uint32_t flags) {
+	graphics_buffer_reformat(bid, size, 1, flags, SVGA3D_BUFFER);
+}
+
+void graphics_buffer_reformat(uint32_t bid, uint32_t size, uint32_t flags, uint32_t format) {
+	graphics_buffer_reformat(bid, size, 1, flags, format);
+}
+
+void graphics_buffer_reformat(uint32_t bid, uint32_t width, uint32_t height, uint32_t flags, uint32_t format) {
+	SVGA3dSurfaceFace faces[SVGA3D_MAX_SURFACE_FACES];
+	memset(faces, 0, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
+	faces[0].numMipLevels = 1;
+	SVGA3dSize mip_sizes;
+	mip_sizes.width = width;
+	mip_sizes.height = height;
+	mip_sizes.depth = 1;
+	sys_graphics_surface_reformat(bid, flags, format, faces, &mip_sizes, 1);
+	graphics_fence_sync(graphics_fence_create());
+}
+
+// Copy data from one buffer to another
+void graphics_buffer_copy(uint32_t dest_bid, uint32_t src_bid, uint32_t dest_x, uint32_t dest_y,
+						  uint32_t src_x, uint32_t src_y, uint32_t width, uint32_t height) {
+	SVGA3dSurfaceImageId dest, src;
+	memset(&dest, 0, sizeof(dest));
+	dest.sid = dest_bid;
+	memset(&src, 0, sizeof(src));
+	src.sid = src_bid;
+	
+	SVGA3dCopyBox box;
+	box.srcx = src_x;
+	box.srcy = src_y;
+	box.srcz = 0;
+	box.x = dest_x;
+	box.y = dest_y;
+	box.z = 0;
+	box.w = width;
+	box.h = height;
+	box.d = 1;
+	
+	sys_graphics_surface_copy(&src, &dest, &box, 1);
 }
 
 // Destroy a buffer

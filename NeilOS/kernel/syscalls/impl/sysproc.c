@@ -127,21 +127,22 @@ uint32_t fork() {
 	thread_t* thread = NULL;
 	while (t) {
 		t->saved_esp = t->context.esp + (uint32_t)t - (uint32_t)o;
+		// This points to where the iret info is
+		// We need info for the context switch (popa, ret)
+		// This ret should point to fork_return, which is just iret.
+		// So just add in a context state followed by fork_return's address
 		if (t->tid == current_thread->tid) {
-			// This points to where the iret info is
-			// We need info for the context switch (popa, ret)
-			// This ret should point to fork_return, which is just iret.
-			// So just add in a context state followed by fork_return's address
 			t->context.eax = 0;
-			t->saved_esp -= sizeof(uint32_t) + sizeof(context_state_t);
-			char* esp = (char*)t->saved_esp;
-			memcpy(esp, &t->context, sizeof(context_state_t));
-			uint32_t addr = (uint32_t)fork_return;
-			memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
-			t->in_syscall = false;
-			t->state = READY;
 			thread = t;
-		}
+		} else
+			t->context.eax = -1;
+		t->saved_esp -= sizeof(uint32_t) + sizeof(context_state_t);
+		char* esp = (char*)t->saved_esp;
+		memcpy(esp, &t->context, sizeof(context_state_t));
+		uint32_t addr = (uint32_t)fork_return;
+		memcpy(&esp[sizeof(context_state_t)], &addr, sizeof(uint32_t));
+		t->in_syscall = false;
+		t->state = READY;
 		t = t->next;
 		o = o->next;
 	}

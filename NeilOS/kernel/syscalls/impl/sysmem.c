@@ -158,6 +158,7 @@ bool map_contigous_pages(pcb_t* pcb, uint32_t start, uint32_t num_pages, uint32_
 			current_page = page_list_get_no_mem(&pcb->page_list, addr, MEMORY_RW, true);
 			if (!current_page)
 				return false;
+			current_page->mmapped = true;
 			prev_addr = addr;
 			
 			if (!current_page->page_table) {
@@ -174,7 +175,7 @@ bool map_contigous_pages(pcb_t* pcb, uint32_t start, uint32_t num_pages, uint32_
 			page_list_map(current_page, false);
 		}
 		
-		// We are gauranteed that the page and page table has been set up by now
+		// We are guaranteed that the page and page table have been set up by now
 		uint32_t offset = (addr % FOUR_MB_SIZE) / FOUR_KB_SIZE;
 		uint32_t paddr = 0;
 		uint32_t perm = 0;

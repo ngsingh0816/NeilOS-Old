@@ -716,6 +716,18 @@ file_descriptor_t* filesystem_duplicate(file_descriptor_t* f) {
 			return NULL;
 		}
 		memcpy(d->info, f->info, sizeof(file_info_t));
+		file_info_t* dinfo = d->info;
+		file_info_t* finfo = f->info;
+		if (dinfo->inode.cached_block) {
+			uint32_t block_size = 1 << (EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
+			dinfo->inode.cached_block = kmalloc(block_size);
+			if (!dinfo->inode.cached_block) {
+				kfree(d->filename);
+				kfree(d);
+				return NULL;
+			}
+			memcpy(dinfo->inode.cached_block, finfo->inode.cached_block, block_size);
+		}
 	} else {
 		d->info = kmalloc(sizeof(directory_info_t));
 		if (!d->info) {
@@ -724,6 +736,18 @@ file_descriptor_t* filesystem_duplicate(file_descriptor_t* f) {
 			return NULL;
 		}
 		memcpy(d->info, f->info, sizeof(directory_info_t));
+		directory_info_t* dinfo = d->info;
+		directory_info_t* finfo = f->info;
+		if (dinfo->inode.cached_block) {
+			uint32_t block_size = 1 << (EXT2_BASE_BLOCK_SIZE_BITS + ext2_superblock()->log_block_size);
+			dinfo->inode.cached_block = kmalloc(block_size);
+			if (!dinfo->inode.cached_block) {
+				kfree(d->filename);
+				kfree(d);
+				return NULL;
+			}
+			memcpy(dinfo->inode.cached_block, finfo->inode.cached_block, block_size);
+		}
 	}
 	
 	return d;

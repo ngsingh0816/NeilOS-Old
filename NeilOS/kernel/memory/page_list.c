@@ -194,8 +194,14 @@ bool page_list_copy_page_table(page_list_t* l, page_list_t* p) {
 	for (uint32_t z = 0; z < NUM_PAGE_TABLE_ENTRIES; z++) {
 		// Copy on write if desired
 		if (page_list_read_bitmap(p->page_table->cow, z)) {
-			p->page_table->pages[z] = vm_create_page_table_entry(p->page_table->pages[z] & ~(FOUR_KB_SIZE - 1),
-																 p->permissions & ~MEMORY_WRITE);
+			uint32_t mask = (FOUR_KB_SIZE - 1);
+			if (p->mmapped) {
+				p->page_table->pages[z] = vm_create_page_table_entry(p->page_table->pages[z] & ~mask,
+																	 (p->page_table->pages[z] & mask) & ~MEMORY_WRITE);
+			} else {
+				p->page_table->pages[z] = vm_create_page_table_entry(p->page_table->pages[z] & ~mask,
+																	 p->permissions & ~MEMORY_WRITE);
+			}
 		}
 		l->page_table->pages[z] = p->page_table->pages[z];
 	}

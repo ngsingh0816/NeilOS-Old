@@ -32,6 +32,9 @@ void svga3d_surface_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest, 
 // Copy a rectangle from one surface to another (stretch the image if necessary)
 void svga3d_surface_stretch_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest,
 								 SVGA3dBox* src_box, SVGA3dBox* dst_box, SVGA3dStretchBltMode mode);
+// Reformat a surface
+void svga3d_surface_reformat(uint32_t sid, SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat format, SVGA3dSurfaceFace* faces,
+							 SVGA3dSize* mipSizes, uint32_t num_mips);
 // Destroy a surface
 void svga3d_surface_destroy(uint32_t sid);
 

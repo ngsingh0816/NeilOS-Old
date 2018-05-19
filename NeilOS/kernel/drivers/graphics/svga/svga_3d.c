@@ -106,6 +106,21 @@ void svga3d_surface_stretch_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId
 	svga_fifo_commit_all();
 }
 
+// Reformat a surface
+void svga3d_surface_reformat(uint32_t sid, SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat format, SVGA3dSurfaceFace* faces,
+							 SVGA3dSize* mipSizes, uint32_t num_mips) {
+	svga3d_surface_destroy(sid);
+	
+	SVGA3dCmdDefineSurface* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_SURFACE_DEFINE,
+													  sizeof(SVGA3dCmdDefineSurface) + num_mips * sizeof(SVGA3dSize));
+	cmd->sid = sid;
+	cmd->format = format;
+	cmd->surfaceFlags = flags;
+	memcpy(cmd->face, faces, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
+	memcpy(&cmd[1], mipSizes, sizeof(SVGA3dSize) * num_mips);
+	svga_fifo_commit_all();
+}
+
 // Destroy a surface
 void svga3d_surface_destroy(uint32_t sid) {
 	SVGA3dCmdDestroySurface* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_SURFACE_DESTROY,

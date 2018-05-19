@@ -44,6 +44,7 @@ typedef struct page_list {
 	bool copy_on_write;
 	page_cow_list_t* linked;
 	bool owner;
+	bool mmapped;
 	
 	page_table_t* page_table;
 	

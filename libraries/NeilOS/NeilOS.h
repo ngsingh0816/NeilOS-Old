@@ -17,10 +17,13 @@
 #include "Core/NSImage.h"
 #include "Core/NSLock.h"
 #include "Core/NSLog.h"
+#include "Core/NSResponder.h"
 #include "Core/NSRunLoop.h"
 #include "Core/NSSound.h"
 #include "Core/NSThread.h"
 #include "Core/NSTimer.h"
 #include "Core/NSTypes.h"
+#include "GUI/NSView.h"
+#include "GUI/NSWindow.h"
 
 #endif /* NEILOS_H */

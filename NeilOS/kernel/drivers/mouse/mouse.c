@@ -104,6 +104,18 @@ void mouse_handle() {
 					break;
 			}
 			
+			// Don't let the mouse leave the screen
+			graphics_info_t info;
+			graphics_info_get(&info);
+			if (mouse_x < 0)
+				mouse_x = 0;
+			if (mouse_x > info.resolution_x)
+				mouse_x = info.resolution_x;
+			if (mouse_y < 0)
+				mouse_y = 0;
+			if (mouse_y > info.resolution_y)
+				mouse_y = info.resolution_y;
+			
 			if (prev_x != mouse_x || prev_y != mouse_y ||
 				prev_left != left_down || prev_right != right_down || prev_middle != middle_down ||
 				scroll_dx != 0 || scroll_dy != 0) {
@@ -257,6 +269,7 @@ uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	
 	((int*)buf)[0] = mouse_x;
 	((int*)buf)[1] = mouse_y;
+	// TODO: fix scroll
 	((char*)buf)[8] = left_down | (right_down << 1) | (middle_down << 2) | (scroll_dx << 3) | (scroll_dy << 4);
 	
 	return MOUSE_STRUCT_SIZE;

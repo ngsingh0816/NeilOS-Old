@@ -212,6 +212,7 @@ bool dylib_list_copy_for_pcb(dylib_list_t* list, pcb_t* pcb) {
 	memset(l, 0, sizeof(dylib_list_t));
 	l->dylib = list->dylib;
 	l->dylib->num_instances++;
+	l->offset = list->offset;
 	
 	// We must place this at the back because the order of linking is important for duplicate symbols
 	dylib_list_push_back(&pcb->dylibs, l);

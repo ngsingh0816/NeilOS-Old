@@ -21,6 +21,9 @@
 		28A3B9FB2032CD930091A44E /* NSHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F92032CD930091A44E /* NSHandler.cpp */; };
 		28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9FC2032CFC10091A44E /* NSLock.cpp */; };
 		28A3BA012033DE7C0091A44E /* NSApplication.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9FF2033DE7C0091A44E /* NSApplication.cpp */; };
+		28A3BA25203AA65F0091A44E /* NSView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA23203AA65F0091A44E /* NSView.cpp */; };
+		28A3BA28203AA6810091A44E /* NSWindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA26203AA6810091A44E /* NSWindow.cpp */; };
+		28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA29203AA73C0091A44E /* NSResponder.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -66,6 +69,12 @@
 		28A3B9FF2033DE7C0091A44E /* NSApplication.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSApplication.cpp; sourceTree = "<group>"; };
 		28A3BA002033DE7C0091A44E /* NSApplication.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSApplication.h; sourceTree = "<group>"; };
 		28A3BA022033EA9F0091A44E /* NeilOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NeilOS.h; sourceTree = "<group>"; };
+		28A3BA23203AA65F0091A44E /* NSView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSView.cpp; sourceTree = "<group>"; };
+		28A3BA24203AA65F0091A44E /* NSView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSView.h; sourceTree = "<group>"; };
+		28A3BA26203AA6810091A44E /* NSWindow.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSWindow.cpp; sourceTree = "<group>"; };
+		28A3BA27203AA6810091A44E /* NSWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSWindow.h; sourceTree = "<group>"; };
+		28A3BA29203AA73C0091A44E /* NSResponder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSResponder.cpp; sourceTree = "<group>"; };
+		28A3BA2A203AA73C0091A44E /* NSResponder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSResponder.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +119,8 @@
 				28A3B9FD2032CFC10091A44E /* NSLock.h */,
 				281CEB1A201FB63D00C7D407 /* NSLog.cpp */,
 				281CEB1B201FB63D00C7D407 /* NSLog.h */,
+				28A3BA29203AA73C0091A44E /* NSResponder.cpp */,
+				28A3BA2A203AA73C0091A44E /* NSResponder.h */,
 				28A3B9F32032CD340091A44E /* NSRunLoop.cpp */,
 				28A3B9F42032CD340091A44E /* NSRunLoop.h */,
 				2801261C200720B200647962 /* NSSound.cpp */,
@@ -118,8 +129,8 @@
 				28A3B9F72032CD6D0091A44E /* NSThread.h */,
 				28A3B9F02032CD0D0091A44E /* NSTimer.cpp */,
 				28A3B9F12032CD0D0091A44E /* NSTimer.h */,
-				281CEB20201FF04800C7D407 /* NSTypes.h */,
 				281CEB21201FF09D00C7D407 /* NSTypes.cpp */,
+				281CEB20201FF04800C7D407 /* NSTypes.h */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -127,6 +138,10 @@
 		2801261B2007209A00647962 /* GUI */ = {
 			isa = PBXGroup;
 			children = (
+				28A3BA23203AA65F0091A44E /* NSView.cpp */,
+				28A3BA24203AA65F0091A44E /* NSView.h */,
+				28A3BA26203AA6810091A44E /* NSWindow.cpp */,
+				28A3BA27203AA6810091A44E /* NSWindow.h */,
 			);
 			path = GUI;
 			sourceTree = "<group>";
@@ -231,10 +246,13 @@
 				28A3B9F82032CD6D0091A44E /* NSThread.cpp in Sources */,
 				281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */,
 				28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */,
+				28A3BA28203AA6810091A44E /* NSWindow.cpp in Sources */,
 				28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
 				281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */,
 				2801262B2007261500647962 /* NSSound.cpp in Sources */,
+				28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */,
+				28A3BA25203AA65F0091A44E /* NSView.cpp in Sources */,
 				280126272007260B00647962 /* main.cpp in Sources */,
 				281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */,
 				28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */,
