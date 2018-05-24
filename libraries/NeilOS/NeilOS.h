@@ -23,6 +23,9 @@
 #include "Core/NSThread.h"
 #include "Core/NSTimer.h"
 #include "Core/NSTypes.h"
+
+#include "GUI/NSMenu.h"
+#include "GUI/NSMenuItem.h"
 #include "GUI/NSView.h"
 #include "GUI/NSWindow.h"
 

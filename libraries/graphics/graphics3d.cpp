@@ -216,6 +216,48 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 	
 	return context;
 }
+
+// Resize a graphics context
+void graphics_context_resize(graphics_context_t* context, uint32_t width, uint32_t height) {
+	SVGA3dSurfaceFormat format = SVGA3D_FORMAT_INVALID;
+	if (context->color_bits == 24)
+		format = SVGA3D_X8R8G8B8;
+	else if (context->color_bits == 32)
+		format = SVGA3D_A8R8G8B8;
+	SVGA3dSurfaceFace faces[SVGA3D_MAX_SURFACE_FACES];
+	memset(faces, 0, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
+	faces[0].numMipLevels = 1;
+	SVGA3dSize size = { .width = width, .height = height, .depth = 1 };
+	sys_graphics_surface_reformat(context->color_surface, SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET,
+														format, faces, &size, 1);
+	
+	if (context->depth_bits == 24)
+		format = SVGA3D_Z_D24X8;
+	else if (context->depth_bits == 32)
+		format = SVGA3D_Z_D32;
+	else if (context->depth_bits == 16)
+		format = SVGA3D_Z_D16;
+	uint32_t flags = SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET;
+	if (context->stencil_bits != 0)
+		flags |= SVGA3D_SURFACE_HINT_DEPTHSTENCIL;
+	sys_graphics_surface_reformat(context->depth_surface, (SVGA3dSurfaceFlags)flags, format, faces, &size, 1);
+	
+	context->width = width;
+	context->height = height;
+	
+	SVGA3dSurfaceImageId img;
+	memset(&img, 0, sizeof(SVGA3dSurfaceImageId));
+	img.sid = context->color_surface;
+	sys_graphics_state_render_target(context->cid, SVGA3D_RT_COLOR0, &img);
+	img.sid = context->depth_surface;
+	sys_graphics_state_render_target(context->cid, SVGA3D_RT_DEPTH, &img);
+	if (context->stencil_bits)
+		sys_graphics_state_render_target(context->cid, SVGA3D_RT_STENCIL, &img);
+	
+	SVGA3dRect rect = { .x = 0, .y = 0, .w = width, .h = height };
+	sys_graphics_state_viewport(context->cid, &rect);
+}
+
 // Destroys a context
 void graphics_context_destroy(graphics_context_t* context) {
 	if (context->color_surface)

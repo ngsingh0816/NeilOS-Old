@@ -113,7 +113,27 @@
  			queue and the application reads those messages. This supports things such as opening files with certain apps,
  			click + drag, etc. The WindowServer will keep track of which application has the focused window and will only
  			keep that application's message queue open so that it can send events to the focused application. The message
- 			queue will be named by the process's pid
+ 			queue will be named by the process's pid.
+ * GUI
+ 	* Keyboard Events
+ 	* Pixel Scaling Factor
+ 	* Taskbar at bottom (could also be a NSMenu)
+ 	* NSLabel
+ 	* NSButton
+ 	* NSImageView
+ 	* Cursor Images
+ 	* NSTextField
+ 	* etc
+ * Create applications that showcase GUI (at same time?)
+ 	* Calculator - NSButton
+ 	* Text Editor - NSTextView
+ 	* Image Viewer - NSImageView
+ 	* File Browser - NSCollectionView, NSTableView, NSScrollView
+ 	* Paint? - Custom View
+ 	* Terminal - NSTextView, pseudo terminal
+ 	* Media Player
+ 	* Settings
+ 	* etc
  * FIX ALL BUGS (TODO bugs and could be improved)
  * Scheduler Rework
  * Ethernet Driver
