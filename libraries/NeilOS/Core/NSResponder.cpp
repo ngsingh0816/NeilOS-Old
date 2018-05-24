@@ -13,6 +13,7 @@
 #define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
 
 #define MOUSE_EVENT_ID		2
+#define KEY_EVENT_ID		3
 
 NSEventMouse* NSEventMouse::Create(NSPoint position, NSMouseType type, NSMouseButton button,
 								   uint32_t window_id, uint32_t priority) {
@@ -83,4 +84,62 @@ NSEventMouse::NSEventMouse(NSPoint p, NSMouseType t, NSMouseButton b, uint32_t w
 	button = b;
 	window_id = wid;
 	SetPriority(pr);
+}
+
+NSEventKey* NSEventKey::Create(unsigned char key, bool down, NSModifierFlags flags) {
+	return new NSEventKey(key, down, flags);
+}
+
+unsigned char NSEventKey::GetKey() const {
+	return key;
+}
+
+void NSEventKey::SetKey(unsigned char k) {
+	key = k;
+}
+
+bool NSEventKey::GetDown() const {
+	return down;
+}
+
+void NSEventKey::SetDown(bool d) {
+	down = d;
+}
+
+NSModifierFlags NSEventKey::GetModifierFlags() const {
+	return flags;
+}
+
+void NSEventKey::SetModifierFlags(NSModifierFlags f) {
+	flags = f;
+}
+
+void NSEventKey::Process() {
+	// TODO: implement
+}
+
+uint8_t* NSEventKey::Serialize(uint32_t* length_out) const {
+	uint32_t total_length = 0;
+	total_length += sizeof(uint32_t);// event id
+	total_length += sizeof(unsigned char);
+	total_length += sizeof(bool);
+	total_length += sizeof(NSModifierFlags);
+	uint8_t* buffer = new uint8_t[total_length];
+	uint32_t pos = 0;
+	
+	uint32_t event_id = KEY_EVENT_ID;
+	copy(&event_id, sizeof(uint32_t));
+	copy(&key, sizeof(unsigned char));
+	copy(&down, sizeof(bool));
+	copy(&flags, sizeof(NSModifierFlags));
+	
+	*length_out = total_length;
+	
+	return buffer;
+}
+
+NSEventKey::NSEventKey(unsigned char k, bool d, NSModifierFlags f) {
+	key = k;
+	down = d;
+	flags = f;
 }

@@ -2,6 +2,7 @@
 #define KEYBOARD_H
 
 #include <common/types.h>
+#include <syscalls/descriptor.h>
 
 // Keycodes for this OS
 #define NUL_KEY			0x00
@@ -51,6 +52,8 @@
 #define RIGHT_CONTROL_KEY 0xA0
 #define NUM_LOCK_KEY	0xA1
 #define SCROLL_LOCK_KEY	0xA2
+#define LEFT_COMMAND_KEY 0xA3
+#define RIGHT_COMMAND_KEY 0xA4
 
 // Tells what modifier keys are currently down
 typedef enum {
@@ -71,5 +74,26 @@ void register_keychange(void (*handler)(uint8_t key, modifier_keys_t modifier_ke
 										bool pressed));
 
 void keyboard_handle();
+
+// Initialize the keyboard
+file_descriptor_t* keyboard_open(const char* filename, uint32_t mode);
+
+// Returns the last keyboard command if in nonblocking mode, otherwise blocks until key is pressed / released
+uint32_t keyboard_read(file_descriptor_t* f, void* buf, uint32_t bytes);
+
+// Nop
+uint32_t keyboard_write(file_descriptor_t* f, const void* buf, uint32_t nbytes);
+
+// Get info
+uint32_t keyboard_stat(file_descriptor_t* f, sys_stat_type* data);
+
+// Seek a keyboard (returns error)
+uint64_t keyboard_llseek(file_descriptor_t* f, uint64_t offset, int whence);
+
+// Duplicate the file handle
+file_descriptor_t* keyboard_duplicate(file_descriptor_t* f);
+
+// Close the keyboard
+uint32_t keyboard_close(file_descriptor_t* fd);
 
 #endif

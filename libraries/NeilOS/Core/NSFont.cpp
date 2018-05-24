@@ -118,7 +118,7 @@ NSImage* NSFont::GetImage(const string& str, NSColor<uint8_t> color) {
 		// Load
 		FT_Load_Char(face, utf32[z], FT_LOAD_RENDER);
 		if (!face->glyph)
-			break;
+			return NULL;
 		width += face->glyph->advance.x >> 6;
 		//uint32_t diff_h = face->glyph->advance.y >> 6;
 		//height += diff_h;
@@ -130,6 +130,8 @@ NSImage* NSFont::GetImage(const string& str, NSColor<uint8_t> color) {
 	height = ymax - ymin + 2;
 	baseline = -ymin;
 	
+	if (width == 0 || height == 0)
+		return NULL;
 	
 	NSImage* image = new NSImage(NSSize(width, height));
 	uint32_t* buffer = image->GetPixelData();

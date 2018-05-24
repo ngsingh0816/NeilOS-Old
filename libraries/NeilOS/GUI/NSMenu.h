@@ -39,8 +39,8 @@ public:
 	bool MouseDown(NSEventMouse* event);
 	bool MouseUp(NSEventMouse* event);
 	bool MouseMoved(NSEventMouse* event);
-	bool KeyDown(NSEvent* event);
-	bool KeyUp(NSEvent* event);
+	bool KeyDown(NSEventKey* event);
+	bool KeyUp(NSEventKey* event);
 	
 	NSSize GetSize() const;
 	NSRect GetFrame() const;

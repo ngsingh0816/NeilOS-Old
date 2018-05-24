@@ -264,7 +264,6 @@ uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 			schedule();
 			down(&f->lock);
 		}
-		
 	}
 	
 	((int*)buf)[0] = mouse_x;

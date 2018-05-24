@@ -22,6 +22,7 @@
 #define AUDIO_FILE_TYPE			6
 #define SHARED_MEMORY_FILE_TYPE	7
 #define MESSAGE_QUEUE_FILE_TYPE	8
+#define KEYBOARD_FILE_TYPE		9
 
 // File Modes
 #define FILE_MODE_READ				0x001

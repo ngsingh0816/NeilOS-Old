@@ -516,7 +516,8 @@ void handle_keys(uint8_t keycode, modifier_keys_t modifier_keys, bool pressed) {
 		}
 		
 		if (keycode == LEFT_SHIFT_KEY || keycode == RIGHT_SHIFT_KEY || keycode == CAPS_LOCK_KEY ||
-			keycode == ESCAPE_KEY || keycode == LEFT_ALT_KEY || keycode == RIGHT_ALT_KEY)
+			keycode == ESCAPE_KEY || keycode == LEFT_ALT_KEY || keycode == RIGHT_ALT_KEY ||
+			keycode == LEFT_COMMAND_KEY || keycode == RIGHT_COMMAND_KEY)
 			return;
 		
 		// Check shift and caps lock

@@ -115,9 +115,9 @@
  			keep that application's message queue open so that it can send events to the focused application. The message
  			queue will be named by the process's pid.
  * GUI
- 	* Keyboard Events
  	* Pixel Scaling Factor
  	* Taskbar at bottom (could also be a NSMenu)
+ 	* Window Events (Mouse, Keyboard)
  	* NSLabel
  	* NSButton
  	* NSImageView

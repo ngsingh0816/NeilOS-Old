@@ -348,11 +348,23 @@ bool NSMenu::MouseMoved(NSEventMouse* event) {
 	return false;
 }
 
-bool NSMenu::KeyDown(NSEvent* event) {
+bool NSMenu::KeyDown(NSEventKey* event) {
+	// Check for key equivalents
+	for (auto& i : items) {
+		if (i->key_equivalent == std::string(1, toupper(event->GetKey())) &&
+			i->flags == event->GetModifierFlags() && i->action) {
+			i->action(i);
+			return true;
+		}
+		if (i->submenu) {
+			if (i->submenu->KeyDown(event))
+				return true;
+		}
+	}
 	return false;
 }
 
-bool NSMenu::KeyUp(NSEvent* event) {
+bool NSMenu::KeyUp(NSEventKey* event) {
 	return false;
 }
 

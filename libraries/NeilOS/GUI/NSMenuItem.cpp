@@ -92,10 +92,21 @@ void NSMenuItem::SetTitle(string t) {
 	
 	NSFont font;
 	NSImage* text = font.GetImage(title, NSColor<float>::WhiteColor());
+	if (!text) {
+		text_buffer = 0;
+		SetTitle(" ");
+		return;
+	}
 	text_size = text->GetSize();
 	font_height = font.GetLineHeight();
 	int w = int(text_size.width + 0.5);
 	int h = int(text_size.height + 0.5);
+	if (w == 0 || h == 0) {
+		delete text;
+		text_buffer = 0;
+		SetTitle(" ");
+		return;
+	}
 	text_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
 	graphics_buffer_data(text_buffer, text->GetPixelData(), w, h, w * h * 4);
 	delete text;

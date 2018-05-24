@@ -1,3 +1,4 @@
+
 #include "keyboard.h"
 #include <drivers/pic/i8259.h>
 #include <syscalls/interrupt.h>
@@ -65,6 +66,10 @@ bool lastWasF0 = false, lastWasE0 = false;
 void (*user_handler)(uint8_t key, modifier_keys_t mkeys, bool pressed);
 modifier_keys_t modifier_keys;
 
+volatile unsigned int keyboard_packet_id = 0;
+unsigned char keyboard_code = 0;
+bool keyboard_pressed = false;
+
 /* special_scancode
 	DESCRIPTION: This checks for special characters
 	INPUTS: the pointer to a bool that tells if a special character is pressed
@@ -83,6 +88,10 @@ unsigned char special_scancode(bool* pressed) {
 			return RIGHT_ALT_KEY;
 		case 0x14:
 			return RIGHT_CONTROL_KEY;
+		case 0x1F:
+			return LEFT_COMMAND_KEY;
+		case 0x27:
+			return RIGHT_COMMAND_KEY;
 		case 0x4A:
 			return '/';
 		case 0x5A:
@@ -192,6 +201,13 @@ void keyboard_handle() {
 	
 	update_modifier_keys(keycode, pressed);
 	
+	// Let the devices know
+	if (keycode != 0) {
+		keyboard_code = keycode;
+		keyboard_pressed = pressed;
+		keyboard_packet_id++;
+	}
+	
 	// Call the user handler if it exists
 	if (user_handler && keycode != 0)
 		user_handler(keycode, modifier_keys, pressed);
@@ -257,4 +273,107 @@ bool keyboard_init() {
 void register_keychange(void (*handler)(uint8_t key, modifier_keys_t modifier_keys,
 									   bool pressed)) {
 	user_handler = handler;
+}
+
+// Initialize the keyboard
+file_descriptor_t* keyboard_open(const char* filename, uint32_t mode) {
+	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
+	if (!d)
+		return NULL;
+	memset(d, 0, sizeof(file_descriptor_t));
+	// Mark in use
+	d->lock = MUTEX_UNLOCKED;
+	d->type = KEYBOARD_FILE_TYPE;
+	d->mode = FILE_TYPE_CHARACTER | mode;
+	int namelen = strlen(filename);
+	d->filename = kmalloc(namelen + 1);
+	if (!d->filename) {
+		kfree(d);
+		return NULL;
+	}
+	memcpy(d->filename, filename, namelen + 1);
+	
+	// Assign the functions
+	d->read = keyboard_read;
+	d->write = keyboard_write;
+	d->stat = keyboard_stat;
+	d->llseek = keyboard_llseek;
+	d->duplicate = keyboard_duplicate;
+	d->close = keyboard_close;
+	
+	return d;
+}
+
+/* Keyboard Packet is of the format (2 bytes)
+ {
+ 	unsigned char pressed;
+ 	unsigned char keycode;
+ }
+ */
+
+#define KEYBOARD_STRUCT_SIZE		2
+
+// Returns the last keyboard command if in nonblocking mode, otherwise blocks until key is pressed / released
+uint32_t keyboard_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
+	if (bytes != KEYBOARD_STRUCT_SIZE)
+		return -EINVAL;
+	
+	if (!(f->mode & FILE_MODE_NONBLOCKING)) {
+		unsigned int id = keyboard_packet_id;
+		pcb_t* pcb = current_pcb;
+		while (id == keyboard_packet_id && !(pcb && pcb->should_terminate) && !f->closed) {
+			if (signal_occurring(pcb))
+				return -EINTR;
+			up(&f->lock);
+			schedule();
+			down(&f->lock);
+		}
+	}
+	
+	((uint8_t*)buf)[0] = keyboard_pressed;
+	((uint8_t*)buf)[1] = keyboard_code;
+	
+	return KEYBOARD_STRUCT_SIZE;
+}
+
+// Nop
+uint32_t keyboard_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
+	return 0;
+}
+
+// Get info
+uint32_t keyboard_stat(file_descriptor_t* f, sys_stat_type* data) {
+	data->dev_id = f->type;
+	data->size = 0;
+	data->mode = f->mode;
+	return 0;
+}
+
+// Seek a keyboard (returns error)
+uint64_t keyboard_llseek(file_descriptor_t* f, uint64_t offset, int whence) {
+	return uint64_make(-1, -ESPIPE);
+}
+
+// Duplicate the file handle
+file_descriptor_t* keyboard_duplicate(file_descriptor_t* f) {
+	file_descriptor_t* d = (file_descriptor_t*)kmalloc(sizeof(file_descriptor_t));
+	if (!d)
+		return NULL;
+	memcpy(d, f, sizeof(file_descriptor_t));
+	int namelen = strlen(f->filename);
+	d->filename = kmalloc(namelen + 1);
+	if (!d->filename) {
+		kfree(d);
+		return NULL;
+	}
+	memcpy(d->filename, f->filename, namelen + 1);
+	d->lock = MUTEX_UNLOCKED;
+	
+	return d;
+}
+
+// Close the keyboard
+uint32_t keyboard_close(file_descriptor_t* fd) {
+	kfree(fd->filename);
+	return 0;
 }
