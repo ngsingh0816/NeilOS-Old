@@ -31,7 +31,7 @@ public:
 private:
 	bool SetupDefault();
 	
-	FT_FaceRec_* face;
+	FT_FaceRec_* face = NULL;
 };
 
 #endif /* NSFONT_H */

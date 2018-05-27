@@ -94,7 +94,6 @@ NSMenu::NSMenu(bool is_context) {
 	SetupVAO();
 	
 	is_context_menu = is_context;
-	updates.push_back(-1);
 }
 
 NSMenu::NSMenu(const std::vector<NSMenuItem*>& i, bool is_context) {
@@ -102,7 +101,6 @@ NSMenu::NSMenu(const std::vector<NSMenuItem*>& i, bool is_context) {
 	
 	SetItems(i);
 	is_context_menu = is_context;
-	updates.push_back(-1);
 }
 
 NSMenu::~NSMenu() {
@@ -134,14 +132,14 @@ void NSMenu::SetItems(const std::vector<NSMenuItem*>& i) {
 	for (auto c : items)
 		c->menu = this;
 	
-	updates.push_back(-1);
+	UpdateAll();
 }
 
 void NSMenu::AddItem(NSMenuItem* item) {
 	item->menu = this;
 	items.push_back(item);
 	
-	updates.push_back(items.size() - 1);
+	UpdateItem(items.size() - 1);
 }
 
 void NSMenu::AddItem(NSMenuItem* item, unsigned int index) {
@@ -151,9 +149,11 @@ void NSMenu::AddItem(NSMenuItem* item, unsigned int index) {
 	item->menu = this;
 	items.insert(items.begin() + index, item);
 	
+	std::vector<unsigned int> updates;
 	updates.reserve(items.size() - index);
 	for (unsigned int z = index; z < items.size(); z++)
 		updates.push_back(z);
+	UpdateItems(updates);
 }
 
 void NSMenu::RemoveItem(unsigned int index) {
@@ -163,7 +163,7 @@ void NSMenu::RemoveItem(unsigned int index) {
 	delete items[index];
 	items.erase(items.begin() + index);
 	
-	updates.push_back(-1);
+	UpdateAll();
 }
 
 void NSMenu::RemoveAllItems() {
@@ -171,7 +171,7 @@ void NSMenu::RemoveAllItems() {
 		delete c;
 	items.clear();
 	
-	updates.push_back(-1);
+	UpdateAll();
 }
 
 NSRect NSMenu::AdjustRect(NSRect rect) {
@@ -192,16 +192,18 @@ NSRect NSMenu::AdjustRect(NSRect rect) {
 }
 
 void NSMenu::ClearSubmenu() {
-	if (submenu) {
-		cleared_rects.push_back(submenu->AdjustRect(submenu->frame) + NSRect(-1, -1, 2, 2));
+	if (submenu && update) {
+		std::vector<NSRect> rects = { submenu->AdjustRect(submenu->frame) + NSRect(-1, -1, 2, 2) };
 		submenu->ClearSubmenu();
-		cleared_rects.insert(cleared_rects.end(), submenu->cleared_rects.begin(), submenu->cleared_rects.end());
 		submenu = NULL;
+		update(rects);
 	}
 }
 
 // down is true for mouse down, false for mouse move
 bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
+	std::vector<unsigned int> updates;
+
 	// Position relative to start of menu
 	NSPoint p = event->GetPosition();
 	if (submenu) {
@@ -225,6 +227,7 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 					updates.push_back(z);
 				}
 			}
+			UpdateItems(updates);
 		}
 		return false;
 	}
@@ -253,7 +256,9 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 					i->highlighted = false;
 					ClearSubmenu();
 					mouse_captured = false;
+					updates.push_back(z);
 				}
+				UpdateItems(updates);
 				return true;
 			}
 			
@@ -270,17 +275,18 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 				submenu->mouse_down = mouse_down;
 				submenu->mouse_captured = mouse_captured;
 				submenu->SetContext(context);
+				submenu->SetUpdateFunction(update);
 				if (is_context_menu) {
 					submenu->SetFrame(NSRect(frame.origin.x +
 											 (submenu->AdjustRect(submenu->frame) + NSRect(-1, -1, 2, 2)).size.width,
 											 frame.origin.y + pos, 0, 0));
 				} else {
 					submenu->SetFrame(NSRect(frame.origin.x + pos,
-											 frame.origin.y + frame.size.height + 2, 0, 0));
+											 frame.origin.y + AdjustRect(frame).size.height + 1, 0, 0));
 				}
 				for (auto item : submenu->items)
 					item->highlighted = false;
-				submenu->updates.push_back(-1);
+				submenu->UpdateAll();
 			}
 			updates.push_back(z);
 			break;
@@ -290,6 +296,7 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 		else
 			pos += item_size.width;
 	}
+	UpdateItems(updates);
 	
 	return true;
 }
@@ -301,12 +308,14 @@ bool NSMenu::MouseDown(NSEventMouse* event) {
 void NSMenu::Clear() {
 	ClearSubmenu();
 	// Unhighlight everything
+	std::vector<unsigned int> updates;
 	for (unsigned int z = 0; z < items.size(); z++) {
 		if (items[z]->highlighted) {
 			items[z]->highlighted = false;
 			updates.push_back(z);
 		}
 	}
+	UpdateItems(updates);
 }
 
 bool NSMenu::MouseUp(NSEventMouse* event) {
@@ -354,11 +363,14 @@ bool NSMenu::KeyDown(NSEventKey* event) {
 		if (i->key_equivalent == std::string(1, toupper(event->GetKey())) &&
 			i->flags == event->GetModifierFlags() && i->action) {
 			i->action(i);
+			Clear();
 			return true;
 		}
 		if (i->submenu) {
-			if (i->submenu->KeyDown(event))
+			if (i->submenu->KeyDown(event)) {
+				Clear();
 				return true;
+			}
 		}
 	}
 	return false;
@@ -396,7 +408,14 @@ NSRect NSMenu::GetFrame() const {
 }
 
 void NSMenu::SetFrame(NSRect f) {
+	NSRect old_frame = frame;
 	frame = f;
+	
+	UpdateAll();
+	if (update) {
+		std::vector<NSRect> rects = { AdjustRect(old_frame) + NSRect(-1, -1, 2, 2) };
+		update(rects);
+	}
 }
 
 graphics_context_t* NSMenu::GetContext() const {
@@ -408,152 +427,116 @@ void NSMenu::SetContext(graphics_context_t* c) {
 }
 
 bool RectsIntersect(const vector<NSRect>& rects, NSRect rect) {
-	NSRect irect = rect.IntegerRect();
 	for (uint32_t z = 0; z < rects.size(); z++) {
-		if (rects[z].OverlapsRect(irect))
+		if (rects[z].OverlapsRect(rect))
 			return true;
 	}
 	return false;
 }
 
-void NSMenu::DrawUpdates(const vector<NSRect>& rects) {
+void NSMenu::Draw(const vector<NSRect>& rects) {
 	if (!context)
 		return;
 	
 	NSRect rect = AdjustRect(frame);
+	NSRect border_rect = rect + NSRect(-1, -1, 2, 2);
 	
-	// If we have dirty rects, redraw the whole menu
-	// TODO: might need to just redraw specific items
-	if (RectsIntersect(rects, rect + NSRect(-1, -1, 2, 2))) {
-		updates.clear();
-		updates.push_back(-1);
-	}
+	// Redraw background if needed
+	bool draw_background = false;
+	if (RectsIntersect(rects, border_rect))
+		draw_background = true;
 	
-	// Figure out which items were updated
-	bool draw_all = false;
-	for (unsigned int z = 0; z < updates.size(); z++) {
-		if (updates[z] == (uint32_t)-1) {
-			updates.clear();
-			updates.reserve(items.size());
-			for (unsigned int z = 0; z < items.size(); z++)
-				updates.emplace_back(z);
-			draw_all = true;
-			break;
-		}
-	}
-	
-	if (is_context_menu) {
-		if (draw_all) {
-			// Draw border
-			NSMatrix matrix = NSMatrix::Identity();
-			matrix.Translate(rect.origin.x - 1, rect.origin.y - 1, 0);
-			matrix.Scale(rect.size.width + 2, rect.size.height + 2, 1);
-			graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-			square_vao[2].bid = color_vbo[2];
-			graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
-			
-			// Draw bar
-			matrix = NSMatrix::Identity();
-			matrix.Translate(rect.origin.x, rect.origin.y, 0);
-			matrix.Scale(rect.size.width, rect.size.height, 1);
-			graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-			square_vao[2].bid = color_vbo[0];
-			graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
-			
-			updated_rects.push_back(rect + NSRect(-1, -1, 2, 2));
-		}
+	if (draw_background) {
+		// Draw border
+		NSMatrix matrix = NSMatrix::Identity();
+		matrix.Translate(border_rect.origin.x, border_rect.origin.y, 0);
+		matrix.Scale(border_rect.size.width, border_rect.size.height, 1);
+		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
+		square_vao[2].bid = color_vbo[2];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
 		
+		// Draw bar
+		matrix = NSMatrix::Identity();
+		matrix.Translate(rect.origin.x, rect.origin.y, 0);
+		matrix.Scale(rect.size.width, rect.size.height, 1);
+		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
+		square_vao[2].bid = color_vbo[0];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
+	}
+	
+	// Draw menu items
+	if (is_context_menu) {
 		float pos_y = MENU_OFFSET_Y;
-		for (unsigned int z = 0; z < items.size(); z++) {
-			auto& i = items[z];
-			bool found = false;
-			for (unsigned int q = 0; q < updates.size(); q++) {
-				if (updates[q] == z) {
-					found = true;
-					break;
-				}
-			}
-			NSSize size = NSSize(rect.size.width, i->GetSize().height);
-			if (found) {
-				NSPoint p = NSPoint(rect.origin.x, rect.origin.y + pos_y);
-				i->Draw(context, p, size);
-				if (!draw_all)
-					updated_rects.push_back(NSRect(p, size));
-			}
-			pos_y += size.height;
+		for (auto i : items) {
+			NSRect item_rect = NSRect(NSPoint(rect.origin.x, rect.origin.y + pos_y),
+									  NSSize(rect.size.width, i->GetSize().height));
+			if (RectsIntersect(rects, item_rect))
+				i->Draw(context, item_rect.origin, item_rect.size);
+			pos_y += item_rect.size.height;
 		}
 	} else {
 		// Straight bar menu
-		if (draw_all) {
-			// Draw border
-			NSMatrix matrix = NSMatrix::Identity();
-			matrix.Translate(rect.origin.x - 1, rect.origin.y - 1, 0);
-			matrix.Scale(rect.size.width + 2, rect.size.height + 2, 1);
-			graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-			square_vao[2].bid = color_vbo[2];
-			graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
-			
-			// Draw bar
-			matrix = NSMatrix::Identity();
-			matrix.Translate(rect.origin.x, rect.origin.y, 0);
-			matrix.Scale(rect.size.width, rect.size.height, 1);
-			graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-			square_vao[2].bid = color_vbo[0];
-			graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
-			
-			updated_rects.push_back(rect + NSRect(-1, -1, 2, 2));
-		}
-		
-		// Draw menu items
 		float pos_x = MENU_OFFSET_X;
-		for (unsigned int z = 0; z < items.size(); z++) {
-			auto& i = items[z];
-			bool found = false;
-			for (unsigned int q = 0; q < updates.size(); q++) {
-				if (updates[q] == z) {
-					found = true;
-					break;
-				}
-			}
-			NSSize size = NSSize(i->GetSize().width, rect.size.height);
-			if (found) {
-				NSPoint p = NSPoint(pos_x + rect.origin.x, rect.origin.y);
-				i->Draw(context, p, size);
-				if (!draw_all)
-					updated_rects.push_back(NSRect(p, size));
-			}
-			pos_x += size.width;
+		for (auto i : items) {
+			NSRect item_rect = NSRect(NSPoint(pos_x + rect.origin.x, rect.origin.y),
+									  NSSize(i->GetSize().width, rect.size.height));
+			if (RectsIntersect(rects, item_rect))
+				i->Draw(context, item_rect.origin, item_rect.size);
+			pos_x += item_rect.size.width;
 		}
 	}
 	
-	updates.clear();
 	if (submenu)
-		submenu->DrawUpdates(rects);
+		submenu->Draw(rects);
 }
 
-bool NSMenu::NeedsUpdate() {
-	bool sub = false;
+void NSMenu::SetUpdateFunction(std::function<void(std::vector<NSRect>)> func) {
+	update = func;
 	if (submenu)
-		sub = submenu->NeedsUpdate();
-	return ((updates.size() != 0) || (cleared_rects.size() != 0) || (updated_rects.size() != 0) || sub);
+		submenu->SetUpdateFunction(func);
 }
 
-std::vector<NSRect> NSMenu::GetClearedRects() {
-	std::vector<NSRect> ret = cleared_rects;
-	if (submenu) {
-		std::vector<NSRect> ret2 = submenu->GetClearedRects();
-		ret.insert(ret.end(), ret2.begin(), ret2.end());
-	}
-	cleared_rects.clear();
-	return ret;
+void NSMenu::UpdateAll() {
+	if (!update)
+		return;
+	
+	std::vector<NSRect> rects = { AdjustRect(frame) + NSRect(-1, -1, 2, 2) };
+	update(rects);
 }
 
-std::vector<NSRect> NSMenu::GetUpdatedRects() {
-	std::vector<NSRect> ret = updated_rects;
-	if (submenu) {
-		std::vector<NSRect> ret2 = submenu->GetUpdatedRects();
-		ret.insert(ret.end(), ret2.begin(), ret2.end());
+void NSMenu::UpdateItem(unsigned int index) {
+	std::vector<unsigned int> indices = { index };
+	UpdateItems(indices);
+}
+
+void NSMenu::UpdateItems(std::vector<unsigned int> indices) {
+	if (!update || indices.size() == 0)
+		return;
+	
+	NSRect rect = AdjustRect(frame);
+	std::vector<NSRect> rects;
+	float pos = is_context_menu ? MENU_OFFSET_Y : MENU_OFFSET_X;
+	for (unsigned int z = 0; z < items.size(); z++) {
+		auto i = items[z];
+		NSRect item_rect;
+		if (is_context_menu) {
+			item_rect = NSRect(NSPoint(rect.origin.x, rect.origin.y + pos),
+								  NSSize(rect.size.width, i->GetSize().height));
+		} else {
+			item_rect = NSRect(NSPoint(pos + rect.origin.x, rect.origin.y),
+							   NSSize(i->GetSize().width, rect.size.height));
+		}
+		bool found = false;
+		for (unsigned int q = 0; q < indices.size(); q++) {
+			if (indices[q] == z) {
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			rects.push_back(item_rect);
+		pos += is_context_menu ? item_rect.size.height : item_rect.size.width;
 	}
-	updated_rects.clear();
-	return ret;
+	
+	update(rects);
 }

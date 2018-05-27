@@ -266,7 +266,7 @@ uint32_t mq_receive(file_descriptor_t* f, void* buf, uint32_t bytes, uint32_t* p
 	// Copy the first message
 	mq_message_t* msg = info->messages;
 	uint32_t min = bytes;
-	if (min < msg->length)
+	if (min > msg->length)
 		min = msg->length;
 	memcpy(buf, info->messages->buffer, min);
 	if (priority)

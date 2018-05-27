@@ -9,12 +9,14 @@
 #ifndef NSWINDOW_H
 #define NSWINDOW_H
 
+#include "../Core/NSLock.h"
 #include "../Core/NSResponder.h"
 #include "../Core/NSTypes.h"
 
 #include <graphics/graphics.h>
 
 #include <string>
+#include <vector>
 
 #define WINDOW_TITLE_BAR_HEIGHT		22
 
@@ -53,19 +55,29 @@ public:
 	NSView* FirstResponder() const;
 	void MakeFirstResponder(NSView* view);
 private:
+	friend class NSView;
+	
 	NSWindow(std::string title, NSRect frame);
 	void SetupProjMatrix();
 	
-	NSView* content_view;
-	NSView* first_responder;
+	void AddUpdateRect(NSRect rect);
+	void AddUpdateRects(std::vector<NSRect> rects);
+	void PushUpdates();
+	
+	NSView* content_view = NULL;
+	NSView* first_responder = NULL;
 	
 	std::string title;
 	NSRect frame;
 	uint32_t window_id;
-	bool dealloc;
-	bool visible;
+	bool dealloc = false;
+	bool visible = false;
 	
 	graphics_context_t context;
+	
+	NSLock rect_lock;
+	std::vector<NSRect> update_rects;
+	bool update_requested = false;
 };
 
 #endif /* NSWINDOW_H */

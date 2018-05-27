@@ -9,6 +9,8 @@
 #ifndef NSTYPES_H
 #define NSTYPES_H
 
+#include <stdint.h>
+
 typedef double NSTimeInterval;
 
 class NSRect;
@@ -33,6 +35,9 @@ public:
 	NSPoint& operator /=(const float& scalar);
 	
 	bool InsideRect(const NSRect& rect) const;
+	
+	uint8_t* Serialize(uint32_t* length_out) const;
+	static NSPoint FromData(const uint8_t* data, uint32_t length);
 
 	float x;
 	float y;
@@ -57,6 +62,9 @@ public:
 	NSSize operator /(const float& scalar) const;
 	NSSize& operator /=(const float& scalar);
 	
+	uint8_t* Serialize(uint32_t* length_out) const;
+	static NSSize FromData(const uint8_t* data, uint32_t length);
+	
 	float width;
 	float height;
 };
@@ -73,6 +81,10 @@ public:
 	NSRect& operator +=(const NSRect& p2);
 	NSRect operator -(const NSRect& p2) const;
 	NSRect& operator -=(const NSRect& p2);
+	NSRect operator *(const float& scalar) const;
+	NSRect& operator *=(const float& scalar);
+	NSRect operator /(const float& scalar) const;
+	NSRect& operator /=(const float& scalar);
 	
 	bool ContainsPoint(const NSPoint& p) const;
 	bool ContainsRect(const NSRect& r) const;
@@ -80,6 +92,9 @@ public:
 	NSRect Intersection(const NSRect& r) const;
 	// Provides rect that is rounded to nearest integers that contains the original rect
 	NSRect IntegerRect() const;
+	
+	uint8_t* Serialize(uint32_t* length_out) const;
+	static NSRect FromData(const uint8_t* data, uint32_t length);
 	
 	NSPoint origin;
 	NSSize size;

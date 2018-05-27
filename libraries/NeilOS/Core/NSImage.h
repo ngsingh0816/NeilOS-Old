@@ -31,6 +31,8 @@ public:
 	NSImage(const std::string& filename);
 	NSImage(const void* data, unsigned int length);
 	
+	// Accounts for pixel scaling
+	NSSize GetScaledSize() const;
 	NSSize GetSize() const;
 	void SetSize(NSSize size);		// Will linearly resample
 	
@@ -55,9 +57,11 @@ private:
 	uint8_t* CreateTIFF(unsigned int* length_out) const;
 	
 	// 32-bit BGRA
-	uint32_t* pixels;
+	uint32_t* pixels = NULL;
 	NSSize size;
 	NSImageType type;
+	
+	float psf;
 };
 
 #endif /* NSImage_h */

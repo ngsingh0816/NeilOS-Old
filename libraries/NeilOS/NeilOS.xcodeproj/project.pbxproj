@@ -26,6 +26,7 @@
 		28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA29203AA73C0091A44E /* NSResponder.cpp */; };
 		28F178D020B37F5000DBF40F /* NSMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178CE20B37F5000DBF40F /* NSMenu.cpp */; };
 		28F178D320B61D0900DBF40F /* NSMenuItem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D120B61D0900DBF40F /* NSMenuItem.cpp */; };
+		28F178D520B748CC00DBF40F /* NSEventDefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D420B748CC00DBF40F /* NSEventDefs.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -81,6 +82,7 @@
 		28F178CF20B37F5000DBF40F /* NSMenu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenu.h; sourceTree = "<group>"; };
 		28F178D120B61D0900DBF40F /* NSMenuItem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSMenuItem.cpp; sourceTree = "<group>"; };
 		28F178D220B61D0900DBF40F /* NSMenuItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenuItem.h; sourceTree = "<group>"; };
+		28F178D420B748CC00DBF40F /* NSEventDefs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventDefs.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,6 +117,7 @@
 				281CEB24201FF7FA00C7D407 /* NSColor.h */,
 				28A3B9ED2032CCE20091A44E /* NSEvent.cpp */,
 				28A3B9EE2032CCE20091A44E /* NSEvent.h */,
+				28F178D420B748CC00DBF40F /* NSEventDefs.cpp */,
 				281CEB2920211F1400C7D407 /* NSFont.cpp */,
 				281CEB2A20211F1400C7D407 /* NSFont.h */,
 				28A3B9F92032CD930091A44E /* NSHandler.cpp */,
@@ -267,6 +270,7 @@
 				280126272007260B00647962 /* main.cpp in Sources */,
 				281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */,
 				28F178D020B37F5000DBF40F /* NSMenu.cpp in Sources */,
+				28F178D520B748CC00DBF40F /* NSEventDefs.cpp in Sources */,
 				28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */,
 				28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */,
 			);

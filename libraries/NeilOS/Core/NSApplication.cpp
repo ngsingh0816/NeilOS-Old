@@ -9,12 +9,16 @@
 #include "NSApplication.h"
 
 #include "NSEvent.h"
+#include "NSEventDefs.cpp"
 #include "NSHandler.h"
 #include "NSThread.h"
+#include "../GUI/NSWindow.h"
+#include "../GUI/NSView.h"
 
 #include <fcntl.h>
 #include <mqueue.h>
 #include <pthread.h>
+#include <string.h>
 
 #include <string>
 
@@ -24,6 +28,9 @@ namespace NSApplication {
 	uint32_t message_fd;
 	uint32_t send_fd;
 	
+	float pixel_scaling_factor = 1.0f;
+	void SetPixelScalingFactor(float factor);
+	
 	void* MessageFunc(void*) {
 		uint8_t* data = new uint8_t[4096];
 		uint32_t priority = 0;
@@ -32,24 +39,40 @@ namespace NSApplication {
 			if (length == (uint32_t)-1)
 				continue;
 			
-			NSEvent* event = NSEvent::FromData(data, length);
-			if (event) {
-				bool process = true;
-				if (delegate)
-					process = delegate->ReceivedEvent(event);
-				if (process) {
-					NSHandler([event](NSThread*) {
+			uint8_t* temp = new uint8_t[length];
+			memcpy(temp, data, length);
+			NSHandler([temp, length](NSThread*) {
+				NSEvent* event = NSEvent::FromData(temp, length);
+				if (event) {
+					bool process = true;
+					if (delegate)
+						process = delegate->ReceivedEvent(event, temp, length);
+					if (process)
 						event->Process();
-						delete event;
-					}).Post(event->GetPriority());
-				} else
 					delete event;
-			} else if (delegate)
-				delegate->ReceivedMessage(data, length);
+				} else if (delegate)
+					delegate->ReceivedMessage(temp, length);
+				delete[] temp;
+			}).Post(NSThread::MainThread(), 0);
 		}
-		delete data;
+		delete[] data;
 		
 		return NULL;
+	}
+	
+	std::vector<NSWindow*> windows;
+	
+	void RegisterWindow(NSWindow* window) {
+		windows.push_back(window);
+	}
+	
+	void DeregisterWindow(NSWindow* window) {
+		for (unsigned int z = 0; z < windows.size(); z++) {
+			if (windows[z] == window) {
+				windows.erase(windows.begin() + z);
+				z--;
+			}
+		}
 	}
 };
 
@@ -75,11 +98,23 @@ void NSApplication::Setup(int argc, const char** argv) {
 int NSApplication::Run(int argc, const char** argv, NSApplicationDelegate* d) {
 	Setup(argc, argv);
 	delegate = d;
-	NSRunLoop* loop = NSThread::MainThread()->GetRunLoop();
-	loop->AddEvent(NSEventFunction::Create([]() {
+	
+	NSEventInitResp::SetCallback([]() {
 		if (delegate)
 			delegate->DidFinishLaunching();
-	}));
+	});
+	
+	std::string name;
+	std::string path;
+	if (argc > 0) {
+		path = argv[0];
+		name = path.substr(path.find_last_of("/") + 1);
+	}
+	NSEventInit* event = NSEventInit::Create(getpid(), name, path);
+	SendEvent(event);
+	delete event;
+	
+	NSRunLoop* loop = NSThread::MainThread()->GetRunLoop();
 	loop->Run();
 	
 	// Delete message queue
@@ -135,4 +170,20 @@ bool NSApplication::OpenApplication(std::string path, ...) {
 		return false;
 	
 	return true;
+}
+
+// Pixel Scaling Factor
+float NSApplication::GetPixelScalingFactor() {
+	return pixel_scaling_factor;
+}
+
+void NSApplication::SetPixelScalingFactor(float factor) {
+	pixel_scaling_factor = factor;
+	
+	for (auto window : windows) {
+		if (!window->IsVisible())
+			continue;
+		NSView* view = window->GetContentView();
+		view->DrawRect(view->GetFrame());
+	}
 }

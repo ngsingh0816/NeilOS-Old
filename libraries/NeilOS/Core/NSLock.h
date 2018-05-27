@@ -23,9 +23,9 @@ public:
 	void Unlock();
 	bool TryLock();
 private:
-	void* mutex;
-	void* cond;
-	volatile unsigned int count;
+	void* mutex = NULL;
+	void* cond = NULL;
+	volatile unsigned int count = 0;
 };
 
 class NSConditionalLock {

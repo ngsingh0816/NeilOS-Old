@@ -8,6 +8,8 @@
 
 #include "NSTypes.h"
 
+#include <string.h>
+
 #include <algorithm>
 
 NSPoint::NSPoint() {
@@ -83,6 +85,27 @@ bool NSPoint::InsideRect(const NSRect& rect) const {
 	return rect.ContainsPoint(*this);
 }
 
+uint8_t* NSPoint::Serialize(uint32_t* length_out) const {
+	uint32_t length = sizeof(float) * 2;
+	uint8_t* buffer = new uint8_t[length];
+	memcpy(buffer, &x, sizeof(float));
+	memcpy(&buffer[sizeof(float)], &y, sizeof(float));
+	if (length_out)
+		*length_out = length;
+	return buffer;
+}
+
+NSPoint NSPoint::FromData(const uint8_t* data, uint32_t length) {
+	if (length != sizeof(float) * 2)
+		return NSPoint();
+	
+	NSPoint ret;
+	memcpy(&ret.x, data, sizeof(float));
+	memcpy(&ret.y, &data[sizeof(float)], sizeof(float));
+	
+	return ret;
+}
+
 NSSize::NSSize() {
 	width = 0;
 	height = 0;
@@ -152,6 +175,27 @@ NSSize& NSSize::operator /=(const float& scalar) {
 	return *this;
 }
 
+uint8_t* NSSize::Serialize(uint32_t* length_out) const {
+	uint32_t length = sizeof(float) * 2;
+	uint8_t* buffer = new uint8_t[length];
+	memcpy(buffer, &width, sizeof(float));
+	memcpy(&buffer[sizeof(float)], &height, sizeof(float));
+	if (length_out)
+		*length_out = length;
+	return buffer;
+}
+
+NSSize NSSize::FromData(const uint8_t* data, uint32_t length) {
+	if (length != sizeof(float) * 2)
+		return NSSize();
+	
+	NSSize ret;
+	memcpy(&ret.width, data, sizeof(float));
+	memcpy(&ret.height, &data[sizeof(float)], sizeof(float));
+	
+	return ret;
+}
+
 NSRect::NSRect() {
 	origin = NSPoint();
 	size = NSSize();
@@ -195,6 +239,26 @@ NSRect& NSRect::operator -=(const NSRect& p2) {
 	return *this;
 }
 
+NSRect NSRect::operator *(const float& scalar) const {
+	return NSRect(origin * scalar, size * scalar);
+}
+
+NSRect& NSRect::operator *=(const float& scalar) {
+	origin *= scalar;
+	size *= scalar;
+	return *this;
+}
+
+NSRect NSRect::operator /(const float& scalar) const {
+	return NSRect(origin / scalar, size / scalar);
+}
+
+NSRect& NSRect::operator /=(const float& scalar) {
+	origin /= scalar;
+	size *= scalar;
+	return *this;
+}
+
 bool NSRect::ContainsPoint(const NSPoint& p) const {
 	return (p.x >= origin.x && p.y >= origin.y &&
 			p.x < origin.x + size.width && p.y < origin.y + size.height);
@@ -231,6 +295,31 @@ NSRect NSRect::IntegerRect() const {
 	rect.size.width = (int)rect.size.width + 1;
 	rect.size.height = (int)rect.size.height + 1;
 	return rect;
+}
+
+uint8_t* NSRect::Serialize(uint32_t* length_out) const {
+	uint32_t length = sizeof(float) * 4;
+	uint8_t* buffer = new uint8_t[length];
+	memcpy(buffer, &origin.x, sizeof(float));
+	memcpy(&buffer[sizeof(float)], &origin.y, sizeof(float));
+	memcpy(&buffer[sizeof(float)*2], &size.width, sizeof(float));
+	memcpy(&buffer[sizeof(float)*3], &size.height, sizeof(float));
+	if (length_out)
+		*length_out = length;
+	return buffer;
+}
+
+NSRect NSRect::FromData(const uint8_t* data, uint32_t length) {
+	if (length != sizeof(float) * 4)
+		return NSRect();
+	
+	NSRect ret;
+	memcpy(&ret.origin.x, data, sizeof(float));
+	memcpy(&ret.origin.y, &data[sizeof(float)], sizeof(float));
+	memcpy(&ret.size.width, &data[sizeof(float)*2], sizeof(float));
+	memcpy(&ret.size.height, &data[sizeof(float)*3], sizeof(float));
+	
+	return ret;
 }
 
 // Clamp a rectangle to the clamp rectangle

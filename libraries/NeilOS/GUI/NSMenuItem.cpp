@@ -97,10 +97,10 @@ void NSMenuItem::SetTitle(string t) {
 		SetTitle(" ");
 		return;
 	}
-	text_size = text->GetSize();
+	text_size = text->GetScaledSize();
 	font_height = font.GetLineHeight();
-	int w = int(text_size.width + 0.5);
-	int h = int(text_size.height + 0.5);
+	int w = int(text->GetSize().width + 0.5);
+	int h = int(text->GetSize().height + 0.5);
 	if (w == 0 || h == 0) {
 		delete text;
 		text_buffer = 0;
@@ -135,9 +135,9 @@ void NSMenuItem::SetImage(const NSImage* i) {
 		}
 	}
 	
-	int w = int(img_size.width + 0.5);
-	int h = int(img_size.height + 0.5);
-	img_size = image->GetSize();
+	int w = int(image->GetSize().width + 0.5);
+	int h = int(image->GetSize().height + 0.5);
+	img_size = image->GetScaledSize();
 	img_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
 	graphics_buffer_data(img_buffer, image->GetPixelData(), w, h, w * h * 4);
 	
@@ -194,10 +194,10 @@ void NSMenuItem::SetKeyEquivalent(string key, NSModifierFlags f) {
 	
 	NSFont font;
 	NSImage* text = font.GetImage(t, NSColor<float>::WhiteColor());
-	key_size = text->GetSize();
+	key_size = text->GetScaledSize();
 	font_height = font.GetLineHeight();
-	int w = int(key_size.width + 0.5);
-	int h = int(key_size.height + 0.5);
+	int w = int(text->GetSize().width + 0.5);
+	int h = int(text->GetSize().height + 0.5);
 	key_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
 	graphics_buffer_data(key_buffer, text->GetPixelData(), w, h, w * h * 4);
 	delete text;
@@ -246,15 +246,17 @@ void NSMenuItem::Update(bool all) {
 	if (!menu)
 		return;
 	
-	for (unsigned int z = 0; z < menu->items.size(); z++) {
-		if (menu->items[z] == this) {
-			if (all) {
-				menu->updates.push_back(-1);
-				return;
-			}
-			menu->updates.push_back(z);
-		}
+	if (all) {
+		menu->UpdateAll();
+		return;
 	}
+	
+	std::vector<unsigned int> updates;
+	for (unsigned int z = 0; z < menu->items.size(); z++) {
+		if (menu->items[z] == this)
+			updates.push_back(z);
+	}
+	menu->UpdateItems(updates);
 }
 
 void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
@@ -275,10 +277,8 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 	matrix.Translate(frame.origin.x, frame.origin.y, 0);
 	matrix.Scale(frame.size.width, frame.size.height, 1);
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-	graphics_vertex_array_t	square[3];
-	memcpy(square, menu->square_vao, sizeof(square));
-	square[2].bid = menu->color_vbo[highlighted];
-	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square, 3);
+	menu->square_vao[2].bid = menu->color_vbo[highlighted];
+	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
 	
 	if (is_separator) {
 		if (menu->is_context_menu) {
@@ -296,8 +296,8 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 		matrix.Translate(frame.origin.x, frame.origin.y, 0);
 		matrix.Scale(frame.size.width, frame.size.height, 1);
 		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-		square[2].bid = menu->color_vbo[MENU_COLOR_BORDER];
-		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square, 3);
+		menu->square_vao[2].bid = menu->color_vbo[MENU_COLOR_BORDER];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
 		return;
 	}
 	
@@ -307,8 +307,8 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 	matrix.Scale(text_frame.size.width, text_frame.size.height, 1);
 	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, text_buffer);
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-	square[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
-	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square, 3);
+	menu->square_vao[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
+	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
 	
 	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
 	if (submenu && menu->is_context_menu) {
@@ -318,10 +318,8 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 						 frame.origin.y + (frame.size.height - font_height) / 2, 0);
 		matrix.Scale(font_height, font_height, 1);
 		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-		graphics_vertex_array_t	triangle[2];
-		memcpy(triangle, menu->triangle_vao, sizeof(triangle));
-		triangle[1].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
-		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLELIST, 1, triangle, 2);
+		menu->triangle_vao[1].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLELIST, 1, menu->triangle_vao, 2);
 	} else if (!submenu && menu->is_context_menu && key_equivalent.length() != 0) {
 		// Draw key equivalent
 		matrix = NSMatrix::Identity();
@@ -330,8 +328,8 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 		matrix.Scale(key_size.width, key_size.height, 1);
 		graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, key_buffer);
 		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-		square[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
-		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square, 3);
+		menu->square_vao[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
 		
 		graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
 	}

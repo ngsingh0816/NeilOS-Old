@@ -7,6 +7,8 @@
 //
 
 #include "NSImage.h"
+
+#include "NSApplication.h"
 #include "NSLog.h"
 
 #include <jpeglib.h>
@@ -16,6 +18,7 @@
 NSImage::NSImage() {
 	pixels = NULL;
 	size = NSSize(0, 0);
+	psf = NSApplication::GetPixelScalingFactor();
 }
 
 NSImage::~NSImage() {
@@ -29,6 +32,7 @@ NSImage::NSImage(NSSize _size) {
 	uint32_t height = int(size.height + 0.5f);
 	pixels = new uint32_t[width * height];
 	memset(pixels, 0, width * height * sizeof(uint32_t));
+	psf = NSApplication::GetPixelScalingFactor();
 }
 
 // Supports (24, 32) bit RGB and (1, 8) bit grayscale
@@ -63,6 +67,7 @@ NSImage::NSImage(const void* _pixels, NSSize _size, int bpp) {
 		pixels = NULL;
 		NSLog("Invalid bpp.");
 	}
+	psf = NSApplication::GetPixelScalingFactor();
 }
 
 NSImage::NSImage(const std::string& filename) {
@@ -85,6 +90,8 @@ NSImage::NSImage(const std::string& filename) {
 	
 	InitData(data, size);
 	delete[] data;
+	
+	psf = NSApplication::GetPixelScalingFactor();
 }
 
 NSImage::NSImage(const void* data, unsigned int length) {
@@ -92,6 +99,8 @@ NSImage::NSImage(const void* data, unsigned int length) {
 	size = NSSize(0, 0);
 	
 	InitData(data, length);
+	
+	psf = NSApplication::GetPixelScalingFactor();
 }
 
 // Helpers to create images
@@ -323,6 +332,10 @@ bool NSImage::InitData(const void* data, unsigned int length) {
 		return false;
 	}
 	return true;
+}
+
+NSSize NSImage::GetScaledSize() const {
+	return size / psf;
 }
 
 NSSize NSImage::GetSize() const {

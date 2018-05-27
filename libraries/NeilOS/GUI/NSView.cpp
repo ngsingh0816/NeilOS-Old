@@ -65,7 +65,7 @@ NSView::~NSView() {
 	graphics_buffer_destroy(color_vbo);
 }
 
-NSRect NSView::GetFrame() {
+NSRect NSView::GetFrame() const {
 	return frame;
 }
 
@@ -75,6 +75,16 @@ void NSView::SetFrame(NSRect f) {
 	matrix = NSMatrix::Identity();
 	matrix.Translate(frame.origin.x, frame.origin.y, 0);
 	matrix.Scale(frame.size.width, frame.size.height, 1);
+}
+
+NSRect NSView::GetAbsoluteFrame() const {
+	return GetAbsoluteRect(frame);
+}
+
+NSRect NSView::GetAbsoluteRect(NSRect rect) const {
+	if (!superview)
+		return rect;
+	return NSRect(rect.origin + superview->GetAbsoluteFrame().origin, rect.size);
 }
 
 void NSView::AddSubview(NSView* view) {
@@ -102,27 +112,60 @@ void NSView::RemoveSubviewAtIndex(unsigned int index) {
 	subviews.erase(subviews.begin() + index);
 }
 
-NSView* NSView::GetSubviewAtIndex(unsigned int index) {
+NSView* NSView::GetSubviewAtIndex(unsigned int index) const {
 	return subviews[index];
 }
 
-NSWindow* NSView::GetWindow() {
+NSWindow* NSView::GetWindow() const {
 	return window;
 }
 
-NSView* NSView::GetSuperview() {
+NSView* NSView::GetSuperview() const {
 	return superview;
 }
 
 void NSView::DrawRect(NSRect rect) {
+	Draw(rect);
+	
+	// Draw subviews
+	for (unsigned int z = 0; z < subviews.size(); z++) {
+		if (subviews[z]->frame.OverlapsRect(rect)) {
+			NSRect out = NSRect(rect.origin - subviews[z]->frame.origin, rect.size);
+			if (NSRectClamp(out, NSRect(NSPoint(), subviews[z]->frame.size), &out))
+				subviews[z]->DrawRect(out);
+		}
+	}
+}
+
+void NSView::Draw(NSRect rect) {
 	// TODO: scissor?
 	
 	graphics_context_t* context = window->GetContext();
 	/*graphics_clear(context, 0xFFFFFFFF, 1.0f, 0, GRAPHICS_CLEAR_COLOR | GRAPHICS_CLEAR_DEPTH,
-				   0, 0, frame.size.width, frame.size.height);*/
-
+	 0, 0, frame.size.width, frame.size.height);*/
+	
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
 	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, vao, 2);
+	
+	if (window)
+		window->AddUpdateRect(rect);
+}
+
+void NSView::RequestUpdate(NSRect rect) {
+	std::vector<NSRect> rects = { rect };
+	RequestUpdates(rects);
+}
+
+void NSView::RequestUpdates(std::vector<NSRect> rects) {
+	if (!window)
+		return;
+	
+	NSPoint offset = NSPoint();
+	if (superview)
+		offset = superview->GetAbsoluteFrame().origin;
+	for (unsigned int z = 0; z < rects.size(); z++)
+		rects[z].origin += offset;
+	window->AddUpdateRects(rects);
 }
 
 bool NSView::AcceptsFirstResponder() const {

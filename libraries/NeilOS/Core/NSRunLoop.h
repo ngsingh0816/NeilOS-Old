@@ -59,9 +59,9 @@ private:
 	std::vector<NSTimer*> timers;
 	NSLock lock;
 	NSConditionalLock cond;
-	volatile bool stopped;
-	volatile bool running;
-	volatile bool exits;
+	volatile bool stopped = false;
+	volatile bool running = false;
+	volatile bool exits = false;
 };
 
 #endif /* NSRUNLOOP_H */

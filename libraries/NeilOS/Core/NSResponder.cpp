@@ -7,13 +7,11 @@
 //
 
 #include "NSResponder.h"
+#include "NSEventDefs.cpp"
 
 #include <string.h>
 
 #define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
-
-#define MOUSE_EVENT_ID		2
-#define KEY_EVENT_ID		3
 
 NSEventMouse* NSEventMouse::Create(NSPoint position, NSMouseType type, NSMouseButton button,
 								   uint32_t window_id, uint32_t priority) {
@@ -66,7 +64,7 @@ uint8_t* NSEventMouse::Serialize(uint32_t* length_out) const {
 	uint8_t* buffer = new uint8_t[total_length];
 	uint32_t pos = 0;
 	
-	uint32_t event_id = MOUSE_EVENT_ID;
+	uint32_t event_id = EVENT_MOUSE_ID;
 	copy(&event_id, sizeof(uint32_t));
 	copy(&position, sizeof(NSPoint));
 	copy(&type, sizeof(NSMouseType));
@@ -127,7 +125,7 @@ uint8_t* NSEventKey::Serialize(uint32_t* length_out) const {
 	uint8_t* buffer = new uint8_t[total_length];
 	uint32_t pos = 0;
 	
-	uint32_t event_id = KEY_EVENT_ID;
+	uint32_t event_id = EVENT_KEY_ID;
 	copy(&event_id, sizeof(uint32_t));
 	copy(&key, sizeof(unsigned char));
 	copy(&down, sizeof(bool));

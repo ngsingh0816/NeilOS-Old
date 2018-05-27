@@ -23,8 +23,8 @@ public:
 	virtual void DidFinishLaunching() {};
 	virtual void WillExit() {};
 	
-	// Event handling
-	virtual bool ReceivedEvent(NSEvent* event) { return true; };	// return true to process, false to ignore
+	// Event handling (return true to process, false to ignore)
+	virtual bool ReceivedEvent(NSEvent* event, uint8_t* data, unsigned int length) { return true; };
 	virtual void ReceivedMessage(uint8_t* data, unsigned int length) {};
 	
 	// Events
@@ -50,6 +50,9 @@ namespace NSApplication {
 	
 	// Open application
 	bool OpenApplication(std::string path, ...);
+	
+	// Pixel Scaling Factor
+	float GetPixelScalingFactor();
 };
 
 #endif /* NSAPPLICATION_H */

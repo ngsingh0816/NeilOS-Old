@@ -43,9 +43,9 @@ private:
 	NSSound(const std::string& filename, bool dealloc);
 
 	std::string filename;
-	volatile pthread* sound_thread;
-	void* data;
-	bool dealloc;
+	volatile pthread* sound_thread = NULL;
+	void* data = NULL;
+	bool dealloc = false;
 };
 
 #endif /* NSSOUND_H */

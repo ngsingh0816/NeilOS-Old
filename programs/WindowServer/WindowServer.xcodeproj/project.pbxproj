@@ -9,9 +9,11 @@
 /* Begin PBXBuildFile section */
 		281CEB182019B21800C7D407 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB0B2019B1DF00C7D407 /* main.cpp */; };
 		283A743B202FC79B0025F555 /* Boot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 283A7439202FC79B0025F555 /* Boot.cpp */; };
-		28A3BA0720373BAC0091A44E /* Controller.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA0520373BAC0091A44E /* Controller.cpp */; };
 		28A3BA0A2037504D0091A44E /* Desktop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA082037504D0091A44E /* Desktop.cpp */; };
 		28A3BA31203BA2720091A44E /* Window.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA2F203BA2720091A44E /* Window.cpp */; };
+		28F178D820B74D1600DBF40F /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D620B74D1600DBF40F /* Application.cpp */; };
+		28F178DA20B752E100DBF40F /* NSEventDefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D920B752E000DBF40F /* NSEventDefs.cpp */; };
+		28F178DD20B7C33D00DBF40F /* Event.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178DB20B7C33D00DBF40F /* Event.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -32,12 +34,15 @@
 		281CEB102019B20300C7D407 /* product */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = product; sourceTree = BUILT_PRODUCTS_DIR; };
 		283A7439202FC79B0025F555 /* Boot.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Boot.cpp; sourceTree = "<group>"; };
 		283A743A202FC79B0025F555 /* Boot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Boot.h; sourceTree = "<group>"; };
-		28A3BA0520373BAC0091A44E /* Controller.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Controller.cpp; sourceTree = "<group>"; };
-		28A3BA0620373BAC0091A44E /* Controller.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Controller.h; sourceTree = "<group>"; };
 		28A3BA082037504D0091A44E /* Desktop.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Desktop.cpp; sourceTree = "<group>"; };
 		28A3BA092037504D0091A44E /* Desktop.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Desktop.h; sourceTree = "<group>"; };
 		28A3BA2F203BA2720091A44E /* Window.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Window.cpp; sourceTree = "<group>"; };
 		28A3BA30203BA2720091A44E /* Window.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Window.h; sourceTree = "<group>"; };
+		28F178D620B74D1600DBF40F /* Application.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Application.cpp; sourceTree = "<group>"; };
+		28F178D720B74D1600DBF40F /* Application.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Application.h; sourceTree = "<group>"; };
+		28F178D920B752E000DBF40F /* NSEventDefs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventDefs.cpp; sourceTree = "<group>"; };
+		28F178DB20B7C33D00DBF40F /* Event.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Event.cpp; sourceTree = "<group>"; };
+		28F178DC20B7C33D00DBF40F /* Event.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Event.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,13 +59,16 @@
 		281CEAFF2019B19F00C7D407 = {
 			isa = PBXGroup;
 			children = (
+				28F178D920B752E000DBF40F /* NSEventDefs.cpp */,
 				281CEB0B2019B1DF00C7D407 /* main.cpp */,
+				28F178D620B74D1600DBF40F /* Application.cpp */,
+				28F178D720B74D1600DBF40F /* Application.h */,
 				283A7439202FC79B0025F555 /* Boot.cpp */,
 				283A743A202FC79B0025F555 /* Boot.h */,
-				28A3BA0520373BAC0091A44E /* Controller.cpp */,
-				28A3BA0620373BAC0091A44E /* Controller.h */,
 				28A3BA082037504D0091A44E /* Desktop.cpp */,
 				28A3BA092037504D0091A44E /* Desktop.h */,
+				28F178DB20B7C33D00DBF40F /* Event.cpp */,
+				28F178DC20B7C33D00DBF40F /* Event.h */,
 				28A3BA2F203BA2720091A44E /* Window.cpp */,
 				28A3BA30203BA2720091A44E /* Window.h */,
 				281CEB0A2019B1B100C7D407 /* Makefile */,
@@ -163,10 +171,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				281CEB182019B21800C7D407 /* main.cpp in Sources */,
+				28F178DA20B752E100DBF40F /* NSEventDefs.cpp in Sources */,
 				28A3BA31203BA2720091A44E /* Window.cpp in Sources */,
+				28F178D820B74D1600DBF40F /* Application.cpp in Sources */,
+				28F178DD20B7C33D00DBF40F /* Event.cpp in Sources */,
 				283A743B202FC79B0025F555 /* Boot.cpp in Sources */,
 				28A3BA0A2037504D0091A44E /* Desktop.cpp in Sources */,
-				28A3BA0720373BAC0091A44E /* Controller.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

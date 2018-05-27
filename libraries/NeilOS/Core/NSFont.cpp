@@ -7,6 +7,8 @@
 //
 
 #include "NSFont.h"
+
+#include "NSApplication.h"
 #include "NSImage.h"
 
 #include <algorithm>
@@ -45,7 +47,7 @@ NSFont::NSFont() {
 		return;
 	}
 	
-	FT_Set_Char_Size(face, 0, default_size*64, 0, 0);
+	FT_Set_Char_Size(face, 0, default_size*64 * NSApplication::GetPixelScalingFactor(), 0, 0);
 }
 
 NSFont::~NSFont() {
@@ -63,7 +65,7 @@ NSFont::NSFont(float size) {
 		return;
 	}
 	
-	FT_Set_Char_Size(face, 0, size*64, 0, 0);
+	FT_Set_Char_Size(face, 0, size*64 * NSApplication::GetPixelScalingFactor(), 0, 0);
 }
 
 NSFont::NSFont(const string& name, float size) {
@@ -77,11 +79,12 @@ NSFont::NSFont(const string& name, float size) {
 		return;
 	}
 	
-	FT_Set_Char_Size(face, 0, default_size*64, 0, 0);
+	FT_Set_Char_Size(face, 0, default_size*64 * NSApplication::GetPixelScalingFactor(), 0, 0);
 }
 
 float NSFont::GetLineHeight() const {
-	return face->size->metrics.height / 64.0 - 4;		// Add pixel boundary
+	// Add pixel boundary
+	return (face->size->metrics.height / 64.0) / NSApplication::GetPixelScalingFactor() - 4;
 }
 
 // Clamp a rectangle to (0, 0, realWidth, realHeight)

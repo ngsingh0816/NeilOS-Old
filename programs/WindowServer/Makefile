@@ -4,35 +4,26 @@
 # Will compile all *.cpp and *.S files in current and sub directories.
 
 # Flags to use when compiling, preprocessing, assembling, and linking
-CFLAGS+=-Wall -fPIC -g -ffast-math -funsafe-math-optimizations #-O3
+CFLAGS+=-Wall -g -ffast-math -funsafe-math-optimizations #-O3
 CC=/Users/Neil/NeilOS/cross/bin/i686-neilos-gcc
 CXX=/Users/Neil/NeilOS/cross/bin/i686-neilos-g++
 AR=/Users/Neil/NeilOS/cross/bin/i686-neilos-ar
 OBJDIR=build
-FOLDERS=Core GUI
 
 #If you have any .h files in another directory, add -I<dir> to this line
 
 # This generates the list of source files
-SRC=$(shell find . -name '*.S') $(shell find . -name '*.cpp')
+SRC=$(shell find . -name '*.S') $(shell find . -name '*.cpp') $(shell find . -name '*.c')
 
 # This generates the list of .o files.
 OBJS=$(addprefix $(OBJDIR)/, $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))))
 
 print-%  : ; @echo $* = $($*)
 
-libNeilOS: Makefile $(OBJS)
+WindowServer: Makefile $(OBJS)
 	mkdir -p output
-	# Create shared library
-	$(CXX) -shared -o output/libNeilOS.so -lpthread -lgraphics -Wl,--whole-archive -lmpg123 -lz -lpng -ljpeg -lgif\
-		-ltiff -lfreetype -Wl,--no-whole-archive $(OBJS)
-	cp -rf output/libNeilOS.so /Users/Neil/NeilOS/sysroot/usr/lib/
-	$(foreach var, $(FOLDERS), \
-		mkdir -p /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/$(var)/; \
-	find ./$(var)/ -name \*.h -exec cp -prf {} /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/$(var)/ ';' ;)
-	# Copy over NeilOS.h
-	cp NeilOS.h /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/
-	cp Core/NSEventDefs.cpp /Users/Neil/NeilOS/programs/WindowServer/NSEventDefs.cpp
+	$(CXX) -o output/WindowServer -lpthread -lgraphics -lNeilOS $(OBJS)
+	cp -rf output/WindowServer /Users/Neil/NeilOS/sysroot/system/apps/WindowServer
 
 dep: Makefile.dep
 

@@ -14,6 +14,7 @@
 
 #include <graphics/graphics.h>
 
+#include <algorithm>
 #include <vector>
 
 class NSMenuItem;
@@ -49,10 +50,9 @@ public:
 	graphics_context_t* GetContext() const;
 	void SetContext(graphics_context_t* context);
 	
-	void DrawUpdates(const std::vector<NSRect>& rects);
-	bool NeedsUpdate();
-	std::vector<NSRect> GetClearedRects();
-	std::vector<NSRect> GetUpdatedRects();
+	void Draw(const std::vector<NSRect>& rects);
+	
+	void SetUpdateFunction(std::function<void(std::vector<NSRect>)> func);
 private:
 	friend class NSMenuItem;
 	
@@ -62,6 +62,10 @@ private:
 	void ClearSubmenu();
 	void Clear();
 	
+	void UpdateAll();
+	void UpdateItem(unsigned int index);
+	void UpdateItems(std::vector<unsigned int> indices);
+	
 	std::vector<NSMenuItem*> items;
 	NSMenu* submenu = NULL;
 	bool is_context_menu = false;
@@ -69,9 +73,7 @@ private:
 	NSRect frame;
 	bool mouse_down = false;
 	bool mouse_captured = false;
-	std::vector<uint32_t> updates;
-	std::vector<NSRect> cleared_rects;
-	std::vector<NSRect> updated_rects;
+	std::function<void(std::vector<NSRect>)> update;
 	
 	graphics_context_t* context = NULL;
 	uint32_t square_vbo = 0;

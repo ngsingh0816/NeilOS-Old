@@ -54,7 +54,7 @@ private:
 	static void* NSThreadFunction(void*);
 
 	NSRunLoop loop;
-	pthread* thread;
+	pthread* thread = NULL;
 };
 
 #endif /* NSTHREAD_H */
