@@ -36,7 +36,8 @@ namespace Desktop {
 	
 	NSMenu* app_menu;		// on the left
 	NSMenu* system_menu;	// on the right
-	const float menu_height = 25;
+	NSMenu* task_bar;		// on the bottom
+	const float menu_height = 30;
 	
 	uint32_t square_vbo;
 	uint32_t color_vbo;
@@ -132,6 +133,8 @@ void Desktop::SetPixelScalingFactor(float factor) {
 	system_menu->SetFrame(system_menu_rect);
 	NSRect app_menu_rect = NSRect(NSPoint(), NSSize(system_menu_rect.origin.x, menu_height - 1));
 	app_menu->SetFrame(app_menu_rect);
+	task_bar->SetFrame(NSRect(0, graphics_info.resolution_y - menu_height + 1,
+							  graphics_info.resolution_x, menu_height - 1));
 	
 	UpdateRect(NSRect(0, 0, graphics_info.resolution_x, graphics_info.resolution_y));
 }
@@ -232,6 +235,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	
 	app_menu = new NSMenu;
 	system_menu = new NSMenu;
+	task_bar = new NSMenu;
 	
 	// TODO: temp
 	NSMenuItem* item = new NSMenuItem("File");
@@ -274,6 +278,30 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 		UpdateRects(rects);
 	});
 	app_menu->SetContext(&context);
+	
+	percent(90);
+	
+	NSImage* start_image = new NSImage("/system/images/start.png");
+	start_image->SetScaledSize(NSSize(menu_height - 5, menu_height - 5));
+	item = new NSMenuItem(start_image, false);
+	item->SetBorderHeight(2);
+	NSMenuItem* sitem = new NSMenuItem("Calculator");
+	sitem->SetFont(NSFont(30));
+	sitem->SetAction([](NSMenuItem*) {
+		NSApplication::OpenApplication("/Applications/Calculator");
+	});
+	item->GetSubmenu()->AddItem(sitem);
+	task_bar->AddItem(item);
+	delete start_image;
+	task_bar->AddItem(NSMenuItem::SeparatorItem());
+	task_bar->SetOrientation(NSMenuOrientationUp);
+	task_bar->SetHighlightColor(NSColor<float>::UIDarkGrayColor());
+	task_bar->SetFrame(NSRect(0, graphics_info.resolution_y - menu_height + 1,
+							  graphics_info.resolution_x, menu_height - 1));
+	task_bar->SetUpdateFunction([](std::vector<NSRect> rects) {
+		UpdateRects(rects);
+	});
+	task_bar->SetContext(&context);
 	
 	percent(98);
 	
@@ -365,38 +393,67 @@ void Desktop::FadeFunc(NSTimer* timer) {
 	int res_x = graphics_info.resolution_x;
 	int res_y = graphics_info.resolution_y;
 	
+	// From 1 to 0
+	struct timeval end;
+	gettimeofday(&end, NULL);
+	float fade = ((fade_start.tv_sec * 1000 * 1000 + fade_start.tv_usec + (1000 * 1000) -
+				   (end.tv_sec * 1000 * 1000 + end.tv_usec)) / (1000.0f * 1000.0f));
+	if (fade <= 0.0f)
+		fade = 0.0f;
+	constexpr float menu_fade_length = 0.25;
+	
 	NSMatrix matrix = NSMatrix::Identity();
 	matrix.Scale(res_x, res_y, 1);
 	graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, matrix);
-	
-	// TODO: Necessary?
-	/*graphics_clear(&context, 0x0, 1.0f, 0, GRAPHICS_CLEAR_COLOR | GRAPHICS_CLEAR_DEPTH,
-				   0, 0, res_x, res_y);*/
 	
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, background_vbo);
 	graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, background_vao, 3);
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
 	graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, fade_vao, 2);
+	
+	// Draw menus moving in
+	if (fade <= menu_fade_length) {
+		float fade2 = fade / menu_fade_length;
+		NSRect system_menu_rect = system_menu->GetFrame();
+		system_menu_rect.origin.y = (-system_menu_rect.size.height - 1) * fade2;
+		system_menu->SetFrame(system_menu_rect);
+		NSRect app_menu_rect = app_menu->GetFrame();
+		app_menu_rect.origin.y = -(app_menu_rect.size.height - 1) * fade2;
+		app_menu->SetFrame(app_menu_rect);
+		NSRect task_bar_rect = task_bar->GetFrame();
+		task_bar_rect.origin.y = res_y - menu_height + 1 + (task_bar_rect.size.height + 1) * fade2;
+		task_bar->SetFrame(task_bar_rect);
+		
+		NSMenu* menus[] = { system_menu, app_menu, task_bar };
+		std::vector<NSRect> rects = { NSRect(0, 0, res_x, res_y) };
+		for (unsigned int z = 0; z < sizeof(menus) / sizeof(NSMenu*); z++)
+			menus[z]->Draw(rects);
+	}
+	
 	graphics_present(context.color_surface, 0, 0, 0, 0, res_x * Desktop::GetPixelScalingFactor(),
 					 res_y * Desktop::GetPixelScalingFactor());
 	
-	struct timeval end;
-	gettimeofday(&end, NULL);
-	
 	// Update fade color
-	float fade = ((fade_start.tv_sec * 1000 * 1000 + fade_start.tv_usec + (1000 * 1000) -
-			 (end.tv_sec * 1000 * 1000 + end.tv_usec)) / (1000.0f * 1000.0f));
 	for (int z = 0; z < 4; z++)
 		fade_colors[z * 4 + 3] = fade;
 	graphics_buffer_data(fade_vbo, fade_colors, sizeof(fade_colors));
 	
 	if (fade <= 0.0f) {
 		graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
+		graphics_buffer_destroy(fade_vbo);
 		timer->Invalidate();
-		UpdateRect(NSRect(0, 0, res_x, res_y));
 		
-		// TODO: temp
-		NSApplication::OpenApplication("/Applications/Calculator");
+		// Set correct menu placements
+		NSRect system_menu_rect = system_menu->GetFrame(), app_menu_rect = app_menu->GetFrame(),
+			task_bar_rect = task_bar->GetFrame();
+		system_menu_rect.origin.y = 0;
+		system_menu->SetFrame(system_menu_rect);
+		app_menu_rect.origin.y = 0;
+		app_menu->SetFrame(app_menu_rect);
+		task_bar_rect.origin.y = res_y - menu_height + 1;
+		task_bar->SetFrame(task_bar_rect);
+		
+		UpdateRect(NSRect(0, 0, res_x, res_y));
 	}
 }
 
@@ -446,7 +503,7 @@ void Desktop::Draw(NSThread*) {
 	Window::Draw(rects);
 	
 	// Draw menus
-	NSMenu* menus[] = { system_menu, app_menu };
+	NSMenu* menus[] = { system_menu, app_menu, task_bar };
 	for (unsigned int z = 0; z < sizeof(menus) / sizeof(NSMenu*); z++)
 		menus[z]->Draw(rects);
 	
@@ -504,6 +561,10 @@ bool Desktop::MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, bool (
 	ret |= (app_menu->*func)(event);
 	delete event;
 	
+	event = NSEventMouse::Create(p - task_bar->GetFrame().origin, type, mouse);
+	ret |= (task_bar->*func)(event);
+	delete event;
+	
 	return ret;
 }
 
@@ -512,6 +573,7 @@ bool Desktop::KeyMenu(unsigned char key, bool down, bool (NSMenu::*func)(NSEvent
 	NSEventKey* event = NSEventKey::Create(key, down, modifier_flags);
 	ret = (system_menu->*func)(event);
 	ret |= (app_menu->*func)(event);
+	ret |= (task_bar->*func)(event);
 	delete event;
 	
 	return ret;
@@ -633,4 +695,18 @@ void Desktop::KeyUp(unsigned char key) {
 	
 	if (Window::KeyUp(key))
 		return;
+}
+
+void Desktop::RegisterApplication(Application::App* app) {
+	NSMenuItem* item = new NSMenuItem(app->name);
+	item->SetAction([app](NSMenuItem*) {
+		if (app->windows.size() != 0)
+			Window::MakeKeyWindow(app->pid, app->windows[0]);
+	});
+	task_bar->AddItem(item);
+	task_bar->AddItem(NSMenuItem::SeparatorItem());
+}
+
+void Desktop::UnregisterApplication(Application::App* app) {
+	
 }

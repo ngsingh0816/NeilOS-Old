@@ -19,16 +19,11 @@ using std::string;
 using std::vector;
 
 namespace Application {
-	struct App {
-		uint32_t pid;
-		std::string name = "";
-		std::string path = "";
-		NSImage* image = NULL;
-	};
-	
-	void SetActiveApplication(App* app);
+	void SetActiveApplication(uint32_t pid);
 	bool SendActiveEvent(NSEvent* event);
 	bool SendEvent(NSEvent* event, uint32_t pid);
+	
+	App* GetApplication(uint32_t pid);
 	
 	vector<App*> applications;
 	App* active_app = NULL;
@@ -47,8 +42,10 @@ void Application::SetActiveApplication(uint32_t pid) {
 			break;
 		}
 	}
-	if (!found)
+	if (!found) {
+		active_app = NULL;
 		return;
+	}
 	
 	if (active_fd != (uint32_t)-1)
 		close(active_fd);
@@ -73,6 +70,8 @@ void Application::RegisterApplication(uint32_t pid, string name, string path) {
 	app->path = path;
 	applications.push_back(app);
 	
+	Desktop::RegisterApplication(app);
+	
 	SetActiveApplication(pid);
 	
 	// Send all settings info to the application
@@ -86,7 +85,16 @@ void Application::RegisterApplication(uint32_t pid, string name, string path) {
 }
 
 void Application::UnregisterApplication(uint32_t pid) {
-	// TODO: implement
+	if (active_app && active_app->pid == pid)
+		SetActiveApplication(0);
+	for (unsigned int z = 0; z < applications.size(); z++) {
+		if (applications[z]->pid == pid) {
+			Desktop::UnregisterApplication(applications[z]);
+			delete applications[z];
+			applications.erase(applications.begin() + z);
+			break;
+		}
+	}
 }
 
 bool Application::SendEvent(NSEvent* event, uint32_t pid) {
@@ -111,5 +119,28 @@ void Application::SendPixelScalingFactorEvent(float psf) {
 	
 	for (auto a : applications)
 		SendEvent(event, a->pid);
+}
+
+Application::App* Application::GetApplication(uint32_t pid) {
+	for (auto& i : applications) {
+		if (i->pid == pid)
+			return i;
+	}
+	return NULL;
+}
+
+void Application::RegisterWindow(uint32_t pid, uint32_t wid) {
+	App* app = GetApplication(pid);
+	app->windows.push_back(wid);
+}
+
+void Application::UnregisterWindow(uint32_t pid, uint32_t wid) {
+	App* app = GetApplication(pid);
+	for (unsigned int z = 0; z < app->windows.size(); z++) {
+		if (app->windows[z] == wid) {
+			app->windows.erase(app->windows.begin() + z);
+			return;
+		}
+	}
 }
 

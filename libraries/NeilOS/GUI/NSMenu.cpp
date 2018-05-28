@@ -42,19 +42,16 @@ void NSMenu::SetupVAO() {
 	triangle_vbo = graphics_buffer_create(sizeof(triangle), GRAPHICS_BUFFER_STATIC);
 	graphics_buffer_data(triangle_vbo, triangle, sizeof(triangle));
 	
-	NSColor<float> c[5];
-	c[0] = NSColor<float>::UILighterGrayColor();
-	c[1] = NSColor<float>::UIBlueColor();
-	c[2] = NSColor<float>::UIGrayColor();
-	c[3] = NSColor<float>::BlackColor();
-	c[4] = NSColor<float>::WhiteColor();
+	NSColor<float> c[5] = { background_color, highlight_color, border_color, text_color,
+		text_highlight_color };
 	
 	for (unsigned int i = 0; i < sizeof(c) / sizeof(NSColor<float>); i++) {
-		float colors[4 * 3];
+		float colors[4 * 4];
 		for (int z = 0; z < 4; z++) {
-			colors[z * 3 + 0] = c[i].r;
-			colors[z * 3 + 1] = c[i].g;
-			colors[z * 3 + 2] = c[i].b;
+			colors[z * 4 + 0] = c[i].r;
+			colors[z * 4 + 1] = c[i].g;
+			colors[z * 4 + 2] = c[i].b;
+			colors[z * 4 + 3] = c[i].a;
 		}
 		color_vbo[i] = graphics_buffer_create(sizeof(colors), GRAPHICS_BUFFER_STATIC);
 		graphics_buffer_data(color_vbo[i], colors, sizeof(colors));
@@ -73,8 +70,8 @@ void NSMenu::SetupVAO() {
 	square_vao[1].usage = GRAPHICS_USAGE_TEXCOORD;
 	square_vao[2].bid = color_vbo[0];
 	square_vao[2].offset = 0;
-	square_vao[2].stride = 3 * sizeof(float);
-	square_vao[2].type = GRAPHICS_TYPE_FLOAT3;
+	square_vao[2].stride = 4 * sizeof(float);
+	square_vao[2].type = GRAPHICS_TYPE_FLOAT4;
 	square_vao[2].usage = GRAPHICS_USAGE_COLOR;
 
 	memset(triangle_vao, 0, sizeof(graphics_vertex_array_t) * 2);
@@ -85,8 +82,8 @@ void NSMenu::SetupVAO() {
 	triangle_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	triangle_vao[1].bid = color_vbo[MENU_COLOR_BLACK];
 	triangle_vao[1].offset = 0;
-	triangle_vao[1].stride = 3 * sizeof(float);
-	triangle_vao[1].type = GRAPHICS_TYPE_FLOAT3;
+	triangle_vao[1].stride = 4 * sizeof(float);
+	triangle_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	triangle_vao[1].usage = GRAPHICS_USAGE_COLOR;
 }
 
@@ -115,12 +112,90 @@ NSMenu::~NSMenu() {
 	}
 }
 
+void NSMenu::SetColor(NSColor<float> color, unsigned int index) {
+	if (!color_vbo[index])
+		color_vbo[index] = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
+	
+	float colors[4 * 4];
+	for (int z = 0; z < 4; z++) {
+		colors[z * 4 + 0] = color.r;
+		colors[z * 4 + 1] = color.g;
+		colors[z * 4 + 2] = color.b;
+		colors[z * 4 + 3] = color.a;
+	}
+	graphics_buffer_data(color_vbo[index], colors, sizeof(colors));
+}
+
+void NSMenu::SetColors(NSColor<float> colors[5]) {
+	NSColor<float>* current[] = { &background_color, &highlight_color, &border_color, &text_color,
+		&text_highlight_color };
+	for (int z = 0; z < 5; z++) {
+		if (*current[z] != colors[z]) {
+			*current[z] = colors[z];
+			SetColor(colors[z], z);
+		}
+	}
+}
+
+NSColor<float> NSMenu::GetBackgroundColor() const {
+	return background_color;
+}
+
+void NSMenu::SetBackgroundColor(NSColor<float> color) {
+	background_color = color;
+	SetColor(color, MENU_COLOR_BACKGROUND);
+}
+
+NSColor<float> NSMenu::GetHighlightColor() const {
+	return highlight_color;
+}
+
+void NSMenu::SetHighlightColor(NSColor<float> color) {
+	highlight_color = color;
+	SetColor(color, MENU_COLOR_HIGHLIGHTED);
+}
+
+NSColor<float> NSMenu::GetBorderColor() const {
+	return border_color;
+}
+
+void NSMenu::SetBorderColor(NSColor<float> color) {
+	border_color = color;
+	SetColor(color, MENU_COLOR_BORDER);
+}
+
+NSColor<float> NSMenu::GetTextColor() const {
+	return text_color;
+}
+
+void NSMenu::SetTextColor(NSColor<float> color) {
+	text_color = color;
+	SetColor(color, MENU_COLOR_BLACK);
+}
+
+NSColor<float> NSMenu::GetHighlightedTextColor() const {
+	return text_highlight_color;
+}
+
+void NSMenu::SetHighlightedTextColor(NSColor<float> color) {
+	text_highlight_color = color;
+	SetColor(color, MENU_COLOR_WHITE);
+}
+
 bool NSMenu::IsContextMenu() const {
 	return is_context_menu;
 }
 
 void NSMenu::SetIsContextMenu(bool c) {
 	is_context_menu = c;
+}
+
+NSMenuOrientation NSMenu::GetOrientation() const {
+	return orientation;
+}
+
+void NSMenu::SetOrientation(NSMenuOrientation o) {
+	orientation = o;
 }
 
 std::vector<NSMenuItem*> NSMenu::GetItems() {
@@ -137,6 +212,7 @@ void NSMenu::SetItems(const std::vector<NSMenuItem*>& i) {
 
 void NSMenu::AddItem(NSMenuItem* item) {
 	item->menu = this;
+	item->UpdateSize();
 	items.push_back(item);
 	
 	UpdateItem(items.size() - 1);
@@ -147,6 +223,7 @@ void NSMenu::AddItem(NSMenuItem* item, unsigned int index) {
 		index = items.size();
 	
 	item->menu = this;
+	item->UpdateSize();
 	items.insert(items.begin() + index, item);
 	
 	std::vector<unsigned int> updates;
@@ -271,7 +348,10 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 			if (submenu && submenu->items.size() == 0)
 				submenu = NULL;
 			if (submenu) {
+				NSColor<float> colors[] = { background_color, highlight_color, border_color, text_color,
+					text_highlight_color };
 				submenu->is_context_menu = true;
+				submenu->SetColors(colors);
 				submenu->mouse_down = mouse_down;
 				submenu->mouse_captured = mouse_captured;
 				submenu->SetContext(context);
@@ -281,8 +361,14 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 											 (submenu->AdjustRect(submenu->frame) + NSRect(-1, -1, 2, 2)).size.width,
 											 frame.origin.y + pos, 0, 0));
 				} else {
-					submenu->SetFrame(NSRect(frame.origin.x + pos,
-											 frame.origin.y + AdjustRect(frame).size.height + 1, 0, 0));
+					if (orientation == NSMenuOrientationUp) {
+						NSRect fr = submenu->AdjustRect(NSRect(frame.origin.x + pos, frame.origin.y - 1, 0, 0));
+						fr.origin.y -= fr.size.height;
+						submenu->SetFrame(fr);
+					} else {
+						submenu->SetFrame(NSRect(frame.origin.x + pos,
+												 frame.origin.y + AdjustRect(frame).size.height + 1, 0, 0));
+					}
 				}
 				for (auto item : submenu->items)
 					item->highlighted = false;
@@ -380,7 +466,11 @@ bool NSMenu::KeyUp(NSEventKey* event) {
 	return false;
 }
 
-NSSize NSMenu::GetSize() const {
+NSSize NSMenu::GetSize() {
+	if (cached_size)
+		return menu_size;
+	
+	cached_size = true;
 	if (is_context_menu) {
 		NSSize max_size;
 		for (auto& i : items) {
@@ -389,10 +479,10 @@ NSSize NSMenu::GetSize() const {
 			if (max_size.width < size.width)
 				max_size.width = size.width;
 		}
-		return max_size + NSSize(2 * MENU_OFFSET_X, 2 * MENU_OFFSET_Y);
+		menu_size = max_size + NSSize(2 * MENU_OFFSET_X, 2 * MENU_OFFSET_Y);
+		return menu_size;
 	}
 	
-	// TODO: cache
 	NSSize max_size = NSSize(2 * MENU_OFFSET_X, 0);
 	for (auto& i : items) {
 		NSSize size = i->GetSize();
@@ -400,7 +490,8 @@ NSSize NSMenu::GetSize() const {
 		if (max_size.height < size.height)
 			max_size.height = size.height;
 	}
-	return max_size;
+	menu_size = max_size;
+	return menu_size;
 }
 
 NSRect NSMenu::GetFrame() const {
@@ -500,6 +591,7 @@ void NSMenu::UpdateAll() {
 	if (!update)
 		return;
 	
+	cached_size = false;
 	std::vector<NSRect> rects = { AdjustRect(frame) + NSRect(-1, -1, 2, 2) };
 	update(rects);
 }
@@ -513,6 +605,7 @@ void NSMenu::UpdateItems(std::vector<unsigned int> indices) {
 	if (!update || indices.size() == 0)
 		return;
 	
+	cached_size = false;
 	NSRect rect = AdjustRect(frame);
 	std::vector<NSRect> rects;
 	float pos = is_context_menu ? MENU_OFFSET_Y : MENU_OFFSET_X;

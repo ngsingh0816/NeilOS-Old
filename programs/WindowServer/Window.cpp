@@ -367,6 +367,8 @@ void Window::CreateEvent(uint8_t* data, uint32_t length) {
 	uint64_t key = MakeKey(window->pid, window->id);
 	windows[key] = window;
 	window_list.push_back(window);
+	
+	Application::RegisterWindow(window->pid, window->id);
 }
 
 void Window::DestroyEvent(uint8_t* data, uint32_t length) {
@@ -389,6 +391,8 @@ void Window::DestroyEvent(uint8_t* data, uint32_t length) {
 		// TODO: go to the next highest window?
 		key_window = NULL;
 	}
+	
+	Application::UnregisterWindow(window->pid, window->id);
 	
 	window_list.remove(window);
 	windows.erase(MakeKey(event->GetPid(), event->GetWindowID()));
@@ -596,6 +600,10 @@ void Window::Draw(const std::vector<NSRect>& rects) {
 	}
 }
 
+void Window::MakeKeyWindow(uint32_t pid, uint32_t wid) {
+	MakeKeyWindow(GetWindow(pid, wid));
+}
+
 void Window::MakeKeyWindow(WSWindow* key) {
 	if (key_window == key && key != NULL) {
 		if (window_list.back() != key) {
@@ -618,6 +626,8 @@ void Window::MakeKeyWindow(WSWindow* key) {
 		// Move to front
 		window_list.remove(key);
 		window_list.push_back(key);
+		
+		Application::SetActiveApplication(key->pid);
 		
 		Desktop::UpdateRect(key_window->frame);
 	}

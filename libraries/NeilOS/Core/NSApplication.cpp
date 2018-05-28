@@ -160,7 +160,8 @@ bool NSApplication::OpenApplication(std::string path, ...) {
 	// TODO: args
 	int32_t f = fork();
 	if (f == 0) {
-		if (execv(path.c_str(), NULL) != 0) {
+		char* argv[] = { (char*)path.c_str() };
+		if (execv(path.c_str(), argv) != 0) {
 			exit(-1);
 			return false;
 		}

@@ -342,6 +342,10 @@ NSSize NSImage::GetSize() const {
 	return size;
 }
 
+void NSImage::SetScaledSize(NSSize size) {
+	SetSize(size * psf);
+}
+
 // Will linearly resample
 void NSImage::SetSize(NSSize _size) {
 	float width_ratio = size.width / _size.width;

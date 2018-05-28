@@ -9,6 +9,7 @@
 #ifndef NSMENU_H
 #define NSMENU_H
 
+#include "../Core/NSColor.h"
 #include "../Core/NSResponder.h"
 #include "../Core/NSTypes.h"
 
@@ -16,6 +17,11 @@
 
 #include <algorithm>
 #include <vector>
+
+typedef enum {
+	NSMenuOrientationDown = 0,
+	NSMenuOrientationUp = 1,
+} NSMenuOrientation;
 
 class NSMenuItem;
 
@@ -27,6 +33,9 @@ public:
 	
 	bool IsContextMenu() const;
 	void SetIsContextMenu(bool c);
+	
+	NSMenuOrientation GetOrientation() const;
+	void SetOrientation(NSMenuOrientation orientation);
 	
 	std::vector<NSMenuItem*> GetItems();
 	// Takes ownership of all items
@@ -43,7 +52,7 @@ public:
 	bool KeyDown(NSEventKey* event);
 	bool KeyUp(NSEventKey* event);
 	
-	NSSize GetSize() const;
+	NSSize GetSize();
 	NSRect GetFrame() const;
 	void SetFrame(NSRect frame);
 	
@@ -53,6 +62,17 @@ public:
 	void Draw(const std::vector<NSRect>& rects);
 	
 	void SetUpdateFunction(std::function<void(std::vector<NSRect>)> func);
+	
+	NSColor<float> GetBackgroundColor() const;
+	void SetBackgroundColor(NSColor<float> color);
+	NSColor<float> GetHighlightColor() const;
+	void SetHighlightColor(NSColor<float> color);
+	NSColor<float> GetBorderColor() const;
+	void SetBorderColor(NSColor<float> color);
+	NSColor<float> GetTextColor() const;
+	void SetTextColor(NSColor<float> color);
+	NSColor<float> GetHighlightedTextColor() const;
+	void SetHighlightedTextColor(NSColor<float> color);
 private:
 	friend class NSMenuItem;
 	
@@ -61,6 +81,8 @@ private:
 	bool MouseEvent(NSEventMouse* event, bool down);
 	void ClearSubmenu();
 	void Clear();
+	void SetColor(NSColor<float> color, unsigned int index);
+	void SetColors(NSColor<float> colors[5]);
 	
 	void UpdateAll();
 	void UpdateItem(unsigned int index);
@@ -70,10 +92,20 @@ private:
 	NSMenu* submenu = NULL;
 	bool is_context_menu = false;
 	
+	NSSize menu_size;
+	bool cached_size = false;
+	
 	NSRect frame;
+	NSMenuOrientation orientation = NSMenuOrientationDown;
 	bool mouse_down = false;
 	bool mouse_captured = false;
 	std::function<void(std::vector<NSRect>)> update;
+	
+	NSColor<float> background_color = NSColor<float>::UILighterGrayColor();
+	NSColor<float> highlight_color = NSColor<float>::UIBlueColor();
+	NSColor<float> border_color = NSColor<float>::UIGrayColor();
+	NSColor<float> text_color = NSColor<float>::BlackColor();
+	NSColor<float> text_highlight_color = NSColor<float>::WhiteColor();
 	
 	graphics_context_t* context = NULL;
 	uint32_t square_vbo = 0;

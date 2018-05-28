@@ -52,14 +52,18 @@ public:
 		
 		uint32_t pid = buffer[2];
 		
-		uint32_t pos = 3;
-		uint32_t name_len = buffer[pos++];
+		uint32_t pos = 3 * sizeof(uint32_t);
+		uint32_t name_len;
+		memcpy(&name_len, &data[pos], sizeof(uint32_t));
+		pos += sizeof(uint32_t);
 		char name_buf[name_len + 1];
-		memcpy(name_buf, &buffer[pos], name_len);
+		memcpy(name_buf, &data[pos], name_len);
 		name_buf[name_len] = 0;
 		pos += name_len;
 		
-		uint32_t path_len = buffer[pos++];
+		uint32_t path_len;
+		memcpy(&path_len, &data[pos], sizeof(uint32_t));
+		pos += sizeof(uint32_t);
 		char path_buf[path_len + 1];
 		memcpy(path_buf, &buffer[pos], path_len);
 		path_buf[path_len] = 0;

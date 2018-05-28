@@ -9,6 +9,8 @@
 #ifndef DESKTOP_H
 #define DESKTOP_H
 
+#include "Application.h"
+
 #include <NeilOS/NeilOS.h>
 
 #include <vector>
@@ -32,6 +34,9 @@ namespace Desktop {
 	
 	float GetPixelScalingFactor();
 	void SetPixelScalingFactor(float factor);
+	
+	void RegisterApplication(Application::App* app);
+	void UnregisterApplication(Application::App* app);
 }
 
 #endif /* DESKTOP_H */

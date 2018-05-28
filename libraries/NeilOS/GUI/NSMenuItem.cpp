@@ -35,6 +35,7 @@ NSMenuItem* NSMenuItem::SeparatorItem() {
 }
 
 NSMenuItem::NSMenuItem() {
+	border_height = 1.5 * MENU_OFFSET_Y;
 }
 
 NSMenuItem::~NSMenuItem() {
@@ -52,13 +53,17 @@ NSMenuItem::~NSMenuItem() {
 }
 
 NSMenuItem::NSMenuItem(std::string t, string key, NSModifierFlags f) {
+	border_height = 1.5 * MENU_OFFSET_Y;
+
 	SetTitle(t);
 	key_equivalent = key;
 	flags = f;
 }
 
-NSMenuItem::NSMenuItem(NSImage* i, string key, NSModifierFlags f) {
-	SetImage(i);
+NSMenuItem::NSMenuItem(NSImage* i, bool chr, string key, NSModifierFlags f) {
+	border_height = 1.5 * MENU_OFFSET_Y;
+
+	SetImage(i, chr);
 	key_equivalent = key;
 	flags = f;
 }
@@ -90,7 +95,14 @@ void NSMenuItem::SetTitle(string t) {
 	if (text_buffer)
 		graphics_buffer_destroy(text_buffer);
 	
-	NSFont font;
+	if (title.length() == 0) {
+		text_buffer = 0;
+		text_size = NSSize();
+		UpdateSize();
+		Update(menu && !menu->is_context_menu);
+		return;
+	}
+	
 	NSImage* text = font.GetImage(title, NSColor<float>::WhiteColor());
 	if (!text) {
 		text_buffer = 0;
@@ -111,27 +123,52 @@ void NSMenuItem::SetTitle(string t) {
 	graphics_buffer_data(text_buffer, text->GetPixelData(), w, h, w * h * 4);
 	delete text;
 	
+	UpdateSize();
 	Update(menu && !menu->is_context_menu);
+}
+
+NSFont NSMenuItem::GetFont() const {
+	return font;
+}
+
+void NSMenuItem::SetFont(NSFont f) {
+	font = f;
+	SetTitle(title);
 }
 
 NSImage* NSMenuItem::GetImage() const {
 	return image;
 }
 
-void NSMenuItem::SetImage(const NSImage* i) {
+void NSMenuItem::SetImage(const NSImage* i, bool chr) {
+	chromatic = chr;
+
 	if (image)
 		delete image;
+	if (!i) {
+		image = NULL;
+		img_size = NSSize();
+		if (img_buffer) {
+			graphics_buffer_destroy(img_buffer);
+			img_buffer = 0;
+		}
+		UpdateSize();
+		Update(menu && !menu->is_context_menu);
+		return;
+	}
 	image = new NSImage(i->GetPixelData(), i->GetSize(), 32);
 	
 	if (img_buffer)
 		graphics_buffer_destroy(img_buffer);
 	
 	// Make image white
-	uint32_t* data = image->GetPixelData();
-	for (int y = 0; y < image->GetSize().width; y++) {
-		for (int x = 0; x < image->GetSize().height; x++) {
-			uint32_t pos = y * int(image->GetSize().width + 0.5) + x;
-			data[pos] = data[pos] | 0xFFFFFF;
+	if (!chromatic) {
+		uint32_t* data = image->GetPixelData();
+		for (int y = 0; y < image->GetSize().height; y++) {
+			for (int x = 0; x < image->GetSize().width; x++) {
+				uint32_t pos = y * int(image->GetSize().width + 0.5) + x;
+				data[pos] = data[pos] | 0xFFFFFF;
+			}
 		}
 	}
 	
@@ -141,6 +178,7 @@ void NSMenuItem::SetImage(const NSImage* i) {
 	img_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
 	graphics_buffer_data(img_buffer, image->GetPixelData(), w, h, w * h * 4);
 	
+	UpdateSize();
 	Update(menu && !menu->is_context_menu);
 }
 
@@ -151,6 +189,7 @@ bool NSMenuItem::IsSeparator() const {
 void NSMenuItem::SetIsSeparator(bool is) {
 	is_separator = is;
 	
+	UpdateSize();
 	Update(true);
 }
 
@@ -175,6 +214,7 @@ void NSMenuItem::SetKeyEquivalent(string key, NSModifierFlags f) {
 	if (key.length() == 0) {
 		key_size = NSSize();
 		key_buffer = 0;
+		UpdateSize();
 		Update(menu && !menu->is_context_menu);
 		return;
 	}
@@ -192,8 +232,8 @@ void NSMenuItem::SetKeyEquivalent(string key, NSModifierFlags f) {
 		t.append("ƒ");
 	t.append(key);
 	
-	NSFont font;
-	NSImage* text = font.GetImage(t, NSColor<float>::WhiteColor());
+	NSFont default_font;
+	NSImage* text = default_font.GetImage(t, NSColor<float>::WhiteColor());
 	key_size = text->GetScaledSize();
 	font_height = font.GetLineHeight();
 	int w = int(text->GetSize().width + 0.5);
@@ -202,24 +242,43 @@ void NSMenuItem::SetKeyEquivalent(string key, NSModifierFlags f) {
 	graphics_buffer_data(key_buffer, text->GetPixelData(), w, h, w * h * 4);
 	delete text;
 	
+	UpdateSize();
 	Update(menu && !menu->is_context_menu);
 }
 
 NSSize NSMenuItem::GetSize() const {
-	if (!menu)
-		return NSSize();
+	return item_size;
+}
+
+void NSMenuItem::SetSize(NSSize size) {
+	item_size = size;
+	Update(menu);
+}
+
+void NSMenuItem::UpdateSize() {
+	if (!menu) {
+		item_size = NSSize();
+		return;
+	}
 	if (is_separator) {
 		if (menu->is_context_menu)
-			return NSSize(2 * SEPARATOR_HORIZONTAL_OFFSET + 30, 15);
+			item_size = NSSize(2 * SEPARATOR_HORIZONTAL_OFFSET + 30, 15);
 		else
-			return NSSize(2 * MENU_OFFSET_X + 2 * SEPARATOR_VERTICAL_WIDTH, 15);
+			item_size = NSSize(2 * MENU_OFFSET_X + 2 * SEPARATOR_VERTICAL_WIDTH, 15);
+		return;
 	}
 	float x_pad = menu->is_context_menu ? 0 : 2 * MENU_OFFSET_X;
 	if (submenu && menu->is_context_menu)
 		x_pad += font_height;	// for triangle
 	else if (!submenu && menu->is_context_menu)
 		x_pad += key_size.width;
-	return NSSize(text_size.width, font_height) + NSSize(x_pad, font_height * 1.5);
+	if (image && title.length() != 0)
+		x_pad += MENU_OFFSET_X;
+	
+	float height = font_height;
+	if (height < img_size.height)
+		height = img_size.height;
+	item_size = NSSize(img_size.width + text_size.width, height) + NSSize(x_pad, 2 * border_height);
 }
 
 std::function<void(NSMenuItem*)> NSMenuItem::GetAction() const {
@@ -239,6 +298,16 @@ void NSMenuItem::SetIsEnabled(bool e) {
 		return;
 	
 	enabled = e;
+	Update();
+}
+
+float NSMenuItem::GetBorderHeight() const {
+	return border_height;
+}
+
+void NSMenuItem::SetBorderHeight(float height) {
+	border_height = height;
+	UpdateSize();
 	Update();
 }
 
@@ -263,13 +332,32 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 	if (!menu)
 		return;
 	
-	NSRect text_frame;
+	NSRect image_frame;
+	NSSize combined_size = img_size + text_size;
+	if (image && title.length() != 0)
+		combined_size.width += MENU_OFFSET_X;
 	if (menu->is_context_menu) {
-		text_frame = NSRect(NSPoint(point.x + MENU_OFFSET_X,
-									point.y + (size.height - font_height) / 2), text_size);
+		image_frame = NSRect(NSPoint(point.x + MENU_OFFSET_X,
+									point.y + (size.height - img_size.height) / 2), img_size);
 	} else {
-		text_frame = NSRect(NSPoint(point.x + (size.width - text_size.width) / 2,
-									point.y + (size.height - font_height) / 2), text_size);
+		image_frame = NSRect(NSPoint(point.x + (size.width - combined_size.width) / 2,
+									point.y + (size.height - img_size.height) / 2), img_size);
+	}
+	
+	NSRect text_frame;
+	NSPoint real_point = point;
+	if (image) {
+		if (menu->is_context_menu)
+			real_point = NSPoint(image_frame.origin.x + image_frame.size.width, point.y);
+		else
+			real_point.x += (text_size.width - combined_size.width) / 2 + image_frame.size.width + MENU_OFFSET_X;
+	}
+	if (menu->is_context_menu) {
+		text_frame = NSRect(NSPoint(real_point.x + MENU_OFFSET_X,
+									real_point.y + (size.height - font_height) / 2), text_size);
+	} else {
+		text_frame = NSRect(NSPoint(real_point.x + (size.width - text_size.width) / 2,
+									real_point.y + (size.height - font_height) / 2), text_size);
 	}
 	NSRect frame = NSRect(point, size);
 	
@@ -301,14 +389,29 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 		return;
 	}
 	
-	// Draw text
-	matrix = NSMatrix::Identity();
-	matrix.Translate(text_frame.origin.x, text_frame.origin.y, 0);
-	matrix.Scale(text_frame.size.width, text_frame.size.height, 1);
-	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, text_buffer);
-	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-	menu->square_vao[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
-	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
+	if (image) {
+		// Draw image
+		matrix = NSMatrix::Identity();
+		matrix.Translate(image_frame.origin.x, image_frame.origin.y, 0);
+		matrix.Scale(image_frame.size.width, image_frame.size.height, 1);
+		graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, img_buffer);
+		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
+		if (chromatic)
+			menu->square_vao[2].bid = menu->color_vbo[MENU_COLOR_WHITE];
+		else
+			menu->square_vao[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
+	}
+	if (title.length() != 0) {
+		// Draw text
+		matrix = NSMatrix::Identity();
+		matrix.Translate(text_frame.origin.x, text_frame.origin.y, 0);
+		matrix.Scale(text_frame.size.width, text_frame.size.height, 1);
+		graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, text_buffer);
+		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
+		menu->square_vao[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
+	}
 	
 	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
 	if (submenu && menu->is_context_menu) {

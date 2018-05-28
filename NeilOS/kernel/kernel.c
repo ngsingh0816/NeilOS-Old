@@ -115,7 +115,6 @@
  			keep that application's message queue open so that it can send events to the focused application. The message
  			queue will be named by the process's pid.
  * GUI
- 	* Taskbar at bottom (could also be a NSMenu - maybe subclass)
  	* Window Events (Mouse, Keyboard)
  	* NSLabel
  	* NSButton
@@ -124,7 +123,7 @@
  	* NSTextField
  	* etc
  * Create applications that showcase GUI (at same time?)
- 	* Calculator - NSButton
+ 	* Calculator - NSButton, NSLabel
  	* Text Editor - NSTextView
  	* Image Viewer - NSImageView
  	* File Browser - NSCollectionView, NSTableView, NSScrollView

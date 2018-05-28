@@ -9,6 +9,7 @@
 #ifndef NSMENUITEM_H
 #define NSMENUITEM_H
 
+#include "../Core/NSFont.h"
 #include "../Core/NSImage.h"
 #include "../Core/NSTypes.h"
 #include "NSMenu.h"
@@ -22,7 +23,7 @@ public:
 	
 	NSMenuItem();
 	NSMenuItem(std::string title, std::string key_equivalent="", NSModifierFlags flags=0);
-	NSMenuItem(NSImage* image, std::string key_equivalent="", NSModifierFlags flags=0);
+	NSMenuItem(NSImage* image, bool chromatic=true, std::string key_equivalent="", NSModifierFlags flags=0);
 	~NSMenuItem();
 	
 	NSMenu* GetSubmenu();
@@ -32,14 +33,18 @@ public:
 	std::string GetTitle() const;
 	void SetTitle(std::string title);
 	
+	NSFont GetFont() const;
+	void SetFont(NSFont font);
+	
 	NSImage* GetImage() const;
 	// Creates copy
-	void SetImage(const NSImage* image);
+	void SetImage(const NSImage* image, bool chromatic=true);
 	
 	bool IsSeparator() const;
 	void SetIsSeparator(bool is);
 	
 	NSSize GetSize() const;
+	void SetSize(NSSize size);
 	
 	std::string GetKeyEquivalent() const;
 	NSModifierFlags GetKeyModifierFlags() const;
@@ -50,23 +55,31 @@ public:
 	
 	bool GetIsEnabled() const;
 	void SetIsEnabled(bool enabled);
+	
+	float GetBorderHeight() const;
+	void SetBorderHeight(float height);
 private:
 	friend class NSMenu;
 	
 	void Draw(graphics_context_t* context, NSPoint point, NSSize size);
 	void Update(bool all=false);
+	void UpdateSize();
 	
 	NSMenu* submenu = NULL;
 	NSMenu* menu = NULL;
 	
 	std::string title = "";
+	NSFont font;
 	NSImage* image = NULL;
+	bool chromatic = true;
+	float border_height;
 	bool is_separator = false;
 	std::string key_equivalent = "";
 	NSModifierFlags flags = NSModifierNone;
 	bool highlighted = false;
 	std::function<void(NSMenuItem*)> action;
 	bool enabled = true;
+	NSSize item_size;
 	
 	uint32_t text_buffer = 0;
 	uint32_t img_buffer = 0;

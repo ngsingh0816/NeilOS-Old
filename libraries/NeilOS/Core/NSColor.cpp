@@ -7,7 +7,10 @@
 //
 
 #include "NSColor.h"
+
 #include <algorithm>
+
+#include <math.h>
 
 #define clamp(a, b, c)	(std::max(std::min((a), (c)), (b)))
 
@@ -258,6 +261,27 @@ NSColor<float>& NSColor<float>::operator /=(float v) {
 	a /= v;
 	
 	return *this;
+}
+
+template<>
+bool NSColor<uint8_t>::operator ==(const NSColor<uint8_t>& c) const {
+	return (c.r == r && c.g == g && c.b == b && c.a == a);
+}
+
+template<>
+bool NSColor<float>::operator ==(const NSColor<float>& c) const {
+	constexpr float esp = 1 / 255.0;
+	return (fabs(c.r - r) <= esp && fabs(c.g - g) <= esp && fabs(c.b - b) <= esp && fabs(c.a - a) <= esp);
+}
+
+template<>
+bool NSColor<uint8_t>::operator !=(const NSColor<uint8_t>& c) const {
+	return !(*this == c);
+}
+
+template<>
+bool NSColor<float>::operator !=(const NSColor<float>& c) const {
+	return !(*this == c);
 }
 
 uint8_t NSColorFloatToByte(float value) {

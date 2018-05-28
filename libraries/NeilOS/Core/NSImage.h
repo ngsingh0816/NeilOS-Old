@@ -34,6 +34,7 @@ public:
 	// Accounts for pixel scaling
 	NSSize GetScaledSize() const;
 	NSSize GetSize() const;
+	void SetScaledSize(NSSize size);
 	void SetSize(NSSize size);		// Will linearly resample
 	
 	void SetPixel(int x, int y, NSColor<uint8_t> color);

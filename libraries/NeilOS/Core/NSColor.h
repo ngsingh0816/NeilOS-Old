@@ -85,6 +85,9 @@ public:
 	NSColor<T> operator /(float v) const;
 	NSColor<T>& operator /=(float v);
 	
+	bool operator ==(const NSColor<T>& c) const;
+	bool operator !=(const NSColor<T>& c) const;
+	
 	T r, g, b, a;
 };
 

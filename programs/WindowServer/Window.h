@@ -20,6 +20,8 @@ namespace Window {
 	
 	void Draw(const std::vector<NSRect>& rects);
 	
+	void MakeKeyWindow(uint32_t pid, uint32_t wid);
+	
 	bool MouseDown(NSPoint p, int mouse);
 	bool MouseMoved(NSPoint p);
 	bool MouseUp(NSPoint p, int mouse);
