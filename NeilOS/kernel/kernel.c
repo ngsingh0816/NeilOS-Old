@@ -77,6 +77,8 @@
  * Make pthread_cond variables put the thread to sleep in the kernel (also for NSConditionalLock)
  	* needs some syscalls like thread_pause, thread_continue
  * Make asynchrous version of graphics3d_surface_dma and make it actually alloc GMR regions
+ * Serialize priority with NSEvents and add it to the Creates
+ * Keep track of graphics context / buffers / etc with each process and dealloc on close
  */
 
 /* TODO (bugs)
@@ -103,22 +105,12 @@
 
 /* TODO:
  * GUI (Compositing Window Manager) - http://designmodo.github.io/Flat-UI/
-	* Interacts through message queues
- 	How it will work
- 		1) Client requests access to WindowServer, WindowServer opens message queue and returns it
- 		2) Client requests window, WindowServer sets up shared memory for window and buffer
-		3) Client will draw it things into buffer, sends Update Rect to WindowServer, which composites results to screen
- 			* View writes into window's buffer, then sends update request to window, which sends to WindowServer
- 		* Every application will have personal message queue, where other processes send a message to the app's message
- 			queue and the application reads those messages. This supports things such as opening files with certain apps,
- 			click + drag, etc. The WindowServer will keep track of which application has the focused window and will only
- 			keep that application's message queue open so that it can send events to the focused application. The message
- 			queue will be named by the process's pid.
- * GUI
- 	* Window Events (Mouse, Keyboard)
- 	* NSLabel
- 	* NSButton
+ 	* Fix
+ 		* Window not always showing up when opening calculator / discolored windows??
+			* visible being set to false (one time) - number of creates > number of shows, but why??
+ 		* Screen freezes sometimes - maybe due to FIFO error?
  	* NSImageView
+ 	* NSButton
  	* Cursor Images
  	* NSTextField
  	* etc

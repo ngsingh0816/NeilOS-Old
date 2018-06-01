@@ -29,14 +29,18 @@ namespace Desktop {
 	void MouseDown(NSPoint p, NSMouseButton mouse);
 	void MouseMoved(NSPoint p);
 	void MouseUp(NSPoint p, NSMouseButton mouse);
+	void MouseScrolled(NSPoint p, float delta_x, float delta_y);
 	void KeyDown(unsigned char key);
 	void KeyUp(unsigned char key);
+	bool IsMouseDown();
 	
 	float GetPixelScalingFactor();
 	void SetPixelScalingFactor(float factor);
 	
 	void RegisterApplication(Application::App* app);
 	void UnregisterApplication(Application::App* app);
+	
+	void UpdateMenu();
 }
 
 #endif /* DESKTOP_H */

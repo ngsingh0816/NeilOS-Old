@@ -9,6 +9,9 @@
 #ifndef NSAPPLICATION_H
 #define NSAPPLICATION_H
 
+#include "../GUI/NSMenu.h"
+#include "../GUI/NSWindow.h"
+
 #include <stdint.h>
 #include <string>
 
@@ -20,15 +23,24 @@ public:
 	virtual ~NSApplicationDelegate() {}
 	
 	// Initialization
-	virtual void DidFinishLaunching() {};
-	virtual void WillExit() {};
+	virtual void DidFinishLaunching() {}
+	virtual void WillExit() {}
 	
 	// Event handling (return true to process, false to ignore)
-	virtual bool ReceivedEvent(NSEvent* event, uint8_t* data, unsigned int length) { return true; };
-	virtual void ReceivedMessage(uint8_t* data, unsigned int length) {};
+	virtual bool ReceivedEvent(NSEvent* event, uint8_t* data, unsigned int length) { return true; }
+	virtual void ReceivedMessage(uint8_t* data, unsigned int length) {}
 	
 	// Events
-	// OpenFile(), etc
+	virtual bool OpenFile(std::string filename) { return false; }
+	virtual bool ShouldExit() { return true; }
+private:
+};
+
+// For events that you can only observe
+class NSApplicationObserver {
+public:
+	virtual void GainFocus() {}
+	virtual void LoseFocus() {}
 private:
 };
 
@@ -45,11 +57,23 @@ namespace NSApplication {
 	void SetDelegate(NSApplicationDelegate* delegate);
 	NSApplicationDelegate* GetDelegate();
 	
+	// Application observers
+	void AddObserver(NSApplicationObserver* observer);
+	void RemoveObserver(NSApplicationObserver* observer);
+	
 	// Send an event to the server
 	bool SendEvent(NSEvent* event);
 	
-	// Open application
+	// Menu
+	void SetMenu(NSMenu* menu);
+	NSMenu GetMenu();
+	
+	// Windows
+	NSWindow* GetKeyWindow();
+	
+	// Open
 	bool OpenApplication(std::string path, ...);
+	bool OpenFile(std::string path);
 	
 	// Pixel Scaling Factor
 	float GetPixelScalingFactor();

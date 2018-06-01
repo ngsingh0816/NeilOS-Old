@@ -35,7 +35,7 @@ public:
 	virtual void MouseMoved(NSEvent* event) {}
 	virtual void MouseScrolled(NSEvent* event) {}
 	
-	virtual void keyDown(NSEvent* event) {}
+	virtual void KeyDown(NSEvent* event) {}
 	virtual void KeyUp(NSEvent* event) {}
 private:
 };
@@ -45,7 +45,8 @@ typedef enum {
 	NSMouseTypeDown = 1,
 	NSMouseTypeMoved = 2,
 	NSMouseTypeDragged = 3,
-	NSMouseTypeUp = 4
+	NSMouseTypeUp = 4,
+	NSMouseTypeScrolled = 5,
 } NSMouseType;
 
 typedef enum {
@@ -61,6 +62,8 @@ public:
 	static NSEventMouse* Create(NSPoint position, NSMouseType type, NSMouseButton button,
 								uint32_t window_id=-1, uint32_t priority=0);
 	
+	static NSEventMouse* FromData(uint8_t* data, uint32_t length);
+	
 	NSPoint GetPosition() const;
 	void SetPosition(NSPoint position);
 	
@@ -73,6 +76,12 @@ public:
 	uint32_t GetWindowID() const;
 	void SetWindowID(uint32_t wid);
 	
+	float GetDeltaX() const;
+	void SetDeltaX(float dx);
+	
+	float GetDeltaY() const;
+	void SetDeltaY(float dy);
+	
 	void Process() override;
 	uint8_t* Serialize(uint32_t* length_out) const override;
 private:
@@ -82,6 +91,8 @@ private:
 	NSMouseType type;
 	NSMouseButton button;
 	uint32_t window_id;
+	float delta_x;
+	float delta_y;
 };
 
 #define NSKeyCodeNUL			0x00
@@ -136,7 +147,9 @@ private:
 
 class NSEventKey : public NSEvent {
 public:
-	static NSEventKey* Create(unsigned char key, bool down, NSModifierFlags flags);
+	static NSEventKey* Create(unsigned char key, bool down, NSModifierFlags flags, uint32_t window_id=-1);
+	
+	static NSEventKey* FromData(uint8_t* data, uint32_t length);
 	
 	unsigned char GetKey() const;
 	void SetKey(unsigned char key);
@@ -147,14 +160,18 @@ public:
 	NSModifierFlags GetModifierFlags() const;
 	void SetModifierFlags(NSModifierFlags flags);
 	
+	uint32_t GetWindowID() const;
+	void SetWindowID(uint32_t wid);
+	
 	void Process() override;
 	uint8_t* Serialize(uint32_t* length_out) const override;
 private:
-	NSEventKey(unsigned char key, bool down, NSModifierFlags flags);
+	NSEventKey(unsigned char key, bool down, NSModifierFlags flags, uint32_t window_id);
 	
 	unsigned char key;
 	bool down;
 	NSModifierFlags flags;
+	uint32_t window_id;
 };
 
 #endif /* NSRESPONDER_H */

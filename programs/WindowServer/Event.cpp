@@ -9,7 +9,7 @@
 #include "Event.h"
 
 #include "Application.h"
-#include "NSEventDefs.cpp"
+#include "Events/NSEventDefs.cpp"
 #include "Window.h"
 
 #include <NeilOS/NeilOS.h>
@@ -31,10 +31,10 @@ namespace Event {
 }
 
 void* Event::MessageFunc(void*) {
-	uint8_t* data = new uint8_t[4096];
+	uint8_t* data = new uint8_t[32 * 1024];
 	uint32_t priority = 0;
 	uint32_t length = 0;
-	while ((length = mq_receive(message_fd, reinterpret_cast<char*>(data), 4096, &priority)) != 0) {
+	while ((length = mq_receive(message_fd, reinterpret_cast<char*>(data), 32 * 1024, &priority)) != 0) {
 		if (length == (uint32_t)-1)
 			continue;
 		
@@ -48,20 +48,24 @@ void* Event::MessageFunc(void*) {
 			uint32_t event_code = buffer[0];
 			
 			switch (event_code) {
-				case 1:
+				case EVENT_WINDOW_ID:
 					// NSWindow event
 					Window::ProcessEvent(temp, length);
 					break;
-				case 2:
+				case EVENT_MOUSE_ID:
 					// Mouse event
 					break;
-				case 3:
+				case EVENT_KEY_ID:
 					// Key event
 					break;
-				case 4:
+				case EVENT_INIT_ID:
 					// Init event
 					InitEvent(buffer, length);
 					break;
+				case EVENT_SETTINGS_ID:
+					break;
+				case EVENT_APPLICATION_ID:
+					Application::ProcessEvent(temp, length);
 				default:
 					break;
 			}

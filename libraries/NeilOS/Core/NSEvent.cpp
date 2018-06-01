@@ -7,7 +7,7 @@
 //
 
 #include "NSEvent.h"
-#include "NSEventDefs.cpp"
+#include "Events/NSEventDefs.cpp"
 
 std::function<void()> NSEventInitResp::function;
 
@@ -21,14 +21,46 @@ NSEvent* NSEvent::FromData(uint8_t* data, uint32_t length) {
 		sub_code = buffer[1];
 	switch (code) {
 		case EVENT_WINDOW_ID:
+			switch (sub_code) {
+				case WINDOW_EVENT_CREATE_ID:
+					return NSEventWindowCreate::FromData(data, length);
+				case WINDOW_EVENT_DESTROY_ID:
+					return NSEventWindowDestroy::FromData(data, length);
+				case WINDOW_EVENT_SHOW_ID:
+					return NSEventWindowShow::FromData(data, length);
+				case WINDOW_EVENT_MAKE_KEY_ID:
+					return NSEventWindowMakeKey::FromData(data, length);
+				case WINDOW_EVENT_SET_TITLE_ID:
+					return NSEventWindowSetTitle::FromData(data, length);
+				case WINDOW_EVENT_SET_FRAME_ID:
+					return NSEventWindowSetFrame::FromData(data, length);
+				case WINDOW_EVENT_DRAW_ID:
+					return NSEventWindowDraw::FromData(data, length);
+			}
 			break;
 		case EVENT_MOUSE_ID:
-			break;
+			return NSEventMouse::FromData(data, length);
 		case EVENT_KEY_ID:
-			break;
+			return NSEventKey::FromData(data, length);
 		case EVENT_INIT_ID:
 			if (sub_code == INIT_EVENT_RESP)
 				return NSEventInitResp::FromData(data, length);
+			break;
+		case EVENT_SETTINGS_ID:
+			if (sub_code == SETTINGS_EVENT_PSF)
+				return NSEventSettingsPixelScalingFactor::FromData(data, length);
+			break;
+		case EVENT_APPLICATION_ID:
+			switch (sub_code) {
+				case APPLICATION_EVENT_QUIT:
+					return NSEventApplicationQuit::FromData(data, length);
+				case APPLICATION_EVENT_MENU_EVENT:
+					return NSEventApplicationMenuEvent::FromData(data, length);
+				case APPLICATION_EVENT_FOCUS:
+					return NSEventApplicationFocus::FromData(data, length);
+				case APPLICATION_EVENT_OPEN_FILE:
+					return NSEventApplicationOpenFile::FromData(data, length);
+			}
 			break;
 		default:
 			break;

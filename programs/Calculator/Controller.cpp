@@ -12,6 +12,14 @@
 NSWindow* mainWindow = NULL;
 
 void Controller::DidFinishLaunching() {
-	NSWindow* window = NSWindow::Create("Calculator", NSRect(200, 200, 400, 300));
+	srand(time(NULL));
+	int x = rand() % 1300 + 50;
+	int y = rand() % 800 + 50;
+	NSWindow* window = NSWindow::Create("Calculator", NSRect(x, y, 400, 300));
+	
+	NSLabel* label = NSLabel::Create("Hello World!", NSRect(15, 15, 76.5, 11));
+	//label->SizeToFit();
+	window->GetContentView()->AddSubview(label);
+	
 	window->Show();
 }

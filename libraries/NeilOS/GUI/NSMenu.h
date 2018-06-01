@@ -27,9 +27,15 @@ class NSMenuItem;
 
 class NSMenu {
 public:
+	static NSMenu* FromData(uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
+	uint8_t* Serialize(uint32_t* length_out);
+	
+	NSMenu(const NSMenu& menu);
 	NSMenu(bool is_context=false);
 	NSMenu(const std::vector<NSMenuItem*>& items, bool is_context=false);
 	~NSMenu();
+	
+	NSMenu& operator=(const NSMenu& menu);
 	
 	bool IsContextMenu() const;
 	void SetIsContextMenu(bool c);
@@ -45,6 +51,7 @@ public:
 	void AddItem(NSMenuItem* item, unsigned int index);
 	void RemoveItem(unsigned int index);
 	void RemoveAllItems();
+	uint32_t IndexOfItem(NSMenuItem* item);
 	
 	bool MouseDown(NSEventMouse* event);
 	bool MouseUp(NSEventMouse* event);

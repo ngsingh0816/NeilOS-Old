@@ -243,7 +243,7 @@ file_descriptor_t* mouse_open(const char* filename, uint32_t mode) {
 {
  	int mouse_x,
  	int mouse_y,
- 	0|0|0|scroll_dy|scroll_dx|middle|right|left
+ 	0|scroll_dy(2)|scroll_dx(2)|middle|right|left
 }
 */
 
@@ -268,8 +268,7 @@ uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	
 	((int*)buf)[0] = mouse_x;
 	((int*)buf)[1] = mouse_y;
-	// TODO: fix scroll
-	((char*)buf)[8] = left_down | (right_down << 1) | (middle_down << 2) | (scroll_dx << 3) | (scroll_dy << 4);
+	((char*)buf)[8] = left_down | (right_down << 1) | (middle_down << 2) | ((scroll_dx & 0x3) << 3) | ((scroll_dy & 0x3) << 5);
 	
 	return MOUSE_STRUCT_SIZE;
 }
@@ -286,8 +285,8 @@ uint32_t mouse_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	left_down = val & 0x1;
 	right_down = (val >> 1) & 0x1;
 	middle_down = (val >> 2) & 0x1;
-	scroll_dx = (val >> 3) & 0x1;
-	scroll_dy = (val >> 4) & 0x1;
+	scroll_dx = (val >> 3) & 0x3;
+	scroll_dy = (val >> 5) & 0x3;
 	up(&mouse_lock);
 	
 	// Tell the graphics to update the cursor position

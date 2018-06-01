@@ -9,11 +9,30 @@
 /* Begin PBXBuildFile section */
 		280126272007260B00647962 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 280126262007260B00647962 /* main.cpp */; };
 		2801262B2007261500647962 /* NSSound.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2801261C200720B200647962 /* NSSound.cpp */; };
+		281246B220BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B120BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp */; };
+		281246B420BF912600546A96 /* NSEventResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B320BF912600546A96 /* NSEventResource.cpp */; };
+		281246B820BFAB0400546A96 /* NSControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B620BFAB0400546A96 /* NSControl.cpp */; };
+		281246BB20BFB55E00546A96 /* NSLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B920BFB55E00546A96 /* NSLabel.cpp */; };
 		281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB1A201FB63D00C7D407 /* NSLog.cpp */; };
 		281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB1D201FEF3200C7D407 /* NSImage.cpp */; };
 		281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB21201FF09D00C7D407 /* NSTypes.cpp */; };
 		281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB23201FF7FA00C7D407 /* NSColor.cpp */; };
 		281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB2920211F1400C7D407 /* NSFont.cpp */; };
+		287D0A7020BE298200A7E675 /* NSEventInit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A5F20BE297B00A7E675 /* NSEventInit.cpp */; };
+		287D0A7120BE298400A7E675 /* NSEventInitResp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6020BE297B00A7E675 /* NSEventInitResp.cpp */; };
+		287D0A7220BE298600A7E675 /* NSEventSettingsPixelScalingFactor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6220BE297B00A7E675 /* NSEventSettingsPixelScalingFactor.cpp */; };
+		287D0A7320BE298900A7E675 /* NSEventWindowCreate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6420BE297B00A7E675 /* NSEventWindowCreate.cpp */; };
+		287D0A7420BE298C00A7E675 /* NSEventWindowMakeKey.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6520BE297B00A7E675 /* NSEventWindowMakeKey.cpp */; };
+		287D0A7520BE298E00A7E675 /* NSEventWindowDestroy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6620BE297B00A7E675 /* NSEventWindowDestroy.cpp */; };
+		287D0A7620BE299000A7E675 /* NSEventWindowSetTitle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6720BE297B00A7E675 /* NSEventWindowSetTitle.cpp */; };
+		287D0A7720BE299300A7E675 /* NSEventWindowDraw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6820BE297B00A7E675 /* NSEventWindowDraw.cpp */; };
+		287D0A7820BE299500A7E675 /* NSEventWindowShow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6920BE297B00A7E675 /* NSEventWindowShow.cpp */; };
+		287D0A7920BE299700A7E675 /* NSEventWindowSetFrame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6A20BE297B00A7E675 /* NSEventWindowSetFrame.cpp */; };
+		287D0A7A20BE29AD00A7E675 /* NSEventApplicationQuit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6D20BE297B00A7E675 /* NSEventApplicationQuit.cpp */; };
+		287D0A7B20BE29AF00A7E675 /* NSEventApplicationOpenFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6E20BE297B00A7E675 /* NSEventApplicationOpenFile.cpp */; };
+		287D0A7C20BE29B100A7E675 /* NSEventApplicationFocus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6F20BE297B00A7E675 /* NSEventApplicationFocus.cpp */; };
+		287D0A7D20BE29B300A7E675 /* NSEventDefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6B20BE297B00A7E675 /* NSEventDefs.cpp */; };
+		287D0AA020BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A9F20BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp */; };
 		28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9ED2032CCE20091A44E /* NSEvent.cpp */; };
 		28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F02032CD0D0091A44E /* NSTimer.cpp */; };
 		28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F32032CD340091A44E /* NSRunLoop.cpp */; };
@@ -26,7 +45,6 @@
 		28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA29203AA73C0091A44E /* NSResponder.cpp */; };
 		28F178D020B37F5000DBF40F /* NSMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178CE20B37F5000DBF40F /* NSMenu.cpp */; };
 		28F178D320B61D0900DBF40F /* NSMenuItem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D120B61D0900DBF40F /* NSMenuItem.cpp */; };
-		28F178D520B748CC00DBF40F /* NSEventDefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D420B748CC00DBF40F /* NSEventDefs.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -47,6 +65,13 @@
 		2801261E200720E400647962 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		280126232007260B00647962 /* product */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = product; sourceTree = BUILT_PRODUCTS_DIR; };
 		280126262007260B00647962 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		281246B120BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationMenuEvent.cpp; sourceTree = "<group>"; };
+		281246B320BF912600546A96 /* NSEventResource.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventResource.cpp; sourceTree = "<group>"; };
+		281246B520BF956900546A96 /* NSEventResource.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = NSEventResource.hpp; sourceTree = "<group>"; };
+		281246B620BFAB0400546A96 /* NSControl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSControl.cpp; sourceTree = "<group>"; };
+		281246B720BFAB0400546A96 /* NSControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSControl.h; sourceTree = "<group>"; };
+		281246B920BFB55E00546A96 /* NSLabel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLabel.cpp; sourceTree = "<group>"; };
+		281246BA20BFB55E00546A96 /* NSLabel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLabel.h; sourceTree = "<group>"; };
 		281CEB1A201FB63D00C7D407 /* NSLog.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLog.cpp; sourceTree = "<group>"; };
 		281CEB1B201FB63D00C7D407 /* NSLog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLog.h; sourceTree = "<group>"; };
 		281CEB1D201FEF3200C7D407 /* NSImage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSImage.cpp; sourceTree = "<group>"; };
@@ -57,6 +82,21 @@
 		281CEB24201FF7FA00C7D407 /* NSColor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSColor.h; sourceTree = "<group>"; };
 		281CEB2920211F1400C7D407 /* NSFont.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSFont.cpp; sourceTree = "<group>"; };
 		281CEB2A20211F1400C7D407 /* NSFont.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSFont.h; sourceTree = "<group>"; };
+		287D0A5F20BE297B00A7E675 /* NSEventInit.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventInit.cpp; sourceTree = "<group>"; };
+		287D0A6020BE297B00A7E675 /* NSEventInitResp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventInitResp.cpp; sourceTree = "<group>"; };
+		287D0A6220BE297B00A7E675 /* NSEventSettingsPixelScalingFactor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventSettingsPixelScalingFactor.cpp; sourceTree = "<group>"; };
+		287D0A6420BE297B00A7E675 /* NSEventWindowCreate.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowCreate.cpp; sourceTree = "<group>"; };
+		287D0A6520BE297B00A7E675 /* NSEventWindowMakeKey.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowMakeKey.cpp; sourceTree = "<group>"; };
+		287D0A6620BE297B00A7E675 /* NSEventWindowDestroy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowDestroy.cpp; sourceTree = "<group>"; };
+		287D0A6720BE297B00A7E675 /* NSEventWindowSetTitle.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowSetTitle.cpp; sourceTree = "<group>"; };
+		287D0A6820BE297B00A7E675 /* NSEventWindowDraw.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowDraw.cpp; sourceTree = "<group>"; };
+		287D0A6920BE297B00A7E675 /* NSEventWindowShow.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowShow.cpp; sourceTree = "<group>"; };
+		287D0A6A20BE297B00A7E675 /* NSEventWindowSetFrame.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowSetFrame.cpp; sourceTree = "<group>"; };
+		287D0A6B20BE297B00A7E675 /* NSEventDefs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventDefs.cpp; sourceTree = "<group>"; };
+		287D0A6D20BE297B00A7E675 /* NSEventApplicationQuit.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationQuit.cpp; sourceTree = "<group>"; };
+		287D0A6E20BE297B00A7E675 /* NSEventApplicationOpenFile.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationOpenFile.cpp; sourceTree = "<group>"; };
+		287D0A6F20BE297B00A7E675 /* NSEventApplicationFocus.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationFocus.cpp; sourceTree = "<group>"; };
+		287D0A9F20BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationSetMenu.cpp; sourceTree = "<group>"; };
 		28A3B9ED2032CCE20091A44E /* NSEvent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEvent.cpp; sourceTree = "<group>"; };
 		28A3B9EE2032CCE20091A44E /* NSEvent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSEvent.h; sourceTree = "<group>"; };
 		28A3B9F02032CD0D0091A44E /* NSTimer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSTimer.cpp; sourceTree = "<group>"; };
@@ -82,7 +122,6 @@
 		28F178CF20B37F5000DBF40F /* NSMenu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenu.h; sourceTree = "<group>"; };
 		28F178D120B61D0900DBF40F /* NSMenuItem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSMenuItem.cpp; sourceTree = "<group>"; };
 		28F178D220B61D0900DBF40F /* NSMenuItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenuItem.h; sourceTree = "<group>"; };
-		28F178D420B748CC00DBF40F /* NSEventDefs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventDefs.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,7 +156,7 @@
 				281CEB24201FF7FA00C7D407 /* NSColor.h */,
 				28A3B9ED2032CCE20091A44E /* NSEvent.cpp */,
 				28A3B9EE2032CCE20091A44E /* NSEvent.h */,
-				28F178D420B748CC00DBF40F /* NSEventDefs.cpp */,
+				287D0A5D20BE297B00A7E675 /* Events */,
 				281CEB2920211F1400C7D407 /* NSFont.cpp */,
 				281CEB2A20211F1400C7D407 /* NSFont.h */,
 				28A3B9F92032CD930091A44E /* NSHandler.cpp */,
@@ -147,6 +186,10 @@
 		2801261B2007209A00647962 /* GUI */ = {
 			isa = PBXGroup;
 			children = (
+				281246B620BFAB0400546A96 /* NSControl.cpp */,
+				281246B720BFAB0400546A96 /* NSControl.h */,
+				281246B920BFB55E00546A96 /* NSLabel.cpp */,
+				281246BA20BFB55E00546A96 /* NSLabel.h */,
 				28F178CE20B37F5000DBF40F /* NSMenu.cpp */,
 				28F178CF20B37F5000DBF40F /* NSMenu.h */,
 				28F178D120B61D0900DBF40F /* NSMenuItem.cpp */,
@@ -175,16 +218,74 @@
 			path = product;
 			sourceTree = "<group>";
 		};
+		287D0A5D20BE297B00A7E675 /* Events */ = {
+			isa = PBXGroup;
+			children = (
+				287D0A6B20BE297B00A7E675 /* NSEventDefs.cpp */,
+				281246B320BF912600546A96 /* NSEventResource.cpp */,
+				281246B520BF956900546A96 /* NSEventResource.hpp */,
+				287D0A6320BE297B00A7E675 /* Window */,
+				287D0A5E20BE297B00A7E675 /* Init */,
+				287D0A6120BE297B00A7E675 /* Settings */,
+				287D0A6C20BE297B00A7E675 /* Application */,
+			);
+			path = Events;
+			sourceTree = "<group>";
+		};
+		287D0A5E20BE297B00A7E675 /* Init */ = {
+			isa = PBXGroup;
+			children = (
+				287D0A5F20BE297B00A7E675 /* NSEventInit.cpp */,
+				287D0A6020BE297B00A7E675 /* NSEventInitResp.cpp */,
+			);
+			path = Init;
+			sourceTree = "<group>";
+		};
+		287D0A6120BE297B00A7E675 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				287D0A6220BE297B00A7E675 /* NSEventSettingsPixelScalingFactor.cpp */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		287D0A6320BE297B00A7E675 /* Window */ = {
+			isa = PBXGroup;
+			children = (
+				287D0A6420BE297B00A7E675 /* NSEventWindowCreate.cpp */,
+				287D0A6620BE297B00A7E675 /* NSEventWindowDestroy.cpp */,
+				287D0A6920BE297B00A7E675 /* NSEventWindowShow.cpp */,
+				287D0A6520BE297B00A7E675 /* NSEventWindowMakeKey.cpp */,
+				287D0A6720BE297B00A7E675 /* NSEventWindowSetTitle.cpp */,
+				287D0A6A20BE297B00A7E675 /* NSEventWindowSetFrame.cpp */,
+				287D0A6820BE297B00A7E675 /* NSEventWindowDraw.cpp */,
+			);
+			path = Window;
+			sourceTree = "<group>";
+		};
+		287D0A6C20BE297B00A7E675 /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				287D0A6D20BE297B00A7E675 /* NSEventApplicationQuit.cpp */,
+				287D0A9F20BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp */,
+				281246B120BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp */,
+				287D0A6E20BE297B00A7E675 /* NSEventApplicationOpenFile.cpp */,
+				287D0A6F20BE297B00A7E675 /* NSEventApplicationFocus.cpp */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXLegacyTarget section */
 		280126132007205800647962 /* NeilOS */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = "$(ACTION)";
+			buildArgumentsString = "$(ACTION) -j4";
 			buildConfigurationList = 280126162007205800647962 /* Build configuration list for PBXLegacyTarget "NeilOS" */;
 			buildPhases = (
 			);
 			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = "";
 			dependencies = (
 			);
 			name = NeilOS;
@@ -254,25 +355,43 @@
 			buildActionMask = 2147483647;
 			files = (
 				281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */,
+				287D0A7220BE298600A7E675 /* NSEventSettingsPixelScalingFactor.cpp in Sources */,
+				287D0A7520BE298E00A7E675 /* NSEventWindowDestroy.cpp in Sources */,
+				287D0A7C20BE29B100A7E675 /* NSEventApplicationFocus.cpp in Sources */,
 				28A3BA012033DE7C0091A44E /* NSApplication.cpp in Sources */,
+				287D0A7420BE298C00A7E675 /* NSEventWindowMakeKey.cpp in Sources */,
+				287D0A7A20BE29AD00A7E675 /* NSEventApplicationQuit.cpp in Sources */,
 				28A3B9FB2032CD930091A44E /* NSHandler.cpp in Sources */,
 				28A3B9F82032CD6D0091A44E /* NSThread.cpp in Sources */,
 				281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */,
 				28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */,
+				281246B420BF912600546A96 /* NSEventResource.cpp in Sources */,
+				287D0A7720BE299300A7E675 /* NSEventWindowDraw.cpp in Sources */,
+				281246B820BFAB0400546A96 /* NSControl.cpp in Sources */,
+				287D0AA020BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp in Sources */,
 				28A3BA28203AA6810091A44E /* NSWindow.cpp in Sources */,
 				28F178D320B61D0900DBF40F /* NSMenuItem.cpp in Sources */,
+				287D0A7620BE299000A7E675 /* NSEventWindowSetTitle.cpp in Sources */,
 				28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */,
+				287D0A7820BE299500A7E675 /* NSEventWindowShow.cpp in Sources */,
+				281246B220BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp in Sources */,
+				281246BB20BFB55E00546A96 /* NSLabel.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
 				281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */,
+				287D0A7320BE298900A7E675 /* NSEventWindowCreate.cpp in Sources */,
 				2801262B2007261500647962 /* NSSound.cpp in Sources */,
 				28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */,
 				28A3BA25203AA65F0091A44E /* NSView.cpp in Sources */,
 				280126272007260B00647962 /* main.cpp in Sources */,
 				281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */,
+				287D0A7920BE299700A7E675 /* NSEventWindowSetFrame.cpp in Sources */,
 				28F178D020B37F5000DBF40F /* NSMenu.cpp in Sources */,
-				28F178D520B748CC00DBF40F /* NSEventDefs.cpp in Sources */,
 				28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */,
+				287D0A7120BE298400A7E675 /* NSEventInitResp.cpp in Sources */,
 				28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */,
+				287D0A7020BE298200A7E675 /* NSEventInit.cpp in Sources */,
+				287D0A7B20BE29AF00A7E675 /* NSEventApplicationOpenFile.cpp in Sources */,
+				287D0A7D20BE29B300A7E675 /* NSEventDefs.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

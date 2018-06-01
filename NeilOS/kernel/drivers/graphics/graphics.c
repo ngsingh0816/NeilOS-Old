@@ -129,7 +129,7 @@ void graphics3d_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* h
 	img.pitch = 0;
 	
 	// TODO: get rid of this hack
-	if (num_boxes == 1 && boxes->h != 1) {
+	if (num_boxes == 1 && boxes->h > 1) {
 		SVGA3dCopyBox b = *boxes;
 		b.h = 1;
 		uint8_t* buf = (uint8_t*)buffer;

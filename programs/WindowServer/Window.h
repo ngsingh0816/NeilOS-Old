@@ -21,12 +21,18 @@ namespace Window {
 	void Draw(const std::vector<NSRect>& rects);
 	
 	void MakeKeyWindow(uint32_t pid, uint32_t wid);
+	bool IsVisible(uint32_t pid, uint32_t wid);
+	uint32_t FindLastVisibleWindow(uint32_t pid);
+	uint32_t FindLastVisiblePid(uint32_t not_pid);
 	
-	bool MouseDown(NSPoint p, int mouse);
+	void DestroyWindows(uint32_t pid);
+	
+	bool MouseDown(NSPoint p, NSMouseButton mouse);
 	bool MouseMoved(NSPoint p);
-	bool MouseUp(NSPoint p, int mouse);
-	bool KeyDown(unsigned char key);
-	bool KeyUp(unsigned char key);
+	bool MouseUp(NSPoint p, NSMouseButton mouse);
+	bool MouseScrolled(NSPoint p, float delta_x, float delta_y);
+	bool KeyDown(unsigned char key, NSModifierFlags flags);
+	bool KeyUp(unsigned char key, NSModifierFlags flags);
 };
 
 #endif /* WINDOW_H */

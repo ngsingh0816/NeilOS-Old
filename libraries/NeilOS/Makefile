@@ -4,7 +4,7 @@
 # Will compile all *.cpp and *.S files in current and sub directories.
 
 # Flags to use when compiling, preprocessing, assembling, and linking
-CFLAGS+=-Wall -fPIC -g -ffast-math -funsafe-math-optimizations #-O3
+CFLAGS+=-Wall -fPIC -g -ffast-math -funsafe-math-optimizations -DLIBRARY_NEILOS #-O3
 CC=/Users/Neil/NeilOS/cross/bin/i686-neilos-gcc
 CXX=/Users/Neil/NeilOS/cross/bin/i686-neilos-g++
 AR=/Users/Neil/NeilOS/cross/bin/i686-neilos-ar
@@ -32,7 +32,7 @@ libNeilOS: Makefile $(OBJS)
 	find ./$(var)/ -name \*.h -exec cp -prf {} /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/$(var)/ ';' ;)
 	# Copy over NeilOS.h
 	cp NeilOS.h /Users/Neil/NeilOS/sysroot/usr/include/NeilOS/
-	cp Core/NSEventDefs.cpp /Users/Neil/NeilOS/programs/WindowServer/NSEventDefs.cpp
+	cp -r Core/Events/ /Users/Neil/NeilOS/programs/WindowServer/Events/
 
 dep: Makefile.dep
 

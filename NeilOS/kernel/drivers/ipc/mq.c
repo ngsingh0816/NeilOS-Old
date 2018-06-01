@@ -10,8 +10,8 @@
 #include <syscalls/interrupt.h>
 
 #define DEFAULT_PRIORITY		(MQ_PRIO_MAX / 2)
-#define MAX_MESSAGE_LENGTH		4096
-#define MAX_NUM_MESSAGES		2048
+#define MAX_MESSAGE_LENGTH		(32 * 1024)
+#define MAX_NUM_MESSAGES		512
 
 typedef struct mq_message {
 	void* buffer;

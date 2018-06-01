@@ -15,7 +15,7 @@ public:
 	static NSMatrix Perspective(float fovy, float aspect, float zNear, float zFar);
 	static NSMatrix Ortho2D(float left, float right, float bottom, float top);
 	
-	NSMatrix();		// Identity
+	NSMatrix();		// all 0's
 	NSMatrix(float a11, float a12, float a13, float a14,
 		   float a21, float a22, float a23, float a24,
 		   float a31, float a32, float a33, float a34,

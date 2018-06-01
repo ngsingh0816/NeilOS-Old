@@ -8,6 +8,11 @@
 
 #include "NSWindow.h"
 
+#include "NSView.h"
+#include "../Core/NSApplication.h"
+#include "../Core/Events/NSEventDefs.cpp"
+#include "../Core/NSLock.h"
+
 #include <fcntl.h>
 #include <graphics/graphics.h>
 #include <stdio.h>
@@ -15,11 +20,6 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-#include "../Core/NSApplication.h"
-#include "../Core/NSEventDefs.cpp"
-#include "../Core/NSLock.h"
-#include "NSView.h"
 
 using std::string;
 
@@ -52,11 +52,20 @@ NSWindow::NSWindow(string t, NSRect f) {
 	NSApplication::RegisterWindow(this);
 	
 	float psf = NSApplication::GetPixelScalingFactor();
-	context = graphics_context_create(f.size.width * psf, (f.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf, 32, 16, 0);
+	NSSize size = NSSize(f.size.width * psf, (f.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf);
+	context = graphics_context_create(size.width, size.height, 32, 16, 0);
 	SetupProjMatrix();
 	NSMatrix iden = NSMatrix::Identity();
 	graphics_transform_set(&context, GRAPHICS_TRANSFORM_WORLD, iden);
 	graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, iden);
+	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDENABLE, true);
+	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_SRCBLEND, GRAPHICS_BLENDOP_SRCALPHA);
+	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_DSTBLEND, GRAPHICS_BLENDOP_INVSRCALPHA);
+	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDEQUATION, GRAPHICS_BLENDEQ_ADD);
+	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
+	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
+	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
+	graphics_clear(&context, 0x0, 1.0f, 0, GRAPHICS_CLEAR_COLOR, 0, 0, size.width, size.height);
 	
 	content_view = NSView::Create(NSRect(0, 0, f.size.width, f.size.height - WINDOW_TITLE_BAR_HEIGHT));
 	content_view->window = this;
@@ -131,6 +140,9 @@ void NSWindow::SetFrame(NSRect rect) {
 	NSEvent* event = new NSEventWindowSetFrame(pid, window_id, frame);
 	NSApplication::SendEvent(event);
 	delete event;
+	
+	for (auto& i : observers)
+		i->SetFrame();
 }
 
 void NSWindow::SetFrameOrigin(NSPoint p) {
@@ -155,12 +167,15 @@ void NSWindow::Show() {
 	
 	visible = true;
 	
-	content_view->DrawRect(content_view->frame);
+	content_view->DrawRect(NSRect(NSPoint(), content_view->frame.size));
 	
 	uint32_t pid = getpid();
 	NSEvent* event = new NSEventWindowShow(pid, window_id, true);
 	NSApplication::SendEvent(event);
 	delete event;
+	
+	for (auto& i : observers)
+		i->Show();
 }
 
 bool NSWindow::IsVisible() {
@@ -174,6 +189,10 @@ void NSWindow::Close() {
 	delete event;
 	
 	visible = false;
+	
+	for (auto& i : observers)
+		i->Close();
+	
 	if (dealloc)
 		delete this;
 }
@@ -184,9 +203,22 @@ bool NSWindow::IsKeyWindow() const {
 
 void NSWindow::MakeKeyWindow() {
 	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowMakeKey(pid, window_id);
+	NSEvent* event = new NSEventWindowMakeKey(pid, window_id, true);
 	NSApplication::SendEvent(event);
 	delete event;
+	
+	for (auto& i : observers)
+		i->BecomeKeyWindow();
+}
+
+void NSWindow::ResignKeyWindow() {
+	uint32_t pid = getpid();
+	NSEvent* event = new NSEventWindowMakeKey(pid, window_id, false);
+	NSApplication::SendEvent(event);
+	delete event;
+	
+	for (auto& i : observers)
+		i->ResignKeyWindow();
 }
 
 NSView* NSWindow::FirstResponder() const {
@@ -250,4 +282,82 @@ void NSWindow::PushUpdates() {
 	
 	NSApplication::SendEvent(event);
 	delete event;
+}
+
+void NSWindow::MouseDown(NSEvent* event) {
+	if (!content_view)
+		return;
+	
+	NSEventMouse* e = dynamic_cast<NSEventMouse*>(event);
+	
+	NSView* view = content_view->GetViewAtPoint(e->GetPosition());
+	if (!view)
+		return;
+	
+	down_view = view;
+	view->MouseDown(event);
+}
+
+void NSWindow::MouseDragged(NSEvent* event) {
+	if (!down_view)
+		return;
+	
+	down_view->MouseDragged(event);
+}
+
+void NSWindow::MouseUp(NSEvent* event) {
+	if (!down_view)
+		return;
+	
+	down_view->MouseUp(event);
+	down_view = NULL;
+}
+
+void NSWindow::MouseMoved(NSEvent* event) {
+	if (!content_view)
+		return;
+	
+	NSEventMouse* e = dynamic_cast<NSEventMouse*>(event);
+	
+	NSView* view = content_view->GetViewAtPoint(e->GetPosition());
+	if (!view)
+		return;
+	
+	view->MouseMoved(event);
+}
+
+void NSWindow::MouseScrolled(NSEvent* event) {
+	if (!content_view)
+		return;
+	
+	NSEventMouse* e = dynamic_cast<NSEventMouse*>(event);
+	
+	NSView* view = content_view->GetViewAtPoint(e->GetPosition());
+	if (!view)
+		return;
+	
+	view->MouseScrolled(event);
+};
+
+void NSWindow::KeyDown(NSEvent* event) {
+	if (first_responder)
+		first_responder->KeyDown(event);
+}
+
+void NSWindow::KeyUp(NSEvent* event) {
+	if (first_responder)
+		first_responder->KeyDown(event);
+}
+
+void NSWindow::AddObserver(NSWindowObserver* observer) {
+	observers.push_back(observer);
+}
+
+void NSWindow::RemoveObserver(NSWindowObserver* observer) {
+	for (unsigned int z = 0; z < observers.size(); z++) {
+		if (observers[z] == observer) {
+			observers.erase(observers.begin() + z);
+			break;
+		}
+	}
 }

@@ -15,23 +15,30 @@
 #include "NSTypes.h"
 
 class NSImage;
-struct FT_FaceRec_;
 
 class NSFont {
 public:
+	static NSFont* FromData(uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
+	uint8_t* Serialize(uint32_t* length_out) const;
+
 	NSFont();
 	~NSFont();
+	NSFont(const NSFont& font);
 	NSFont(float size);
 	NSFont(const std::string& name, float size);
+	NSFont& operator=(const NSFont& font);
 	
 	float GetLineHeight() const;
 	
 	// UTF8-String
 	NSImage* GetImage(const std::string& string, NSColor<uint8_t> color);
+	
 private:
+	void Init();
 	bool SetupDefault();
 	
-	FT_FaceRec_* face = NULL;
+	std::string font_name;
+	float font_size;
 };
 
 #endif /* NSFONT_H */

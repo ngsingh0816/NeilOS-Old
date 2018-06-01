@@ -7,4 +7,4 @@
 #  Copyright © 2017 Neil Singh. All rights reserved.
 
 cd NeilOS
-make CC=/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc
+make CC=/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -j4

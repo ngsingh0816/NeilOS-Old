@@ -21,6 +21,7 @@
 #define WINDOW_TITLE_BAR_HEIGHT		22
 
 class NSView;
+class NSWindowObserver;
 
 class NSWindow : public NSResponder {
 public:
@@ -51,9 +52,23 @@ public:
 	bool IsKeyWindow() const;
 	// Makes this window the key window and moves it to the front
 	void MakeKeyWindow();
+	void ResignKeyWindow();
 	
 	NSView* FirstResponder() const;
 	void MakeFirstResponder(NSView* view);
+	
+	void MouseDown(NSEvent* event) override;
+	void MouseDragged(NSEvent* event) override;
+	void MouseUp(NSEvent* event) override;
+	void MouseMoved(NSEvent* event) override;
+	void MouseScrolled(NSEvent* event) override;
+	
+	void KeyDown(NSEvent* event) override;
+	void KeyUp(NSEvent* event) override;
+	
+	void AddObserver(NSWindowObserver* observer);
+	void RemoveObserver(NSWindowObserver* observer);
+	
 private:
 	friend class NSView;
 	
@@ -66,6 +81,8 @@ private:
 	
 	NSView* content_view = NULL;
 	NSView* first_responder = NULL;
+	NSView* down_view = NULL;
+	std::vector<NSWindowObserver*> observers;
 	
 	std::string title;
 	NSRect frame;
@@ -78,6 +95,16 @@ private:
 	NSLock rect_lock;
 	std::vector<NSRect> update_rects;
 	bool update_requested = false;
+};
+
+class NSWindowObserver {
+public:
+	virtual void BecomeKeyWindow() {};
+	virtual void ResignKeyWindow() {};
+	virtual void Show() {};
+	virtual void Close() {};
+	virtual void SetFrame() {};
+private:
 };
 
 #endif /* NSWINDOW_H */

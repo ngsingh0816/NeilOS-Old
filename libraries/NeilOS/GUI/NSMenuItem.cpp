@@ -9,6 +9,7 @@
 #include "NSMenuItem.h"
 
 #include "../Core/NSFont.h"
+#include "../Core/Events/NSEventResource.hpp"
 
 #include <string.h>
 
@@ -36,6 +37,10 @@ NSMenuItem* NSMenuItem::SeparatorItem() {
 
 NSMenuItem::NSMenuItem() {
 	border_height = 1.5 * MENU_OFFSET_Y;
+}
+
+NSMenuItem::NSMenuItem(const NSMenuItem& item) {
+	*this = item;
 }
 
 NSMenuItem::~NSMenuItem() {
@@ -68,11 +73,206 @@ NSMenuItem::NSMenuItem(NSImage* i, bool chr, string key, NSModifierFlags f) {
 	flags = f;
 }
 
-NSMenu* NSMenuItem::GetSubmenu() {
-	if (!submenu) {
-		submenu = new NSMenu;
-		submenu->SetIsContextMenu(true);
+NSMenuItem& NSMenuItem::operator=(const NSMenuItem& item) {
+	if (this == &item)
+		return *this;
+	
+	menu = NULL;
+	
+	if (submenu) {
+		delete submenu;
+		submenu = NULL;
 	}
+	if (item.submenu)
+		submenu = new NSMenu(*item.submenu);
+	
+	font = item.font;
+	SetTitle(item.title);
+	SetImage(item.image, item.chromatic);
+	SetKeyEquivalent(item.key_equivalent, item.flags);
+	border_height = item.border_height;
+	is_separator = item.is_separator;
+	highlighted = item.highlighted;
+	action = item.action;
+	enabled = item.enabled;
+	item_size = item.item_size;
+	user_data = item.user_data;
+	font_height = item.font_height;
+	
+	return *this;
+}
+
+NSMenuItem* NSMenuItem::FromData(uint8_t* data, uint32_t length, uint32_t* length_used) {
+#define copy(x, len) { if (pos >= length) { return NULL; }; memcpy(x, &data[pos], (len)); pos += (len); }
+	if (length < sizeof(uint32_t) * 2 + sizeof(bool) * 5 + sizeof(float) * 4)
+		return NULL;
+	
+	uint32_t pos = 0;
+	NSFont* font_ptr = NSFont::FromData(data, length, &pos);
+	if (!font_ptr)
+		return NULL;
+	NSFont font = *font_ptr;
+	delete font_ptr;
+	
+	uint32_t title_len;
+	copy(&title_len, sizeof(uint32_t));
+	char title_buf[title_len + 1];
+	copy(title_buf, title_len);
+	title_buf[title_len] = 0;
+	
+	uint32_t key_len;
+	copy(&key_len, sizeof(uint32_t));
+	char key_buf[key_len + 1];
+	copy(key_buf, key_len);
+	key_buf[key_len] = 0;
+	NSModifierFlags flags;
+	copy(&flags, sizeof(NSModifierFlags));
+	
+	uint32_t image_length = 0;
+	copy(&image_length, sizeof(uint32_t));
+	uint32_t image_name_len;
+	copy(&image_name_len, sizeof(uint32_t));
+	char image_buf[image_name_len + 1];
+	copy(image_buf, image_name_len);
+	image_buf[image_name_len] = 0;
+	NSImage* image = NULL;
+	if (image_length != 0 && image_name_len != 0) {
+		std::string image_name = std::string(image_buf);
+		uint8_t* data = new uint8_t[image_length];
+		if (NSEventResource::GetSharedResource(image_name, data, image_length))
+			image = new NSImage(data, image_length);
+		NSEventResource::DeleteSharedResource(image_name);
+		delete[] data;
+	}
+	
+	bool has_sub;
+	NSMenu* submenu = NULL;
+	copy(&has_sub, sizeof(bool));
+	if (has_sub) {
+		uint32_t submenu_length;
+		submenu = NSMenu::FromData(&data[pos], length - pos, &submenu_length);
+		if (!submenu)
+			return NULL;
+		pos += submenu_length;
+	}
+	
+	float border_height;
+	copy(&border_height, sizeof(float));
+	bool is_separator, highlighted, enabled, chromatic;
+	copy(&is_separator, sizeof(bool));
+	copy(&highlighted, sizeof(bool));
+	copy(&enabled, sizeof(bool));
+	copy(&chromatic, sizeof(bool));
+	
+	if (pos + sizeof(float) * 2 >= length)
+		return NULL;
+	NSSize item_size = NSSize::FromData(&data[pos], sizeof(float) * 2);
+	pos += sizeof(float) * 2;
+	float font_height;
+	copy(&font_height, sizeof(float));
+	
+	NSMenuItem* ret = new NSMenuItem;
+	ret->font = font;
+	ret->SetTitle(title_buf);
+	ret->SetKeyEquivalent(key_buf, flags);
+	if (image) {
+		ret->SetImage(image, chromatic);
+		delete image;
+	}
+	else
+		ret->chromatic = chromatic;
+	ret->submenu = submenu;
+	ret->border_height = border_height;
+	ret->is_separator = is_separator;
+	ret->highlighted = highlighted;
+	ret->enabled = enabled;
+	ret->item_size = item_size;
+	ret->font_height = font_height;
+	
+	if (length_used)
+		*length_used = pos;
+	
+	return ret;
+#undef copy
+}
+
+uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
+#define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
+	// TODO: include image
+	uint32_t total_length = 0;
+	uint32_t font_length = 0;
+	uint8_t* font_buf = font.Serialize(&font_length);
+	uint32_t sub_length = 0;
+	uint8_t* sub_buf = NULL;
+	if (submenu)
+		sub_buf = submenu->Serialize(&sub_length);
+	uint32_t image_length = 0;
+	std::string image_name;
+	if (image) {
+		// Don't abandon if representing image fails
+		uint8_t* data = image->RepresentationUsingType(NSImage::NSImageTypePNG, &image_length);
+		if (data) {
+			image_name = NSEventResource::CreateSharedResource(data, image_length);
+			delete[] data;
+		}
+	}
+	total_length += font_length;
+	total_length += sizeof(uint32_t);	// title length
+	total_length += title.length();
+	total_length += sizeof(uint32_t);	// key equivalent length
+	total_length += key_equivalent.length();
+	total_length += sizeof(NSModifierFlags);
+	total_length += sizeof(uint32_t);	// image_length
+	total_length += sizeof(uint32_t);	// image_name length
+	total_length += image_name.length();
+	total_length += sizeof(bool);		// has submenu
+	total_length += sub_length;
+	total_length += sizeof(float);		// border_height
+	total_length += sizeof(bool);		// is_separator
+	total_length += sizeof(bool);		// highlighted
+	total_length += sizeof(bool);		// enabled
+	total_length += sizeof(bool);		// chromatic
+	total_length += sizeof(float) * 2;	// item_size
+	total_length += sizeof(float);		// font_height
+	
+	uint8_t* buffer = new uint8_t[total_length];
+	uint32_t pos = 0;
+	
+	copy(font_buf, font_length);
+	delete[] font_buf;
+	uint32_t title_length = title.length(), key_length = key_equivalent.length(),
+		image_name_length = image_name.length();
+	copy(&title_length, sizeof(uint32_t));
+	copy(title.c_str(), title_length);
+	copy(&key_length, sizeof(uint32_t));
+	copy(key_equivalent.c_str(), key_length);
+	copy(&flags, sizeof(uint32_t));
+	copy(&image_length, sizeof(uint32_t));
+	copy(&image_name_length, sizeof(uint32_t));
+	copy(image_name.c_str(), image_name_length);
+	bool has_sub = submenu != NULL;
+	copy(&has_sub, sizeof(bool));
+	if (has_sub) {
+		copy(sub_buf, sub_length);
+		delete[] sub_buf;
+	}
+	copy(&border_height, sizeof(float));
+	copy(&is_separator, sizeof(bool));
+	copy(&highlighted, sizeof(bool));
+	copy(&enabled, sizeof(bool));
+	copy(&chromatic, sizeof(bool));
+	uint8_t* buf = item_size.Serialize(NULL);
+	copy(buf, sizeof(float) * 2);
+	delete[] buf;
+	copy(&font_height, sizeof(float));
+	
+	if (length_out)
+		*length_out = total_length;
+	return buffer;
+#undef copy
+}
+
+NSMenu* NSMenuItem::GetSubmenu() {
 	return submenu;
 }
 
@@ -83,6 +283,10 @@ void NSMenuItem::SetSubmenu(NSMenu* menu) {
 	submenu->SetIsContextMenu(true);
 	
 	Update();
+}
+
+NSMenu* NSMenuItem::GetSupermenu() {
+	return menu;
 }
 
 string NSMenuItem::GetTitle() const {
@@ -309,6 +513,14 @@ void NSMenuItem::SetBorderHeight(float height) {
 	border_height = height;
 	UpdateSize();
 	Update();
+}
+
+void NSMenuItem::SetUserData(void* data) {
+	user_data = data;
+}
+
+void* NSMenuItem::GetUserData() const {
+	return user_data;
 }
 
 void NSMenuItem::Update(bool all) {

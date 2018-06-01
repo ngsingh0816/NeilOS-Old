@@ -25,7 +25,8 @@ public:
 	~NSView();
 	
 	NSRect GetFrame() const;
-	void SetFrame(NSRect frame);
+	NSRect GetBounds() const;
+	virtual void SetFrame(NSRect frame);
 	// Get in window coordinates
 	NSRect GetAbsoluteFrame() const;
 	NSRect GetAbsoluteRect(NSRect rect) const;
@@ -35,37 +36,51 @@ public:
 	void RemoveSubviewAtIndex(unsigned int index);
 	NSView* GetSubviewAtIndex(unsigned int index) const;
 	
+	NSView* GetViewAtPoint(NSPoint p);
+	
 	NSWindow* GetWindow() const;
 	NSView* GetSuperview() const;
 	
-	// Draws view and subviews
-	void DrawRect(NSRect rect);
-	// Just draws view (override this method for custom drawing)
-	void Draw(NSRect rect);
+	bool IsVisible() const;
+	void SetVisible(bool is);
 	
-	bool AcceptsFirstResponder() const;
-	void BecomeFirstResponder();
-	bool IsFirstResponder() const;
-	void ResignFirstResponder();
+	void SetNeedsDisplay();
+	
+	virtual bool AcceptsFirstResponder() const;
+	virtual void BecomeFirstResponder();
+	virtual bool IsFirstResponder() const;
+	virtual void ResignFirstResponder();
+	
+protected:
+	NSView();
+
+	// Just draws view (override this method for custom drawing)
+	// Rect in local view coordinates
+	virtual void Draw(NSRect rect);
 	
 	// Request screen update in local view coordinates
 	void RequestUpdate(NSRect rect);
 	void RequestUpdates(std::vector<NSRect> rects);
-private:
-	friend class NSWindow;
-	
-	NSView();
-	
-	NSRect frame;
-	std::vector<NSView*> subviews;
-	
-	NSWindow* window = NULL;
-	NSView* superview = NULL;
 	
 	uint32_t vertex_vbo = 0;
 	uint32_t color_vbo = 0;
-	NSMatrix matrix;
-	graphics_vertex_array_t vao[2];
+	graphics_vertex_array_t vao[3];
+	
+private:
+	friend class NSWindow;
+	
+	// Draws view and subviews
+	void DrawRect(NSRect rect);
+	void DrawSubview(NSView* subview, NSRect rect);
+	
+	void RemoveFromWindow(NSView* view);
+	
+	NSRect frame;
+	std::vector<NSView*> subviews;
+	bool visible = true;
+	
+	NSWindow* window = NULL;
+	NSView* superview = NULL;
 	
 	bool is_first_responder = false;
 };

@@ -30,6 +30,8 @@ graphics_info_t graphics_info;
 graphics_context_t context;
 
 namespace Desktop {
+	bool loaded = false;
+	
 	NSImage* background_image = NULL;
 	NSImage* cursor_image = NULL;
 	NSSound* intro_sound = NULL;
@@ -104,7 +106,7 @@ namespace Desktop {
 	void FadeFunc(NSTimer*);
 	
 	bool MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, bool (NSMenu::*func)(NSEventMouse*));
-	bool KeyMenu(unsigned char key, bool down, bool (NSMenu::*func)(NSEventKey*));
+	bool KeyMenu(unsigned char key, NSModifierFlags flags, bool down, bool (NSMenu::*func)(NSEventKey*));
 	
 	std::string GetTime();
 	uint32_t SecondsToNextMinute();
@@ -239,6 +241,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	
 	// TODO: temp
 	NSMenuItem* item = new NSMenuItem("File");
+	item->SetSubmenu(new NSMenu);
 	item->GetSubmenu()->AddItem(new NSMenuItem("Open"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Close"));
 	item->GetSubmenu()->GetItems()[1]->SetIsEnabled(false);
@@ -247,14 +250,17 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	app_menu->AddItem(item);
 	app_menu->AddItem(NSMenuItem::SeparatorItem());
 	item = new NSMenuItem("Edit");
+	item->SetSubmenu(new NSMenu);
 	item->GetSubmenu()->AddItem(new NSMenuItem("Copy"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Paste"));
 	app_menu->AddItem(item);
 	item = new NSMenuItem("View");
+	item->SetSubmenu(new NSMenu);
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 1"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 2"));
 	item->GetSubmenu()->AddItem(NSMenuItem::SeparatorItem());
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 3"));
+	item->GetSubmenu()->GetItems()[3]->SetSubmenu(new NSMenu);
 	item->GetSubmenu()->GetItems()[3]->GetSubmenu()->AddItem(new NSMenuItem("Yay"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 4"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 5"));
@@ -290,6 +296,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	sitem->SetAction([](NSMenuItem*) {
 		NSApplication::OpenApplication("/Applications/Calculator");
 	});
+	item->SetSubmenu(new NSMenu);
 	item->GetSubmenu()->AddItem(sitem);
 	task_bar->AddItem(item);
 	delete start_image;
@@ -314,6 +321,8 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	}, SecondsToNextMinute(), false, false);
 	NSThread::MainThread()->GetRunLoop()->AddTimer(timer);
 	
+	
+	loaded = true;
 	percent(100);
 	
 #undef percent
@@ -327,28 +336,43 @@ void* Desktop::MouseThread(void*) {
 		int32_t* b = (int32_t*)&buffer;
 		
 		static int32_t prevb0 = 0, prevb1 = 0;
+		static bool prev_down[3] = { false, false, false };
 		NSPoint p = NSPoint(b[0], b[1]);
-		bool left_down = buffer[8] & 0x1;
-		bool right_down = (buffer[8] >> 1) & 0x1;
-		bool middle_down = (buffer[8] >> 2) & 0x1;
-		// TODO: fix scrolls in kernel
-		if (left_down && !mouse_down) {
-			NSHandler([p](NSThread*) {
-				MouseDown(p, NSMouseButtonLeft);
-			}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
-		}
-		else if (!left_down && mouse_down) {
-			NSHandler([p](NSThread*) {
-				MouseUp(p, NSMouseButtonLeft);
-			}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
-		}
-		if (prevb0 != b[0] || prevb1 != b[1]) {
-			NSHandler([p](NSThread*) {
-				MouseMoved(p);
-			}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+		// left, middle, right
+		bool down[3] = { buffer[8] & 0x1, (buffer[8] >> 2) & 0x1, (buffer[8] >> 1) & 0x1 };
+		int scroll_x = (buffer[8] >> 3) & 0x3;
+		int scroll_y = (buffer[9] >> 5) & 0x3;
+		if (loaded) {
+			for (int z = 0; z < 3; z++) {
+				if (down[z] && !prev_down[z]) {
+					NSHandler([p, z](NSThread*) {
+						MouseDown(p, (NSMouseButton)((int)NSMouseButtonLeft + z));
+					}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+				} else if (!down[z] && prev_down[z]) {
+					NSHandler([p, z](NSThread*) {
+						MouseUp(p, (NSMouseButton)((int)NSMouseButtonLeft + z));
+					}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+				}
+			}
+			if (prevb0 != b[0] || prevb1 != b[1]) {
+				NSHandler([p](NSThread*) {
+					MouseMoved(p);
+				}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+			}
+			if (scroll_x != 0 || scroll_y != 0) {
+				if (scroll_x == 2)
+					scroll_x = -1;
+				if (scroll_y == 2)
+					scroll_y = -1;
+				NSHandler([p, scroll_x, scroll_y](NSThread*) {
+					MouseScrolled(p, scroll_x, scroll_y);
+				}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+			}
 		}
 		prevb0 = b[0];
 		prevb1 = b[1];
+		for (int z = 0; z < 3; z++)
+			prev_down[z] = down[z];
 	}
 	return NULL;
 }
@@ -362,14 +386,16 @@ void* Desktop::KeyThread(void*) {
 		bool down = buffer[0];
 		uint8_t key = buffer[1];
 		
-		if (down) {
-			NSHandler([key](NSThread*) {
-				KeyDown(key);
-			}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
-		} else {
-			NSHandler([key](NSThread*) {
-				KeyUp(key);
-			}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+		if (loaded) {
+			if (down) {
+				NSHandler([key](NSThread*) {
+					KeyDown(key);
+				}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+			} else {
+				NSHandler([key](NSThread*) {
+					KeyUp(key);
+				}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+			}
 		}
 	}
 	return NULL;
@@ -437,6 +463,8 @@ void Desktop::FadeFunc(NSTimer* timer) {
 	for (int z = 0; z < 4; z++)
 		fade_colors[z * 4 + 3] = fade;
 	graphics_buffer_data(fade_vbo, fade_colors, sizeof(fade_colors));
+	
+	graphics_fence_sync(graphics_fence_create());
 	
 	if (fade <= 0.0f) {
 		graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
@@ -568,9 +596,9 @@ bool Desktop::MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, bool (
 	return ret;
 }
 
-bool Desktop::KeyMenu(unsigned char key, bool down, bool (NSMenu::*func)(NSEventKey*)) {
+bool Desktop::KeyMenu(unsigned char key, NSModifierFlags flags, bool down, bool (NSMenu::*func)(NSEventKey*)) {
 	bool ret = false;
-	NSEventKey* event = NSEventKey::Create(key, down, modifier_flags);
+	NSEventKey* event = NSEventKey::Create(key, down, flags);
 	ret = (system_menu->*func)(event);
 	ret |= (app_menu->*func)(event);
 	ret |= (task_bar->*func)(event);
@@ -595,7 +623,8 @@ void Desktop::MouseDown(NSPoint p, NSMouseButton mouse) {
 	if (Window::MouseDown(p, mouse))
 		return;
 	
-	mouse_desktop_down = true;
+	if (mouse == NSMouseButtonLeft)
+		mouse_desktop_down = true;
 }
 
 void Desktop::MouseMoved(NSPoint p) {
@@ -615,8 +644,6 @@ void Desktop::MouseMoved(NSPoint p) {
 	if (mouse_desktop_down) {
 		// Update the difference
 		NSPoint diff = mouse_pos - old_pos;
-		// TODO: fix this
-		// TODO: fix nsmenu when going from edit menut o view menu then back to edit on 1 or 3 psf
 		std::vector<NSRect> rects = { NSRect(old_pos.x, mouse_down_pos.y, diff.x, old_pos.y - mouse_down_pos.y),
 			NSRect(mouse_down_pos.x, old_pos.y, old_pos.x - mouse_down_pos.x, diff.y),
 			NSRect(old_pos.x, old_pos.y, diff.x, diff.y) };
@@ -648,6 +675,13 @@ void Desktop::MouseUp(NSPoint p, NSMouseButton mouse) {
 	}
 }
 
+void Desktop::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
+	p /= pixel_scaling_factor;
+
+	if (Window::MouseScrolled(p, delta_x, delta_y))
+		return;
+}
+
 void Desktop::KeyDown(unsigned char key) {
 	if (key == NSKeyCodeLeftControl || key == NSKeyCodeRightControl)
 		modifier_flags |= NSModifierControl;
@@ -671,10 +705,10 @@ void Desktop::KeyDown(unsigned char key) {
 	else if (key == '3')
 		SetPixelScalingFactor(3);
 	
-	if (KeyMenu(key, true, &NSMenu::KeyDown))
+	if (KeyMenu(key, modifier_flags, true, &NSMenu::KeyDown))
 		return;
 	
-	if (Window::KeyDown(key))
+	if (Window::KeyDown(key, modifier_flags))
 		return;
 }
 
@@ -690,11 +724,15 @@ void Desktop::KeyUp(unsigned char key) {
 	if (key == NSKeyCodeCapsLock)
 		caps_lock_down = false;
 	
-	if (KeyMenu(key, false, &NSMenu::KeyUp))
+	if (KeyMenu(key, modifier_flags, false, &NSMenu::KeyUp))
 		return;
 	
-	if (Window::KeyUp(key))
+	if (Window::KeyUp(key, modifier_flags))
 		return;
+}
+
+bool Desktop::IsMouseDown()	{
+	return mouse_down;
 }
 
 void Desktop::RegisterApplication(Application::App* app) {
@@ -703,10 +741,39 @@ void Desktop::RegisterApplication(Application::App* app) {
 		if (app->windows.size() != 0)
 			Window::MakeKeyWindow(app->pid, app->windows[0]);
 	});
+	item->SetUserData(reinterpret_cast<void*>(app));
 	task_bar->AddItem(item);
 	task_bar->AddItem(NSMenuItem::SeparatorItem());
 }
 
 void Desktop::UnregisterApplication(Application::App* app) {
+	void* ptr = reinterpret_cast<void*>(app);
+	auto items = task_bar->GetItems();
+	for (unsigned int z = 0; z < items.size(); z++) {
+		if (items[z]->GetUserData() == ptr) {
+			task_bar->RemoveItem(z);
+			task_bar->RemoveItem(z);	// Separator item
+			break;
+		}
+	}
+}
+
+void Desktop::UpdateMenu() {
+	NSMenu* menu = Application::GetActiveApplication()->menu;
+	if (!menu)
+		return;
 	
+	app_menu = menu;
+	NSRect system_menu_rect = NSRect(NSPoint(graphics_info.resolution_x, 0),
+									 NSSize(system_menu->GetSize().width, menu_height - 1));	// Account for border
+	system_menu_rect.origin.x -= system_menu_rect.size.width;
+	
+	NSRect app_menu_rect = NSRect(NSPoint(), NSSize(system_menu_rect.origin.x, menu_height - 1));
+	app_menu->SetFrame(app_menu_rect);
+	app_menu->SetUpdateFunction([](std::vector<NSRect> rects) {
+		UpdateRects(rects);
+	});
+	app_menu->SetContext(&context);
+	
+	Desktop::UpdateRect(app_menu_rect + NSRect(-1, -1, 2, 2));
 }

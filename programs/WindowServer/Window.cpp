@@ -9,7 +9,7 @@
 #include "Window.h"
 
 #include "Desktop.h"
-#include "NSEventDefs.cpp"
+#include "Events/NSEventDefs.cpp"
 
 #include <math.h>
 #include <string.h>
@@ -54,17 +54,26 @@ namespace Window {
 	// Mouse
 	NSPoint mouse_pos;
 	bool mouse_down = false;
+	NSMouseButton mouse_down_type = NSMouseButtonNone;
 	bool down_title = false;
 	
 	// Key window
 	void MakeKeyWindow(WSWindow* key);
 	WSWindow* key_window = NULL;
 	
-	static inline uint64_t MakeKey(uint32_t pid, uint32_t id) {
+	inline uint64_t MakeKey(uint32_t pid, uint32_t id) {
 		return (uint64_t(pid) << 32) | id;
 	}
 	
-	static inline WSWindow* GetWindow(uint32_t pid, uint32_t id) {
+	inline uint32_t GetPidFromKey(uint64_t key) {
+		return ((key >> 32) & 0xFFFFFFFF);
+	}
+	
+	inline uint32_t GetWidFromKey(uint64_t key) {
+		return (key & 0xFFFFFFFF);
+	}
+	
+	WSWindow* GetWindow(uint32_t pid, uint32_t id) {
 		uint64_t key = MakeKey(pid, id);
 		auto it = windows.find(key);
 		if (it == windows.end())
@@ -141,14 +150,22 @@ public:
 	}
 	
 	~WSWindow() {
-		if (title_vbo)
+		if (title_vbo) {
 			graphics_buffer_destroy(title_vbo);
-		if (text_img)
+			title_vbo = 0;
+		}
+		if (text_img) {
 			graphics_buffer_destroy(text_img);
-		if (title_border_vbo)
+			text_img = 0;
+		}
+		if (title_border_vbo) {
 			graphics_buffer_destroy(title_border_vbo);
-		if (title_border_colors_vbo)
+			title_border_vbo = 0;
+		}
+		if (title_border_colors_vbo) {
 			graphics_buffer_destroy(title_border_colors_vbo);
+			title_border_colors_vbo = 0;
+		}
 	}
 	
 	void SetTitle(string t) {
@@ -411,8 +428,12 @@ void Window::ShowEvent(uint8_t* data, uint32_t length) {
 		delete event;
 		return;
 	}
+	
 	window->visible = event->GetShow();
-	MakeKeyWindow(window);
+	if (window->visible)
+		MakeKeyWindow(window);
+	else
+		MakeKeyWindow(NULL);
 	Desktop::UpdateRect(window->frame);
 	
 	delete event;
@@ -633,20 +654,69 @@ void Window::MakeKeyWindow(WSWindow* key) {
 	}
 }
 
-bool Window::MouseDown(NSPoint p, int mouse) {
-	if (mouse != NSMouseButtonLeft)
-		return false;
-	
+bool Window::IsVisible(uint32_t pid, uint32_t wid) {
+	WSWindow* window = GetWindow(pid, wid);
+	if (!window)
+		return NULL;
+	return window->visible;
+}
+
+uint32_t Window::FindLastVisibleWindow(uint32_t pid) {
+	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
+		if ((*it)->pid == pid && (*it)->visible)
+			return (*it)->id;
+	}
+	return -1;
+}
+
+uint32_t Window::FindLastVisiblePid(uint32_t not_pid) {
 	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
 		WSWindow* window = *it;
+		if (window->visible && window->pid != not_pid)
+			return window->pid;
+	}
+	return 0;
+}
+
+void Window::DestroyWindows(uint32_t pid) {
+	auto it = window_list.begin();
+	while (it != window_list.end()) {
+		WSWindow* window = *it;
+		if (window->pid == pid) {
+			it = window_list.erase(it);
+			windows.erase(MakeKey(window->pid, window->id));
+			if (window->visible)
+				Desktop::UpdateRect(window->frame);
+			delete window;
+		} else
+			it++;
+	}
+}
+
+bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
+	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
+		WSWindow* window = *it;
+		if (!window->visible)
+			continue;
 		NSRect title_bar = window->GetTitleFrame();
+		NSRect content_frame = window->GetContentFrame();
 		if (title_bar.ContainsPoint(p)) {
 			down_title = true;
-		} else if (!window->GetContentFrame().ContainsPoint(p))
+		} else if (!content_frame.ContainsPoint(p))
 			continue;
 		mouse_down = true;
 		mouse_pos = p;
-		MakeKeyWindow(window);
+		mouse_down_type = mouse;
+		
+		if (key_window == window && !down_title) {
+			NSEventMouse* event = NSEventMouse::Create(mouse_pos - content_frame.origin,
+													   NSMouseTypeDown, mouse, window->id);
+			Application::SendActiveEvent(event);
+			delete event;
+		}
+		
+		if (mouse == NSMouseButtonLeft)
+			MakeKeyWindow(window);
 		return true;
 	}
 	
@@ -654,16 +724,41 @@ bool Window::MouseDown(NSPoint p, int mouse) {
 }
 
 bool Window::MouseMoved(NSPoint p) {
+	if (!Desktop::IsMouseDown()) {
+		for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
+			WSWindow* window = *it;
+			if (!window->visible)
+				continue;
+			NSRect content_frame = window->GetContentFrame();
+			if (!content_frame.ContainsPoint(p))
+				continue;
+			
+			if (key_window == window) {
+				NSEventMouse* event = NSEventMouse::Create(p - content_frame.origin,
+														   NSMouseTypeMoved, NSMouseButtonNone, window->id);
+				Application::SendActiveEvent(event);
+				delete event;
+			}
+			
+			return true;
+		}
+	}
 	if (!mouse_down)
 		return false;
 	
-	
-	if (down_title) {
-		NSRect old_rect = key_window->frame;
-		key_window->frame.origin += (p - mouse_pos);
-		
-		std::vector<NSRect> rects = { old_rect, key_window->frame };
-		Desktop::UpdateRects(rects);
+	if (mouse_down_type == NSMouseButtonLeft) {
+		if (down_title) {
+			NSRect old_rect = key_window->frame;
+			key_window->frame.origin += (p - mouse_pos);
+			
+			std::vector<NSRect> rects = { old_rect, key_window->frame };
+			Desktop::UpdateRects(rects);
+		} else if (key_window) {
+			NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
+													   NSMouseTypeDragged, NSMouseButtonLeft, key_window->id);
+			Application::SendActiveEvent(event);
+			delete event;
+		}
 	}
 	
 	mouse_pos = p;
@@ -671,16 +766,43 @@ bool Window::MouseMoved(NSPoint p) {
 	return true;
 }
 
-bool Window::MouseUp(NSPoint p, int mouse) {
+bool Window::MouseUp(NSPoint p, NSMouseButton mouse) {
 	if (!mouse_down) {
 		if (mouse == NSMouseButtonLeft)
 			MakeKeyWindow(NULL);
 		return false;
 	}
 	
+	if (key_window) {
+		NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
+												   NSMouseTypeUp, mouse, key_window->id);
+		Application::SendActiveEvent(event);
+		delete event;
+	}
+	
 	if (mouse == NSMouseButtonLeft) {
 		mouse_down = false;
 		down_title = false;
+	}
+	
+	return true;
+}
+
+bool Window::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
+	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
+		WSWindow* window = *it;
+		if (!window->visible)
+			continue;
+		NSRect content_frame = window->GetContentFrame();
+		if (!content_frame.ContainsPoint(p))
+			continue;
+		
+		NSEventMouse* event = NSEventMouse::Create(p - content_frame.origin,
+													NSMouseTypeScrolled, NSMouseButtonNone, window->id);
+		event->SetDeltaX(delta_x);
+		event->SetDeltaY(delta_y);
+		Application::SendEvent(event, window->pid);
+		delete event;
 		
 		return true;
 	}
@@ -688,10 +810,24 @@ bool Window::MouseUp(NSPoint p, int mouse) {
 	return false;
 }
 
-bool Window::KeyDown(unsigned char key) {
+bool Window::KeyDown(unsigned char key, NSModifierFlags flags) {
+	if (key_window) {
+		NSEventKey* event = NSEventKey::Create(key, true, flags, key_window->id);
+		Application::SendActiveEvent(event);
+		delete event;
+		
+		return true;
+	}
 	return false;
 }
 
-bool Window::KeyUp(unsigned char key) {
+bool Window::KeyUp(unsigned char key, NSModifierFlags flags) {
+	if (key_window) {
+		NSEventKey* event = NSEventKey::Create(key, false, flags, key_window->id);
+		Application::SendActiveEvent(event);
+		delete event;
+		
+		return true;
+	}
 	return false;
 }

@@ -19,16 +19,23 @@
 
 class NSMenuItem {
 public:
+	static NSMenuItem* FromData(uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
+	uint8_t* Serialize(uint32_t* length_out);
+
 	static NSMenuItem* SeparatorItem();
 	
 	NSMenuItem();
+	NSMenuItem(const NSMenuItem& item);
 	NSMenuItem(std::string title, std::string key_equivalent="", NSModifierFlags flags=0);
 	NSMenuItem(NSImage* image, bool chromatic=true, std::string key_equivalent="", NSModifierFlags flags=0);
 	~NSMenuItem();
 	
+	NSMenuItem& operator=(const NSMenuItem& item);
+	
 	NSMenu* GetSubmenu();
 	// Takes ownership
 	void SetSubmenu(NSMenu* menu);
+	NSMenu* GetSupermenu();
 	
 	std::string GetTitle() const;
 	void SetTitle(std::string title);
@@ -58,6 +65,9 @@ public:
 	
 	float GetBorderHeight() const;
 	void SetBorderHeight(float height);
+	
+	void SetUserData(void* data);
+	void* GetUserData() const;
 private:
 	friend class NSMenu;
 	
@@ -80,6 +90,7 @@ private:
 	std::function<void(NSMenuItem*)> action;
 	bool enabled = true;
 	NSSize item_size;
+	void* user_data = NULL;
 	
 	uint32_t text_buffer = 0;
 	uint32_t img_buffer = 0;

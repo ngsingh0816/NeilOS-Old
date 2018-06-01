@@ -68,6 +68,12 @@ void graphics_buffer_data(uint32_t bid, const void* data, uint32_t size);
 // Upload 2d data to a buffer
 void graphics_buffer_data(uint32_t bid, const void* data, uint32_t width, uint32_t height, uint32_t size);
 
+// Read data from a buffer
+void graphics_read_data(uint32_t bid, void* data, uint32_t size);
+
+// Read 2d data form a buffer
+void graphics_read_data(uint32_t bid, void* data, uint32_t width, uint32_t height, uint32_t size);
+
 // Upload data to a buffer at an offset
 void graphics_buffer_sub_data(uint32_t bid, const void* data, uint32_t offset, uint32_t size);
 

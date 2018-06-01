@@ -9,7 +9,7 @@
 #include "NSApplication.h"
 
 #include "NSEvent.h"
-#include "NSEventDefs.cpp"
+#include "Events/NSEventDefs.cpp"
 #include "NSHandler.h"
 #include "NSThread.h"
 #include "../GUI/NSWindow.h"
@@ -24,6 +24,14 @@
 
 namespace NSApplication {
 	NSApplicationDelegate* delegate = NULL;
+	
+	std::vector<NSApplicationObserver*> observers;
+	
+	NSMenu* menu = NULL;
+	NSMenu* GetMenuPtr() {
+		return menu;
+	}
+	
 	pthread_t message_thread;
 	uint32_t message_fd;
 	uint32_t send_fd;
@@ -31,11 +39,13 @@ namespace NSApplication {
 	float pixel_scaling_factor = 1.0f;
 	void SetPixelScalingFactor(float factor);
 	
+	void OpenDelegateFile(std::string filename);
+	
 	void* MessageFunc(void*) {
-		uint8_t* data = new uint8_t[4096];
+		uint8_t* data = new uint8_t[32 * 1024];
 		uint32_t priority = 0;
 		uint32_t length = 0;
-		while ((length = mq_receive(message_fd, reinterpret_cast<char*>(data), 4096, &priority)) != 0) {
+		while ((length = mq_receive(message_fd, reinterpret_cast<char*>(data), 32 * 1024, &priority)) != 0) {
 			if (length == (uint32_t)-1)
 				continue;
 			
@@ -74,6 +84,14 @@ namespace NSApplication {
 			}
 		}
 	}
+	
+	NSWindow* GetWindow(uint32_t window_id) {
+		for (unsigned int z = 0; z < windows.size(); z++) {
+			if (windows[z]->GetWindowID() == window_id)
+				return windows[z];
+		}
+		return NULL;
+	}
 };
 
 // Pretty much initializes this library
@@ -92,6 +110,28 @@ void NSApplication::Setup(int argc, const char** argv) {
 	
 	// Setup sending message queue
 	send_fd = mq_open("/1", O_WRONLY);
+	
+	std::string name = "Application";
+	std::string path;
+	if (argc > 0) {
+		path = argv[0];
+		name = path.substr(path.find_last_of("/") + 1);
+	}
+	
+	// Setup menu
+	menu = new NSMenu;
+	NSMenuItem* item = new NSMenuItem(name);
+	NSMenuItem* sitem = new NSMenuItem("Quit");
+	sitem->SetKeyEquivalent("Q", NSModifierControl);
+	sitem->SetAction([](NSMenuItem*) {
+		NSApplication::Exit();
+	});
+	item->SetSubmenu(new NSMenu);
+	item->GetSubmenu()->AddItem(sitem);
+	menu->AddItem(item);
+	
+	// Setup random numbers
+	srand(time(NULL));
 }
 	
 // Default main function for all GUI applications
@@ -114,8 +154,17 @@ int NSApplication::Run(int argc, const char** argv, NSApplicationDelegate* d) {
 	SendEvent(event);
 	delete event;
 	
+	SetMenu(menu);
+	
 	NSRunLoop* loop = NSThread::MainThread()->GetRunLoop();
 	loop->Run();
+	
+	NSEventApplicationQuit* quit = NSEventApplicationQuit::Create(getpid());
+	SendEvent(quit);
+	delete quit;
+	
+	// Delete menu
+	delete menu;
 	
 	// Delete message queue
 	mq_close(message_fd);
@@ -144,6 +193,19 @@ NSApplicationDelegate* NSApplication::GetDelegate() {
 	return delegate;
 }
 
+void NSApplication::AddObserver(NSApplicationObserver* observer) {
+	observers.push_back(observer);
+}
+
+void NSApplication::RemoveObserver(NSApplicationObserver* observer) {
+	for (unsigned int z = 0; z < observers.size(); z++) {
+		if (observers[z] == observer) {
+			observers.erase(observers.begin() + z);
+			break;
+		}
+	}
+}
+
 // Send an event to the server
 bool NSApplication::SendEvent(NSEvent* event) {
 	uint32_t len = 0;
@@ -153,6 +215,34 @@ bool NSApplication::SendEvent(NSEvent* event) {
 	mq_send(send_fd, reinterpret_cast<const char*>(bytes), len, MQ_PRIO_MAX/2);
 	delete[] bytes;
 	return true;
+}
+
+// Menu
+void NSApplication::SetMenu(NSMenu* m) {
+	if (!m)
+		return;
+	
+	if (menu != m && menu)
+		delete menu;
+	
+	menu = m;
+	
+	NSEventApplicationSetMenu* e = NSEventApplicationSetMenu::Create(getpid(), menu);
+	SendEvent(e);
+	delete e;
+}
+
+NSMenu NSApplication::GetMenu() {
+	return *menu;
+}
+
+// Windows
+NSWindow* NSApplication::GetKeyWindow() {
+	for (auto window : windows) {
+		if (window->IsKeyWindow())
+			return window;
+	}
+	return NULL;
 }
 
 // Open application
@@ -173,6 +263,11 @@ bool NSApplication::OpenApplication(std::string path, ...) {
 	return true;
 }
 
+bool NSApplication::OpenFile(std::string path) {
+	// TODO: implement
+	return false;
+}
+
 // Pixel Scaling Factor
 float NSApplication::GetPixelScalingFactor() {
 	return pixel_scaling_factor;
@@ -185,6 +280,24 @@ void NSApplication::SetPixelScalingFactor(float factor) {
 		if (!window->IsVisible())
 			continue;
 		NSView* view = window->GetContentView();
-		view->DrawRect(view->GetFrame());
+		view->SetNeedsDisplay();
 	}
+}
+
+void NSApplication::SetFocus(bool focus) {
+	for (auto& i : observers) {
+		if (focus)
+			i->GainFocus();
+		else
+			i->LoseFocus();
+	}
+}
+
+void NSApplication::OpenDelegateFile(std::string filename) {
+	if (delegate) {
+		if (delegate->OpenFile(filename))
+			return;
+	}
+	
+	// TODO: indiciate failure with an alert?
 }

@@ -87,6 +87,144 @@ void NSMenu::SetupVAO() {
 	triangle_vao[1].usage = GRAPHICS_USAGE_COLOR;
 }
 
+NSMenu::NSMenu(const NSMenu& menu) {
+	SetupVAO();
+	
+	*this = menu;
+}
+
+NSMenu& NSMenu::operator=(const NSMenu& menu) {
+	if (&menu == this)
+		return *this;
+	
+	items.resize(menu.items.size());
+	for (unsigned int z = 0; z < menu.items.size(); z++) {
+		items[z] = new NSMenuItem(*menu.items[z]);
+		items[z]->highlighted = false;
+		items[z]->menu = this;
+	}
+	submenu = NULL;
+	is_context_menu = menu.is_context_menu;
+	menu_size = menu.menu_size;
+	cached_size = menu.cached_size;
+	frame = menu.frame;
+	orientation = menu.orientation;
+	mouse_down = menu.mouse_down;
+	mouse_captured = menu.mouse_captured;
+	update = menu.update;
+	context = menu.context;
+	
+	NSColor<float> colors[] = { menu.background_color, menu.highlight_color, menu.border_color,
+		menu.text_color, menu.text_highlight_color };
+	SetColors(colors);
+	
+	return *this;
+}
+
+NSMenu* NSMenu::FromData(uint8_t* data, uint32_t length, uint32_t* length_used) {
+#define copy(x, len) { if (pos >= length) { return NULL; }; memcpy(x, &data[pos], (len)); pos += (len); }
+	if (length < sizeof(uint32_t) * 6 + sizeof(bool) + sizeof(float) * 4 + sizeof(NSMenuOrientation))
+		return NULL;
+	
+	uint32_t pos = 0;
+	
+	bool cm;
+	NSRect frame;
+	NSMenuOrientation orientation;
+	NSColor<float> colors[5];
+	NSMenu* menu = NULL;
+	
+	uint32_t num_items;
+	copy(&num_items, sizeof(uint32_t));
+	std::vector<NSMenuItem*> items;
+	items.reserve(num_items);
+	for (unsigned int z = 0; z < num_items; z++) {
+		uint32_t len;
+		NSMenuItem* item = NSMenuItem::FromData(&data[pos], length - pos, &len);
+		if (!item)
+			goto error;
+		items.emplace_back(item);
+		pos += len;
+		if (pos >= length)
+			goto error;
+	}
+	
+	copy(&cm, sizeof(bool));
+	if (pos + sizeof(float) * 4 >= length)
+		goto error;
+	frame = NSRect::FromData(&data[pos], sizeof(float) * 4);
+	pos += sizeof(float) * 4;
+	copy(&orientation, sizeof(NSMenuOrientation));
+	
+	for (int z = 0; z < 5; z++) {
+		uint32_t value;
+		copy(&value, sizeof(uint32_t));
+		colors[z] = NSColor<float>(value);
+	}
+	
+	if (length_used)
+		*length_used = pos;
+	
+	menu = new NSMenu(items, cm);
+	menu->frame = frame;
+	menu->orientation = orientation;
+	menu->SetColors(colors);
+	return menu;
+#undef copy
+	
+error:
+	for (unsigned int z = 0; z < items.size(); z++)
+		delete items[z];
+	return NULL;
+}
+
+uint8_t* NSMenu::Serialize(uint32_t* length_out) {
+#define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
+	uint32_t total_length = 0;
+	
+	// Items
+	uint32_t num_items = items.size();
+	uint8_t* item_ptr[num_items];
+	uint32_t item_len[num_items];
+	uint32_t item_total_size = 0;
+	for (unsigned int z = 0; z < num_items; z++) {
+		item_ptr[z] = items[z]->Serialize(&item_len[z]);
+		item_total_size += item_len[z];
+	}
+	
+	total_length += sizeof(uint32_t);	// items size
+	total_length += item_total_size;
+	total_length += sizeof(bool);		// is_context_menu
+	total_length += sizeof(float) * 4;	// frame
+	total_length += sizeof(NSMenuOrientation);
+	total_length += sizeof(uint32_t) * 5; // colors
+	
+	uint8_t* buffer = new uint8_t[total_length];
+	uint32_t pos = 0;
+	
+	copy(&num_items, sizeof(uint32_t));
+	for (unsigned int z = 0; z < num_items; z++) {
+		copy(item_ptr[z], item_len[z]);
+		delete[] item_ptr[z];
+	}
+	copy(&is_context_menu, sizeof(bool));
+	uint8_t* frame_buf = frame.Serialize(NULL);
+	copy(frame_buf, sizeof(float) * 4);
+	delete[] frame_buf;
+	copy(&orientation, sizeof(NSMenuOrientation));
+	
+	NSColor<float> colors[] = { background_color, highlight_color, border_color, text_color, text_highlight_color };
+	for (unsigned int z = 0; z < 5; z++) {
+		uint32_t value = colors[z].RGBAValue();
+		copy(&value, sizeof(uint32_t));
+	}
+	
+	if (length_out)
+		*length_out = total_length;
+	return buffer;
+#undef copy
+}
+
 NSMenu::NSMenu(bool is_context) {
 	SetupVAO();
 	
@@ -204,8 +342,10 @@ std::vector<NSMenuItem*> NSMenu::GetItems() {
 
 void NSMenu::SetItems(const std::vector<NSMenuItem*>& i) {
 	items = i;
-	for (auto c : items)
+	for (auto& c : items) {
 		c->menu = this;
+		c->UpdateSize();
+	}
 	
 	UpdateAll();
 }
@@ -251,6 +391,14 @@ void NSMenu::RemoveAllItems() {
 	UpdateAll();
 }
 
+uint32_t NSMenu::IndexOfItem(NSMenuItem* item) {
+	for (unsigned int z = 0; z < items.size(); z++) {
+		if (item == items[z])
+			return z;
+	}
+	return -1;
+}
+
 NSRect NSMenu::AdjustRect(NSRect rect) {
 	NSSize max_size = GetSize();
 	if (is_context_menu) {
@@ -279,8 +427,10 @@ void NSMenu::ClearSubmenu() {
 
 // down is true for mouse down, false for mouse move
 bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
+	if (down && event->GetButton() != NSMouseButtonLeft)
+		return false;
+	
 	std::vector<unsigned int> updates;
-
 	// Position relative to start of menu
 	NSPoint p = event->GetPosition();
 	if (submenu) {
@@ -405,6 +555,9 @@ void NSMenu::Clear() {
 }
 
 bool NSMenu::MouseUp(NSEventMouse* event) {
+	if (event->GetButton() != NSMouseButtonLeft)
+		return false;
+	
 	NSPoint p = event->GetPosition();
 	if (submenu) {
 		event->SetPosition(event->GetPosition() + frame.origin - submenu->frame.origin);

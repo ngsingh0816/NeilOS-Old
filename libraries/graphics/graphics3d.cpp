@@ -298,6 +298,24 @@ void graphics_buffer_data(uint32_t bid, const void* data, uint32_t size) {
 	graphics_buffer_sub_data(bid, data, 0, size);
 }
 
+// Read data from a buffer
+void graphics_read_data(uint32_t bid, void* data, uint32_t size) {
+	graphics_read_data(bid, data, size, 1, size);
+}
+
+// Read 2d data form a buffer
+void graphics_read_data(uint32_t bid, void* data, uint32_t width, uint32_t height, uint32_t size) {
+	SVGA3dSurfaceImageId img;
+	memset(&img, 0, sizeof(SVGA3dSurfaceImageId));
+	img.sid = bid;
+	SVGA3dCopyBox box;
+	memset(&box, 0, sizeof(SVGA3dCopyBox));
+	box.w = width;
+	box.h = height;
+	box.d = 1;
+	sys_graphics_surface_dma(data, size, &img, SVGA3D_READ_HOST_VRAM, &box, 1);
+}
+
 // Upload data to a buffer at an offset
 void graphics_buffer_sub_data(uint32_t bid, const void* data, uint32_t offset, uint32_t size) {
 	SVGA3dSurfaceImageId img;

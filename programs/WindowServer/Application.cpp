@@ -9,7 +9,8 @@
 #include "Application.h"
 
 #include "Desktop.h"
-#include "NSEventDefs.cpp"
+#include "Events/NSEventDefs.cpp"
+#include "Window.h"
 
 #include <fcntl.h>
 #include <mqueue.h>
@@ -19,6 +20,10 @@ using std::string;
 using std::vector;
 
 namespace Application {
+	// Events
+	void QuitEvent(uint8_t* data, uint32_t length);
+	void SetMenu(uint8_t* data, uint32_t length);
+	
 	void SetActiveApplication(uint32_t pid);
 	bool SendActiveEvent(NSEvent* event);
 	bool SendEvent(NSEvent* event, uint32_t pid);
@@ -30,9 +35,82 @@ namespace Application {
 	uint32_t active_fd = -1;
 }
 
+void Application::ProcessEvent(uint8_t* data, uint32_t length) {
+	if (length < sizeof(uint32_t) * 2)
+		return;
+	
+	uint32_t* buffer = reinterpret_cast<uint32_t*>(data);
+	if (buffer[0] != EVENT_APPLICATION_ID)
+		return;
+	
+	uint32_t subcode = buffer[1];
+	
+	switch (subcode) {
+		case APPLICATION_EVENT_QUIT:
+			QuitEvent(data, length);
+			break;
+		case APPLICATION_EVENT_SET_MENU:
+			SetMenu(data, length);
+			break;
+	}
+}
+
+// Events
+void Application::QuitEvent(uint8_t* data, uint32_t length) {
+	NSEventApplicationQuit* e = NSEventApplicationQuit::FromData(data, length);
+	if (!e)
+		return;
+	
+	UnregisterApplication(e->GetPid());
+	delete e;
+}
+
+void SetMenuActions(uint32_t pid, NSMenu* menu, std::vector<unsigned int> indices) {
+	if (!menu)
+		return;
+	
+	auto items = menu->GetItems();
+	for (unsigned int z = 0; z < items.size(); z++) {
+		std::vector<unsigned int> i = indices;
+		i.push_back(z);
+		items[z]->SetAction([pid, i](NSMenuItem*) {
+			NSEventApplicationMenuEvent* e = NSEventApplicationMenuEvent::Create(i);
+			Application::SendEvent(e, pid);
+			delete e;
+		});
+		SetMenuActions(pid, items[z]->GetSubmenu(), i);
+	}
+}
+
+void Application::SetMenu(uint8_t* data, uint32_t length) {
+	NSEventApplicationSetMenu* e = NSEventApplicationSetMenu::FromData(data, length);
+	if (!e)
+		return;
+	
+	App* app = GetApplication(e->GetPid());
+	if (!app)
+		return;
+	
+	if (app->menu)
+		delete app->menu;
+	app->menu = new NSMenu(e->GetMenu());
+	SetMenuActions(e->GetPid(), app->menu, std::vector<unsigned int>());
+	
+	delete e;
+	
+	if (active_app == app)
+		Desktop::UpdateMenu();
+}
+
 void Application::SetActiveApplication(uint32_t pid) {
 	if (active_app && active_app->pid == pid)
 		return;
+	
+	if (active_app) {
+		NSEventApplicationFocus* e = NSEventApplicationFocus::Create(active_app->pid, false);
+		SendActiveEvent(e);
+		delete e;
+	}
 	
 	bool found = false;
 	for (auto app : applications) {
@@ -48,9 +126,24 @@ void Application::SetActiveApplication(uint32_t pid) {
 	}
 	
 	if (active_fd != (uint32_t)-1)
-		close(active_fd);
+		mq_close(active_fd);
 	string p = string("/").append(std::to_string(pid));
 	active_fd = mq_open(p.c_str(), O_WRONLY);
+	
+	// Find last window to make active
+	uint32_t last_wid = Window::FindLastVisibleWindow(pid);
+	if (last_wid != (uint32_t)-1)
+		Window::MakeKeyWindow(pid, last_wid);
+	
+	NSEventApplicationFocus* e = NSEventApplicationFocus::Create(active_app->pid, true);
+	SendActiveEvent(e);
+	delete e;
+	
+	Desktop::UpdateMenu();
+}
+
+Application::App* Application::GetActiveApplication() {
+	return active_app;
 }
 
 bool Application::SendActiveEvent(NSEvent* event) {
@@ -68,6 +161,7 @@ void Application::RegisterApplication(uint32_t pid, string name, string path) {
 	app->pid = pid;
 	app->name = name;
 	app->path = path;
+	app->menu = NULL;
 	applications.push_back(app);
 	
 	Desktop::RegisterApplication(app);
@@ -75,7 +169,8 @@ void Application::RegisterApplication(uint32_t pid, string name, string path) {
 	SetActiveApplication(pid);
 	
 	// Send all settings info to the application
-	NSEventPixelScalingFactor* psf_event = NSEventPixelScalingFactor::Create(Desktop::GetPixelScalingFactor());
+	NSEventSettingsPixelScalingFactor* psf_event =
+		NSEventSettingsPixelScalingFactor::Create(Desktop::GetPixelScalingFactor());
 	SendActiveEvent(psf_event);
 	delete psf_event;
 	
@@ -85,8 +180,11 @@ void Application::RegisterApplication(uint32_t pid, string name, string path) {
 }
 
 void Application::UnregisterApplication(uint32_t pid) {
-	if (active_app && active_app->pid == pid)
-		SetActiveApplication(0);
+	if (active_app && active_app->pid == pid) {
+		SetActiveApplication(Window::FindLastVisiblePid(pid));
+	}
+	
+	Window::DestroyWindows(pid);
 	for (unsigned int z = 0; z < applications.size(); z++) {
 		if (applications[z]->pid == pid) {
 			Desktop::UnregisterApplication(applications[z]);
@@ -98,6 +196,8 @@ void Application::UnregisterApplication(uint32_t pid) {
 }
 
 bool Application::SendEvent(NSEvent* event, uint32_t pid) {
+	if (active_app && active_app->pid == pid)
+		return SendActiveEvent(event);
 	int fd = mq_open(std::string("/").append(std::to_string(pid)).c_str(), O_WRONLY);
 	if (!fd)
 		return false;
@@ -115,7 +215,7 @@ bool Application::SendEvent(NSEvent* event, uint32_t pid) {
 }
 
 void Application::SendPixelScalingFactorEvent(float psf) {
-	NSEventPixelScalingFactor* event = NSEventPixelScalingFactor::Create(psf);
+	NSEventSettingsPixelScalingFactor* event = NSEventSettingsPixelScalingFactor::Create(psf);
 	
 	for (auto a : applications)
 		SendEvent(event, a->pid);

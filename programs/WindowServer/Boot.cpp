@@ -9,7 +9,7 @@
 #include "Boot.h"
 
 #include "Desktop.h"
-#include "NSEventDefs.cpp"
+#include "Events/NSEventDefs.cpp"
 #include "Window.h"
 
 #include <graphics/graphics.h>
