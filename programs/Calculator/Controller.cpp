@@ -17,9 +17,12 @@ void Controller::DidFinishLaunching() {
 	int y = rand() % 800 + 50;
 	NSWindow* window = NSWindow::Create("Calculator", NSRect(x, y, 400, 300));
 	
-	NSLabel* label = NSLabel::Create("Hello World!", NSRect(15, 15, 76.5, 11));
-	//label->SizeToFit();
+	NSLabel* label = NSLabel::Create("Hello World!", NSRect(15, 15, 200, 15));
+	label->SizeToFit();
 	window->GetContentView()->AddSubview(label);
+	
+	NSImageView* img_view = NSImageView::Create(new NSImage("/system/images/background.jpg"), NSRect(15, 30, 200, 200));
+	window->GetContentView()->AddSubview(img_view);
 	
 	window->Show();
 }
