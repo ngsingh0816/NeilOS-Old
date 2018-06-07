@@ -517,7 +517,7 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
 	if ((!readfds && !writefds && !exceptfds && !timeout) || nfds == 0)
 		return -EINVAL;
 	
-	if (nfds > NUMBER_OF_DESCRIPTORS)
+	if (nfds > NUMBER_OF_DESCRIPTORS || nfds < 0)
 		nfds = NUMBER_OF_DESCRIPTORS;
 	
 	// Copy over fd sets and clear them

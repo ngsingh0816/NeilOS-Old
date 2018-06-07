@@ -445,8 +445,12 @@ void Window::MakeKeyEvent(uint8_t* data, uint32_t length) {
 		return;
 	
 	WSWindow* window = GetWindow(event->GetPid(), event->GetWindowID());
-	if (window)
-		MakeKeyWindow(window);
+	if (window) {
+		if (event->GetIsKey())
+			MakeKeyWindow(window);
+		else if (key_window == window)
+			MakeKeyWindow(NULL);
+	}
 	
 	delete event;
 }
@@ -639,6 +643,9 @@ void Window::MakeKeyWindow(WSWindow* key) {
 	if (key_window) {
 		key_window->title_vao[1].bid = title_colors_vbo;
 		Desktop::UpdateRect(key_window->GetTitleFrame());
+		
+		auto e = NSEventWindowMakeKey(key_window->pid, key_window->id, false);
+		Application::SendEvent(&e, key_window->pid);
 	}
 	key_window = key;
 	if (key) {
@@ -649,6 +656,9 @@ void Window::MakeKeyWindow(WSWindow* key) {
 		window_list.push_back(key);
 		
 		Application::SetActiveApplication(key->pid);
+		
+		auto e = NSEventWindowMakeKey(key_window->pid, key_window->id, true);
+		Application::SendEvent(&e, key_window->pid);
 		
 		Desktop::UpdateRect(key_window->frame);
 	}
@@ -711,7 +721,7 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 		if (key_window == window && !down_title) {
 			NSEventMouse* event = NSEventMouse::Create(mouse_pos - content_frame.origin,
 													   NSMouseTypeDown, mouse, window->id);
-			Application::SendActiveEvent(event);
+			Application::SendEvent(event, window->pid);
 			delete event;
 		}
 		
@@ -724,41 +734,18 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 }
 
 bool Window::MouseMoved(NSPoint p) {
-	if (!Desktop::IsMouseDown()) {
-		for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
-			WSWindow* window = *it;
-			if (!window->visible)
-				continue;
-			NSRect content_frame = window->GetContentFrame();
-			if (!content_frame.ContainsPoint(p))
-				continue;
-			
-			if (key_window == window) {
-				NSEventMouse* event = NSEventMouse::Create(p - content_frame.origin,
-														   NSMouseTypeMoved, NSMouseButtonNone, window->id);
-				Application::SendActiveEvent(event);
-				delete event;
-			}
-			
-			return true;
-		}
-	}
 	if (!mouse_down)
 		return false;
 	
-	if (mouse_down_type == NSMouseButtonLeft) {
-		if (down_title) {
-			NSRect old_rect = key_window->frame;
-			key_window->frame.origin += (p - mouse_pos);
-			
-			std::vector<NSRect> rects = { old_rect, key_window->frame };
-			Desktop::UpdateRects(rects);
-		} else if (key_window) {
-			NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
-													   NSMouseTypeDragged, NSMouseButtonLeft, key_window->id);
-			Application::SendActiveEvent(event);
-			delete event;
-		}
+	if (mouse_down_type == NSMouseButtonLeft && down_title) {
+		NSRect old_rect = key_window->frame;
+		key_window->frame.origin += (p - mouse_pos);
+	
+		auto e = NSEventWindowSetFrame(key_window->pid, key_window->id, key_window->frame);
+		Application::SendEvent(&e, key_window->pid);
+		
+		std::vector<NSRect> rects = { old_rect, key_window->frame };
+		Desktop::UpdateRects(rects);
 	}
 	
 	mouse_pos = p;
@@ -776,7 +763,7 @@ bool Window::MouseUp(NSPoint p, NSMouseButton mouse) {
 	if (key_window) {
 		NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
 												   NSMouseTypeUp, mouse, key_window->id);
-		Application::SendActiveEvent(event);
+		Application::SendEvent(event, key_window->pid);
 		delete event;
 	}
 	
@@ -813,7 +800,7 @@ bool Window::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
 bool Window::KeyDown(unsigned char key, NSModifierFlags flags) {
 	if (key_window) {
 		NSEventKey* event = NSEventKey::Create(key, true, flags, key_window->id);
-		Application::SendActiveEvent(event);
+		Application::SendEvent(event, key_window->pid);
 		delete event;
 		
 		return true;
@@ -824,7 +811,7 @@ bool Window::KeyDown(unsigned char key, NSModifierFlags flags) {
 bool Window::KeyUp(unsigned char key, NSModifierFlags flags) {
 	if (key_window) {
 		NSEventKey* event = NSEventKey::Create(key, false, flags, key_window->id);
-		Application::SendActiveEvent(event);
+		Application::SendEvent(event, key_window->pid);
 		delete event;
 		
 		return true;

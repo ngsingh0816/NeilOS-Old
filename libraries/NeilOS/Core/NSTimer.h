@@ -19,7 +19,7 @@ class NSTimer {
 public:
 	// Constructors
 	static NSTimer* Create();
-	static NSTimer* Create(std::function<void(NSTimer*)> function, NSTimeInterval interval,
+	static NSTimer* Create(const std::function<void(NSTimer*)>& function, NSTimeInterval interval,
 						   bool repeats=false, bool schedule=true);
 	
 	~NSTimer();
@@ -28,7 +28,7 @@ public:
 	NSTimeInterval GetInterval() const;
 	void SetRepeats(bool repeats);
 	bool GetRepeats() const;
-	void SetFunction(std::function<void(NSTimer*)> function);
+	void SetFunction(const std::function<void(NSTimer*)>& function);
 	std::function<void(NSTimer*)> GetFunction() const;
 	
 	// Cancels a repeating timer
@@ -39,7 +39,7 @@ private:
 	
 	NSTimer();
 	// If schedule==true, there is no need to call NSRunLoop::AddTimer
-	NSTimer(std::function<void(NSTimer*)> function, NSTimeInterval interval, bool repeats, bool schedule);
+	NSTimer(const std::function<void(NSTimer*)>& function, NSTimeInterval interval, bool repeats, bool schedule);
 	
 	std::function<void(NSTimer*)> function;
 	std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> next_iteration;

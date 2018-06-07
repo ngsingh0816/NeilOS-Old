@@ -78,24 +78,52 @@ build/./kernel/drivers/ipc/mq.o: kernel/drivers/ipc/mq.c \
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/ipc/mq.o ./kernel/drivers/ipc/mq.c
 build/./kernel/drivers/graphics/graphics.o: \
  kernel/drivers/graphics/graphics.c kernel/drivers/graphics/graphics.h \
- kernel/drivers/graphics/svga/svga3d_reg.h \
- kernel/drivers/graphics/svga/svga_reg.h \
+ kernel/drivers/graphics/svga/include/svga3d_reg.h \
+ kernel/drivers/graphics/svga/include/includeCheck.h \
+ kernel/drivers/graphics/svga/include/svga_reg.h \
+ kernel/drivers/graphics/svga/include/svga_types.h \
+ kernel/drivers/graphics/svga/include/vmware_pack_begin.h \
+ kernel/drivers/graphics/svga/include/vmware_pack_end.h \
+ kernel/drivers/graphics/svga/include/svga3d_types.h \
+ kernel/drivers/graphics/svga/include/svga3d_limits.h \
+ kernel/drivers/graphics/svga/include/svga3d_cmd.h \
+ kernel/drivers/graphics/svga/include/svga3d_dx.h \
+ kernel/drivers/graphics/svga/include/svga3d_devcaps.h \
  kernel/drivers/graphics/svga/svga.h \
  kernel/drivers/graphics/svga/svga_3d.h \
- kernel/drivers/graphics/svga/svga3d_reg.h
+ kernel/drivers/graphics/svga/include/svga3d_reg.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/graphics/graphics.o ./kernel/drivers/graphics/graphics.c
 build/./kernel/drivers/graphics/svga/svga_3d.o: \
  kernel/drivers/graphics/svga/svga_3d.c \
  kernel/drivers/graphics/svga/svga_3d.h \
- kernel/drivers/graphics/svga/svga3d_reg.h \
- kernel/drivers/graphics/svga/svga_reg.h \
+ kernel/drivers/graphics/svga/include/svga3d_reg.h \
+ kernel/drivers/graphics/svga/include/includeCheck.h \
+ kernel/drivers/graphics/svga/include/svga_reg.h \
+ kernel/drivers/graphics/svga/include/svga_types.h \
+ kernel/drivers/graphics/svga/include/vmware_pack_begin.h \
+ kernel/drivers/graphics/svga/include/vmware_pack_end.h \
+ kernel/drivers/graphics/svga/include/svga3d_types.h \
+ kernel/drivers/graphics/svga/include/svga3d_limits.h \
+ kernel/drivers/graphics/svga/include/svga3d_cmd.h \
+ kernel/drivers/graphics/svga/include/svga3d_dx.h \
+ kernel/drivers/graphics/svga/include/svga3d_devcaps.h \
  kernel/drivers/graphics/svga/svga.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/graphics/svga/svga_3d.o ./kernel/drivers/graphics/svga/svga_3d.c
 build/./kernel/drivers/graphics/svga/svga.o: \
  kernel/drivers/graphics/svga/svga.c kernel/drivers/graphics/svga/svga.h \
- kernel/drivers/graphics/svga/svga_reg.h \
+ kernel/drivers/graphics/svga/include/svga_reg.h \
+ kernel/drivers/graphics/svga/include/includeCheck.h \
+ kernel/drivers/graphics/svga/include/svga_types.h \
+ kernel/drivers/graphics/svga/include/vmware_pack_begin.h \
+ kernel/drivers/graphics/svga/include/vmware_pack_end.h \
  kernel/drivers/graphics/svga/svga_3d.h \
- kernel/drivers/graphics/svga/svga3d_reg.h
+ kernel/drivers/graphics/svga/include/svga3d_reg.h \
+ kernel/drivers/graphics/svga/include/svga_reg.h \
+ kernel/drivers/graphics/svga/include/svga3d_types.h \
+ kernel/drivers/graphics/svga/include/svga3d_limits.h \
+ kernel/drivers/graphics/svga/include/svga3d_cmd.h \
+ kernel/drivers/graphics/svga/include/svga3d_dx.h \
+ kernel/drivers/graphics/svga/include/svga3d_devcaps.h
 	/Users/Neil/Documents/Projects/NeilOS/cross/bin/i686-neilos-gcc -Wall -fno-builtin -fno-stack-protector -nostdlib -nostdinc -g -Ikernel -isystem kernel -c -o build/./kernel/drivers/graphics/svga/svga.o ./kernel/drivers/graphics/svga/svga.c
 build/./kernel/drivers/ATA/ata.o: kernel/drivers/ATA/ata.c \
  kernel/drivers/ATA/ata.h kernel/drivers/ATA/pio.h \

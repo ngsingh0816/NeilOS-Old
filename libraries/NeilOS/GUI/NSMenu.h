@@ -68,7 +68,7 @@ public:
 	
 	void Draw(const std::vector<NSRect>& rects);
 	
-	void SetUpdateFunction(std::function<void(std::vector<NSRect>)> func);
+	void SetUpdateFunction(const std::function<void(std::vector<NSRect>)>& func);
 	
 	NSColor<float> GetBackgroundColor() const;
 	void SetBackgroundColor(NSColor<float> color);

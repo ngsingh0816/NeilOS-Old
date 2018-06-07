@@ -58,7 +58,7 @@ public:
 	void SetKeyEquivalent(std::string key, NSModifierFlags flags=0);
 	
 	std::function<void(NSMenuItem*)> GetAction() const;
-	void SetAction(std::function<void(NSMenuItem*)> action);
+	void SetAction(const std::function<void(NSMenuItem*)>& action);
 	
 	bool GetIsEnabled() const;
 	void SetIsEnabled(bool enabled);

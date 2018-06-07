@@ -20,6 +20,9 @@ typedef unsigned int NSModifierFlags;
 #define NSModifierCommand	(1 << 3)
 #define NSModifierFunction	(1 << 4)
 
+class NSEventMouse;
+class NSEventKey;
+
 class NSResponder {
 public:
 	virtual ~NSResponder() {}
@@ -29,14 +32,14 @@ public:
 	virtual bool IsFirstResponder() const { return false; };
 	virtual void ResignFirstResponder() {};
 	
-	virtual void MouseDown(NSEvent* event) {}
-	virtual void MouseDragged(NSEvent* event) {}
-	virtual void MouseUp(NSEvent* event) {}
-	virtual void MouseMoved(NSEvent* event) {}
-	virtual void MouseScrolled(NSEvent* event) {}
+	virtual void MouseDown(NSEventMouse* event) {}
+	virtual void MouseDragged(NSEventMouse* event) {}
+	virtual void MouseUp(NSEventMouse* event) {}
+	virtual void MouseMoved(NSEventMouse* event) {}
+	virtual void MouseScrolled(NSEventMouse* event) {}
 	
-	virtual void KeyDown(NSEvent* event) {}
-	virtual void KeyUp(NSEvent* event) {}
+	virtual void KeyDown(NSEventKey* event) {}
+	virtual void KeyUp(NSEventKey* event) {}
 private:
 };
 

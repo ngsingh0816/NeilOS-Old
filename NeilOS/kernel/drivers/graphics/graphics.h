@@ -10,7 +10,7 @@
 #define GRAPHICS_H
 
 #include <common/types.h>
-#include "svga/svga3d_reg.h"
+#include "svga/include/svga3d_reg.h"
 
 typedef struct {
 	uint32_t resolution_x;

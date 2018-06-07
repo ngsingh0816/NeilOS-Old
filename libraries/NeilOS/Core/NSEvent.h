@@ -36,12 +36,12 @@ struct NSEventCompare {
 
 class NSEventFunction : public NSEvent {
 public:
-	static NSEventFunction* Create(std::function<void()> function, uint32_t priority=0);
+	static NSEventFunction* Create(const std::function<void()>& function, uint32_t priority=0);
 	
 	void Process() override;
 	uint8_t* Serialize(uint32_t* length_out) const override;
 private:
-	NSEventFunction(std::function<void()> function, uint32_t priority);
+	NSEventFunction(const std::function<void()>& function, uint32_t priority);
 	std::function<void()> function;
 };
 

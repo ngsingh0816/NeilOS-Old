@@ -13,6 +13,9 @@
 		281246B420BF912600546A96 /* NSEventResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B320BF912600546A96 /* NSEventResource.cpp */; };
 		281246B820BFAB0400546A96 /* NSControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B620BFAB0400546A96 /* NSControl.cpp */; };
 		281246BB20BFB55E00546A96 /* NSLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246B920BFB55E00546A96 /* NSLabel.cpp */; };
+		281246BE20C2161E00546A96 /* NSImageView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246BC20C2161E00546A96 /* NSImageView.cpp */; };
+		281246C120C5142400546A96 /* NSButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246BF20C5142400546A96 /* NSButton.cpp */; };
+		281246D520C8735900546A96 /* NSAnimation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246D320C8735900546A96 /* NSAnimation.cpp */; };
 		281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB1A201FB63D00C7D407 /* NSLog.cpp */; };
 		281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB1D201FEF3200C7D407 /* NSImage.cpp */; };
 		281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB21201FF09D00C7D407 /* NSTypes.cpp */; };
@@ -72,6 +75,12 @@
 		281246B720BFAB0400546A96 /* NSControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSControl.h; sourceTree = "<group>"; };
 		281246B920BFB55E00546A96 /* NSLabel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLabel.cpp; sourceTree = "<group>"; };
 		281246BA20BFB55E00546A96 /* NSLabel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLabel.h; sourceTree = "<group>"; };
+		281246BC20C2161E00546A96 /* NSImageView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSImageView.cpp; sourceTree = "<group>"; };
+		281246BD20C2161E00546A96 /* NSImageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSImageView.h; sourceTree = "<group>"; };
+		281246BF20C5142400546A96 /* NSButton.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSButton.cpp; sourceTree = "<group>"; };
+		281246C020C5142400546A96 /* NSButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSButton.h; sourceTree = "<group>"; };
+		281246D320C8735900546A96 /* NSAnimation.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSAnimation.cpp; sourceTree = "<group>"; };
+		281246D420C8735900546A96 /* NSAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSAnimation.h; sourceTree = "<group>"; };
 		281CEB1A201FB63D00C7D407 /* NSLog.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLog.cpp; sourceTree = "<group>"; };
 		281CEB1B201FB63D00C7D407 /* NSLog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLog.h; sourceTree = "<group>"; };
 		281CEB1D201FEF3200C7D407 /* NSImage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSImage.cpp; sourceTree = "<group>"; };
@@ -186,8 +195,14 @@
 		2801261B2007209A00647962 /* GUI */ = {
 			isa = PBXGroup;
 			children = (
+				281246D320C8735900546A96 /* NSAnimation.cpp */,
+				281246D420C8735900546A96 /* NSAnimation.h */,
+				281246BF20C5142400546A96 /* NSButton.cpp */,
+				281246C020C5142400546A96 /* NSButton.h */,
 				281246B620BFAB0400546A96 /* NSControl.cpp */,
 				281246B720BFAB0400546A96 /* NSControl.h */,
+				281246BC20C2161E00546A96 /* NSImageView.cpp */,
+				281246BD20C2161E00546A96 /* NSImageView.h */,
 				281246B920BFB55E00546A96 /* NSLabel.cpp */,
 				281246BA20BFB55E00546A96 /* NSLabel.h */,
 				28F178CE20B37F5000DBF40F /* NSMenu.cpp */,
@@ -364,6 +379,7 @@
 				28A3B9FB2032CD930091A44E /* NSHandler.cpp in Sources */,
 				28A3B9F82032CD6D0091A44E /* NSThread.cpp in Sources */,
 				281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */,
+				281246C120C5142400546A96 /* NSButton.cpp in Sources */,
 				28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */,
 				281246B420BF912600546A96 /* NSEventResource.cpp in Sources */,
 				287D0A7720BE299300A7E675 /* NSEventWindowDraw.cpp in Sources */,
@@ -374,6 +390,7 @@
 				287D0A7620BE299000A7E675 /* NSEventWindowSetTitle.cpp in Sources */,
 				28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */,
 				287D0A7820BE299500A7E675 /* NSEventWindowShow.cpp in Sources */,
+				281246D520C8735900546A96 /* NSAnimation.cpp in Sources */,
 				281246B220BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp in Sources */,
 				281246BB20BFB55E00546A96 /* NSLabel.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
@@ -383,6 +400,7 @@
 				28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */,
 				28A3BA25203AA65F0091A44E /* NSView.cpp in Sources */,
 				280126272007260B00647962 /* main.cpp in Sources */,
+				281246BE20C2161E00546A96 /* NSImageView.cpp in Sources */,
 				281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */,
 				287D0A7920BE299700A7E675 /* NSEventWindowSetFrame.cpp in Sources */,
 				28F178D020B37F5000DBF40F /* NSMenu.cpp in Sources */,

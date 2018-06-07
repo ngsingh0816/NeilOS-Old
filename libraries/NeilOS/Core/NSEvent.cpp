@@ -68,11 +68,11 @@ NSEvent* NSEvent::FromData(uint8_t* data, uint32_t length) {
 	return NULL;
 }
 
-NSEventFunction* NSEventFunction::Create(std::function<void()> func, uint32_t priority) {
+NSEventFunction* NSEventFunction::Create(const std::function<void()>& func, uint32_t priority) {
 	return new NSEventFunction(func, priority);
 }
 
-NSEventFunction::NSEventFunction(std::function<void()> func, uint32_t priority) {
+NSEventFunction::NSEventFunction(const std::function<void()>& func, uint32_t priority) {
 	function = func;
 	SetPriority(priority);
 }

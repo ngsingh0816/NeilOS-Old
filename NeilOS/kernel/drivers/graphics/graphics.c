@@ -123,7 +123,7 @@ bool graphics_fence_passed(uint32_t fence) {
 void graphics3d_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* host_image, SVGA3dTransferType transfer, SVGA3dCopyBox* boxes, uint32_t num_boxes) {
 	// TODO: actually alloc GMR memory
 	// TODO: make asynchronous version of this
-	SVGA3dGuestImage img;
+	SVGAGuestImage img;
 	img.ptr.gmrId = SVGA_GMR_FRAMEBUFFER;
 	img.ptr.offset = 0;
 	img.pitch = 0;

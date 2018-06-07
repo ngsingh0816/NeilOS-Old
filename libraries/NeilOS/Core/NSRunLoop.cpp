@@ -33,12 +33,8 @@ NSRunLoop::~NSRunLoop() {
 }
 
 // Takes ownership of the event (deallocs when processed)
-void NSRunLoop::AddEvent(NSEvent* event) {
-	AddEvent(event, std::function<void()>());
-}
-
 // Callback occurs in the run loop's thread
-void NSRunLoop::AddEvent(NSEvent* event, std::function<void()> callback) {
+void NSRunLoop::AddEvent(NSEvent* event, const std::function<void()>& callback) {
 	lock.Lock();
 	events.push(std::make_pair(event, callback));
 	cond.Signal();
@@ -51,17 +47,22 @@ uint32_t NSRunLoop::GetNumberOfEventsPending() const {
 
 // Takes ownership of the timer (deallocs when done)
 void NSRunLoop::AddTimer(NSTimer* timer) {
-	lock.Lock();
+	if (timer->invalidated) {
+		delete timer;
+		return;
+	}
+	
 	NSTimeInterval interval = timer->interval;
 	timer->next_iteration = time_point_cast<tp::duration>(system_clock::time_point(system_clock::now()))
 							+ seconds((uint32_t)interval) + milliseconds(uint32_t((interval - uint32_t(interval)) * 1000));
+	lock.Lock();
 	timers.push_back(timer);
 	cond.Signal();
 	lock.Unlock();
 }
 
 uint32_t NSRunLoop::GetNumberOfTimers() const {
-	return 0;
+	return timers.size();
 }
 
 void NSRunLoop::SetExitsWhenIdle(bool e) {
@@ -76,31 +77,32 @@ tp NSRunLoop::ProcessTimers(bool* out) {
 	tp min;
 	bool any = false;
 	for (uint32_t z = 0; z < timers.size(); z++) {
-		if (timers[z]->invalidated) {
-			NSTimer* t = timers[z];
+		NSTimer* timer = timers[z];
+		if (timer->invalidated) {
 			timers.erase(timers.begin() + z);
-			delete t;
+			delete timer;
 			z--;
 			continue;
 		}
 		auto t = time_point_cast<tp::duration>(system_clock::time_point(system_clock::now()));
-		if (t >= timers[z]->next_iteration) {
-			timers[z]->function(timers[z]);
-			if (timers[z]->repeats && !timers[z]->invalidated) {
-				NSTimeInterval interval = timers[z]->interval;
-				timers[z]->next_iteration += seconds((uint32_t)interval) +
-												milliseconds(uint32_t((interval - uint32_t(interval)) * 1000));
+		if (t >= timer->next_iteration) {
+			lock.Unlock();
+			timer->function(timers[z]);
+			lock.Lock();
+			if (timer->repeats && !timer->invalidated) {
+				NSTimeInterval interval = timer->interval;
+				timer->next_iteration += seconds((uint32_t)interval) +
+											milliseconds(uint32_t((interval - uint32_t(interval)) * 1000));
 			} else {
-				NSTimer* t = timers[z];
 				timers.erase(timers.begin() + z);
-				delete t;
+				delete timer;
 				z--;
 				continue;
 			}
 		}
-		if (!any || min >= timers[z]->next_iteration) {
+		if (!any || min >= timer->next_iteration) {
 			any = true;
-			min = timers[z]->next_iteration;
+			min = timer->next_iteration;
 		}
 	}
 	
@@ -141,7 +143,7 @@ void NSRunLoop::Run() {
 		lock.Unlock();
 
 		NSEvent* event = pair.first;
-		std::function<void()> callback = pair.second;
+		const std::function<void()>& callback = pair.second;
 		event->Process();
 		if (callback)
 			callback();

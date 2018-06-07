@@ -73,12 +73,16 @@
  * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there
  * Could improve read speed of large reads by reading entire block and caching it (because fread only
  	does 0x400 at a time)
- * Make libpthread work with -O3
+ * Make libpthread work with -O3? - prob not
  * Make pthread_cond variables put the thread to sleep in the kernel (also for NSConditionalLock)
  	* needs some syscalls like thread_pause, thread_continue
  * Make asynchrous version of graphics3d_surface_dma and make it actually alloc GMR regions
  * Serialize priority with NSEvents and add it to the Creates
  * Keep track of graphics context / buffers / etc with each process and dealloc on close
+ * QEMU / VirtualBox (accelerated) VBE graphics
+ * VMWare Updated SVGA - reference vmwgx_drv.c:vmw_driver_load - prob not
+ * Support vector images, pdfs, gifs (cairo?) in NSImage
+ 	* Update support in image viewer
  */
 
 /* TODO (bugs)
@@ -90,17 +94,7 @@
  * bin/bash crashes if TERM!=dumb
  * Implement CLOSE_ON_EXEC
  * cat "binary file" crashes because it tries to output nonexistant escape sequences
- */
-
-/* TODO (API)
- * GUI
- 	* NSRange
-	* NSWindow, NSView, NSControl, NSButton, etc.
- * NSUndoManager
- * Implement sockets
- 	* NSURL*
- 
- * Implement NSImage (TIFF and GIF)?
+ * echo what > /dev/null -> pointer being freed not allocated
  */
 
 /* TODO:
@@ -109,11 +103,20 @@
  		* Window not always showing up when opening calculator / discolored windows??
 			* visible being set to false (one time) - number of creates > number of shows, but why??
  		* Screen freezes sometimes - maybe due to FIFO error?
- 	* NSImageView
- 	* NSButton
- 	* Cursor Images
+ 	* Cursor Images (cursor regions in api)
+ 	* Window Resizing / View Resizing
  	* NSTextField
- 	* etc
+ 	* NSScrollView
+	* NSRadioButton, NSCheckBox
+	* NSProgressBar, NSSlider
+ 	* Context Menu
+ 	* NSDropdown, NSPopup
+ 	* NSTableView (NSTableItemView?)
+ 	* NSCollectionView (NSCollectionItemView?)
+ 	* NSTextView
+ 	* NSAlert / NSRunAlert
+ 	* NSOpenPanel / NSSavePanel
+ 	* etc?
  * Create applications that showcase GUI (at same time?)
  	* Calculator - NSButton, NSLabel
  	* Text Editor - NSTextView
@@ -122,7 +125,9 @@
  	* Paint? - Custom View
  	* Terminal - NSTextView, pseudo terminal
  	* Media Player
+ 		* For audio - NSProgressBar, NSSound, NSLabel, NSImageView (for song artwork)
  	* Settings
+ 	* IDE
  	* etc
  * FIX ALL BUGS (TODO bugs and could be improved)
  * Scheduler Rework
@@ -136,7 +141,9 @@
  * Page files on disk?
 	* Could make loading a program only load entry point page and then lazy load the rest?
  * Module support?
- * OpenGL (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?
+ * OpenGL
+ 	* Could implement own library and only implement things I want
+ 	* (Mesa - has software rendering and could implement hardware driver, TinyGL - only software rendering)?
  * USB Driver?
  * NFS Driver?
  * Wifi Driver?

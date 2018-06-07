@@ -34,10 +34,8 @@ namespace NSApplication {
 NSWindow* NSWindow::Create(string t, NSRect r) {
 	NSWindow* ret = new NSWindow(t, r);
 	
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowCreate(ret->title, ret->frame, pid, ret->window_id, &ret->context);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowCreate(ret->title, ret->frame, getpid(), ret->window_id, &ret->context);
+	NSApplication::SendEvent(&event);
 	
 	return ret;
 }
@@ -52,6 +50,7 @@ NSWindow::NSWindow(string t, NSRect f) {
 	NSApplication::RegisterWindow(this);
 	
 	float psf = NSApplication::GetPixelScalingFactor();
+	bsf = psf;
 	NSSize size = NSSize(f.size.width * psf, (f.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf);
 	context = graphics_context_create(size.width, size.height, 32, 16, 0);
 	SetupProjMatrix();
@@ -62,6 +61,7 @@ NSWindow::NSWindow(string t, NSRect f) {
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_SRCBLEND, GRAPHICS_BLENDOP_SRCALPHA);
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_DSTBLEND, GRAPHICS_BLENDOP_INVSRCALPHA);
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDEQUATION, GRAPHICS_BLENDEQ_ADD);
+	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_SCISSORTESTENABLE, true);
 	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
@@ -75,10 +75,8 @@ NSWindow::NSWindow(string t, NSRect f) {
 NSWindow::~NSWindow() {
 	NSApplication::DeregisterWindow(this);
 	
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowDestroy(pid, window_id);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowDestroy(getpid(), window_id);
+	NSApplication::SendEvent(&event);
 	
 	delete content_view;
 	
@@ -106,6 +104,10 @@ graphics_context_t* NSWindow::GetContext() {
 	return &context;
 }
 
+float NSWindow::GetBackingScaleFactor() const {
+	return bsf;
+}
+
 uint32_t NSWindow::GetWindowID() const {
 	return window_id;
 }
@@ -117,32 +119,40 @@ string NSWindow::GetTitle() const {
 void NSWindow::SetTitle(string t) {
 	title = t;
 	
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowSetTitle(pid, window_id, title);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowSetTitle(getpid(), window_id, title);
+	NSApplication::SendEvent(&event);
 }
 
 NSRect NSWindow::GetFrame() const {
 	return frame;
 }
 
-void NSWindow::SetFrame(NSRect rect) {
+NSRect NSWindow::GetContentFrame() const {
+	return NSRect(frame.origin + NSPoint(0, WINDOW_TITLE_BAR_HEIGHT),
+				  NSSize(frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
+}
+
+void NSWindow::SetFrameInternal(NSRect rect) {
+	NSSize old_size = frame.size;
 	frame = rect;
 	
-	graphics_context_resize(&context, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT);
-	SetupProjMatrix();
-	
-	content_view->SetFrame(NSRect(0, 0, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
-	content_view->DrawRect(content_view->frame);
-	
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowSetFrame(pid, window_id, frame);
-	NSApplication::SendEvent(event);
-	delete event;
+	if (old_size != rect.size) {
+		graphics_context_resize(&context, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT);
+		SetupProjMatrix();
+		
+		content_view->SetFrame(NSRect(0, 0, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
+		content_view->DrawRect(content_view->frame);
+	}
 	
 	for (auto& i : observers)
 		i->SetFrame();
+}
+
+void NSWindow::SetFrame(NSRect rect) {
+	SetFrameInternal(rect);
+	
+	auto event = NSEventWindowSetFrame(getpid(), window_id, frame);
+	NSApplication::SendEvent(&event);
 }
 
 void NSWindow::SetFrameOrigin(NSPoint p) {
@@ -166,13 +176,12 @@ void NSWindow::Show() {
 		return;
 	
 	visible = true;
+	is_key = true;
 	
 	content_view->DrawRect(NSRect(NSPoint(), content_view->frame.size));
 	
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowShow(pid, window_id, true);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowShow(getpid(), window_id, true);
+	NSApplication::SendEvent(&event);
 	
 	for (auto& i : observers)
 		i->Show();
@@ -183,10 +192,8 @@ bool NSWindow::IsVisible() {
 }
 
 void NSWindow::Close() {
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowShow(pid, window_id, false);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowShow(getpid(), window_id, false);
+	NSApplication::SendEvent(&event);
 	
 	visible = false;
 	
@@ -198,27 +205,35 @@ void NSWindow::Close() {
 }
 
 bool NSWindow::IsKeyWindow() const {
-	return false;
+	return is_key;
+}
+
+void NSWindow::MakeKeyInternal(bool key) {
+	if (key) {
+		is_key = true;
+		
+		for (auto& i : observers)
+			i->BecomeKeyWindow();
+	} else {
+		is_key = false;
+		
+		for (auto& i : observers)
+			i->ResignKeyWindow();
+	}
 }
 
 void NSWindow::MakeKeyWindow() {
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowMakeKey(pid, window_id, true);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowMakeKey(getpid(), window_id, true);
+	NSApplication::SendEvent(&event);
 	
-	for (auto& i : observers)
-		i->BecomeKeyWindow();
+	MakeKeyInternal(true);
 }
 
 void NSWindow::ResignKeyWindow() {
-	uint32_t pid = getpid();
-	NSEvent* event = new NSEventWindowMakeKey(pid, window_id, false);
-	NSApplication::SendEvent(event);
-	delete event;
+	auto event = NSEventWindowMakeKey(getpid(), window_id, false);
+	NSApplication::SendEvent(&event);
 	
-	for (auto& i : observers)
-		i->ResignKeyWindow();
+	MakeKeyInternal(false);
 }
 
 NSView* NSWindow::FirstResponder() const {
@@ -256,7 +271,7 @@ void NSWindow::AddUpdateRects(std::vector<NSRect> rects) {
 	if (update_rects.size() != 0 && !update_requested) {
 		NSHandler([this](NSThread*) {
 			this->PushUpdates();
-		}).Post(NSThread::MainThread(), 1 / 60.0f, 0, false);
+		}).Post(NSThread::MainThread(), 1 / 60.0f, NSHandlerDefaultPriortiy, false);
 		update_requested = true;
 	}
 	rect_lock.Unlock();
@@ -284,13 +299,11 @@ void NSWindow::PushUpdates() {
 	delete event;
 }
 
-void NSWindow::MouseDown(NSEvent* event) {
+void NSWindow::MouseDown(NSEventMouse* event) {
 	if (!content_view)
 		return;
-	
-	NSEventMouse* e = dynamic_cast<NSEventMouse*>(event);
-	
-	NSView* view = content_view->GetViewAtPoint(e->GetPosition());
+		
+	NSView* view = content_view->GetViewAtPoint(event->GetPosition());
 	if (!view)
 		return;
 	
@@ -298,14 +311,14 @@ void NSWindow::MouseDown(NSEvent* event) {
 	view->MouseDown(event);
 }
 
-void NSWindow::MouseDragged(NSEvent* event) {
+void NSWindow::MouseDragged(NSEventMouse* event) {
 	if (!down_view)
 		return;
 	
 	down_view->MouseDragged(event);
 }
 
-void NSWindow::MouseUp(NSEvent* event) {
+void NSWindow::MouseUp(NSEventMouse* event) {
 	if (!down_view)
 		return;
 	
@@ -313,38 +326,37 @@ void NSWindow::MouseUp(NSEvent* event) {
 	down_view = NULL;
 }
 
-void NSWindow::MouseMoved(NSEvent* event) {
+void NSWindow::MouseMoved(NSEventMouse* event) {
 	if (!content_view)
 		return;
 	
-	NSEventMouse* e = dynamic_cast<NSEventMouse*>(event);
-	
-	NSView* view = content_view->GetViewAtPoint(e->GetPosition());
-	if (!view)
-		return;
-	
-	view->MouseMoved(event);
+	std::function<void(NSView*)> recurse = [&recurse, event](NSView* view) {
+		if (!view->visible)
+			return;
+		view->MouseMoved(event);
+		for (unsigned int z = 0; z < view->subviews.size(); z++)
+			recurse(view->subviews[z]);
+	};
+	recurse(content_view);
 }
 
-void NSWindow::MouseScrolled(NSEvent* event) {
+void NSWindow::MouseScrolled(NSEventMouse* event) {
 	if (!content_view)
 		return;
 	
-	NSEventMouse* e = dynamic_cast<NSEventMouse*>(event);
-	
-	NSView* view = content_view->GetViewAtPoint(e->GetPosition());
+	NSView* view = content_view->GetViewAtPoint(event->GetPosition());
 	if (!view)
 		return;
 	
 	view->MouseScrolled(event);
 };
 
-void NSWindow::KeyDown(NSEvent* event) {
+void NSWindow::KeyDown(NSEventKey* event) {
 	if (first_responder)
 		first_responder->KeyDown(event);
 }
 
-void NSWindow::KeyUp(NSEvent* event) {
+void NSWindow::KeyUp(NSEventKey* event) {
 	if (first_responder)
 		first_responder->KeyDown(event);
 }

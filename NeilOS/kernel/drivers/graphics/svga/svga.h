@@ -14,7 +14,7 @@
 // Initializes the VMWare SVGA-II device and enables it
 bool svga_init();
 // Enables the device
-void svga_enable();
+bool svga_enable();
 // Disables the device (returns to text printing)
 void svga_disable();
 bool svga_enabled();

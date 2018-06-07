@@ -13,11 +13,11 @@
 NSHandler::NSHandler() {
 }
 
-NSHandler::NSHandler(std::function<void(NSThread*)> function) {
+NSHandler::NSHandler(const std::function<void(NSThread*)>& function) {
 	func = function;
 }
 
-void NSHandler::SetFunction(std::function<void(NSThread*)> function) {
+void NSHandler::SetFunction(const std::function<void(NSThread*)>& function) {
 	func = function;
 }
 
@@ -88,7 +88,7 @@ void NSHandler::Post(NSThread* thread, NSTimeInterval delay, uint32_t priority, 
 		}
 		lock.Unlock();
 	} else {
-		thread->GetRunLoop()->AddTimer(NSTimer::Create([copy, thread, priority, sync](NSTimer*) {
+		thread->GetRunLoop()->AddTimer(NSTimer::Create([copy, thread, priority](NSTimer*) {
 			copy.Post(thread, priority, false);
 		}, delay, false, false));
 	}

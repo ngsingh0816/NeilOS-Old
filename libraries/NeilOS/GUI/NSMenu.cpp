@@ -734,7 +734,7 @@ void NSMenu::Draw(const vector<NSRect>& rects) {
 		submenu->Draw(rects);
 }
 
-void NSMenu::SetUpdateFunction(std::function<void(std::vector<NSRect>)> func) {
+void NSMenu::SetUpdateFunction(const std::function<void(std::vector<NSRect>)>& func) {
 	update = func;
 	if (submenu)
 		submenu->SetUpdateFunction(func);

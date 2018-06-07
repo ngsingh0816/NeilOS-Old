@@ -10,10 +10,15 @@
 #define NSVIEW_H
 
 #include "../Core/NSResponder.h"
+#include "../Core/NSColor.h"
+#include "../Core/NSImage.h"
 #include "../Core/NSTypes.h"
+
+#include "NSAnimation.h"
 
 #include <graphics/graphics.h>
 
+#include <functional>
 #include <vector>
 
 class NSWindow;
@@ -27,6 +32,8 @@ public:
 	NSRect GetFrame() const;
 	NSRect GetBounds() const;
 	virtual void SetFrame(NSRect frame);
+	void SetFrameOrigin(NSPoint p);
+	void SetFrameSize(NSSize size);
 	// Get in window coordinates
 	NSRect GetAbsoluteFrame() const;
 	NSRect GetAbsoluteRect(NSRect rect) const;
@@ -37,6 +44,8 @@ public:
 	NSView* GetSubviewAtIndex(unsigned int index) const;
 	
 	NSView* GetViewAtPoint(NSPoint p);
+	// Local coordinates
+	virtual bool ContainsPoint(NSPoint p) const;
 	
 	NSWindow* GetWindow() const;
 	NSView* GetSuperview() const;
@@ -51,8 +60,29 @@ public:
 	virtual bool IsFirstResponder() const;
 	virtual void ResignFirstResponder();
 	
+	uint32_t GetNumberOfAnimations() const;
+	NSAnimation* GetAnimationAtIndex(uint32_t index);
+	
+	// Value is scale of 0-1 of how completed the animation is
+	NSAnimation* Animate(const std::function<void(NSView*, const NSAnimation*)>& anim, NSTimeInterval duration,
+						NSTimeInterval delay = 0,
+						const std::function<void(NSView*, const NSAnimation*)>& completion = nullptr);
+	
 protected:
+	// Num vertices should be divisible by 4 after subtracting 2 (ex: 38)
+	static uint32_t CreateSquareBuffer();
+	static uint32_t CreateOvalBuffer(uint32_t num_vertices);
+	static uint32_t CreateRoundedRectBuffer(NSSize size, float border_radius_x, float border_radius_y,
+											uint32_t num_vertices);
+	static uint32_t CreateColorBuffer(NSColor<float> color, uint32_t num_vertices);
+	static void BufferColor(uint32_t bid, NSColor<float> color, uint32_t num_vertices);
+	static uint32_t CreateImageBuffer(NSImage* image, NSSize* size_out);
 	NSView();
+	
+	// Called when buffers need updating (frame resizing)
+	virtual void UpdateVBO();
+	// Called when array objects need updated (buffer recreated - e.g. changed color)
+	virtual void UpdateVAO();
 
 	// Just draws view (override this method for custom drawing)
 	// Rect in local view coordinates
@@ -68,7 +98,7 @@ protected:
 	
 private:
 	friend class NSWindow;
-	
+		
 	// Draws view and subviews
 	void DrawRect(NSRect rect);
 	void DrawSubview(NSView* subview, NSRect rect);
@@ -83,6 +113,8 @@ private:
 	NSView* superview = NULL;
 	
 	bool is_first_responder = false;
+	
+	std::vector<NSAnimation*> animations;
 };
 
 #endif /* NSVIEW_H */

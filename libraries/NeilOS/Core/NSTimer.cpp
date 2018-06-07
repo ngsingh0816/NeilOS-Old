@@ -13,7 +13,7 @@ NSTimer* NSTimer::Create() {
 	return new NSTimer();
 }
 
-NSTimer* NSTimer::Create(std::function<void(NSTimer*)> func, NSTimeInterval i, bool r, bool s) {
+NSTimer* NSTimer::Create(const std::function<void(NSTimer*)>& func, NSTimeInterval i, bool r, bool s) {
 	return new NSTimer(func, i, r, s);
 }
 
@@ -24,7 +24,7 @@ NSTimer::NSTimer() {
 }
 
 // If schedule==true, there is no need to call NSRunLoop::AddTimer
-NSTimer::NSTimer(std::function<void(NSTimer*)> func, NSTimeInterval i, bool r, bool schedule) {
+NSTimer::NSTimer(const std::function<void(NSTimer*)>& func, NSTimeInterval i, bool r, bool schedule) {
 	invalidated = false;
 	
 	function = func;
@@ -53,7 +53,7 @@ bool NSTimer::GetRepeats() const {
 	return repeats;
 }
 
-void NSTimer::SetFunction(std::function<void(NSTimer*)> func) {
+void NSTimer::SetFunction(const std::function<void(NSTimer*)>& func) {
 	function = func;
 }
 

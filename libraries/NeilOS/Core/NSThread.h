@@ -26,7 +26,7 @@ public:
 	
 	// Constructors (automatically deletes self upon exit)
 	static NSThread* Create();
-	static NSThread* Create(std::function<void(NSThread*)> function);
+	static NSThread* Create(const std::function<void(NSThread*)>& function);
 	static NSThread* Create(std::queue<std::function<void(NSThread*)>> functions);
 	
 	// Exit thread
@@ -48,7 +48,7 @@ public:
 	bool IsCanceled() const;
 private:
 	NSThread();
-	NSThread(std::function<void(NSThread*)> function);
+	NSThread(const std::function<void(NSThread*)>& function);
 	NSThread(std::queue<std::function<void(NSThread*)>> functions);
 	
 	static void* NSThreadFunction(void*);

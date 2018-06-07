@@ -22,7 +22,17 @@ void Controller::DidFinishLaunching() {
 	window->GetContentView()->AddSubview(label);
 	
 	NSImageView* img_view = NSImageView::Create(new NSImage("/system/images/background.jpg"), NSRect(15, 30, 200, 200));
+	img_view->SizeToFit();
 	window->GetContentView()->AddSubview(img_view);
+	
+	NSButton* button = NSButton::Create("Click Me!", NSRect(230, 15, 155, NSButtonDefaultSize.height));
+	button->SetAction([label](NSControl*) {
+		static int clicked = 0;
+		clicked++;
+		label->SetText("Clicked " + std::to_string(clicked) + " times.");
+		label->SizeToFit();
+	});
+	window->GetContentView()->AddSubview(button);
 	
 	window->Show();
 }

@@ -7,7 +7,7 @@
 //
 
 #include "svga.h"
-#include "svga_reg.h"
+#include "include/svga_reg.h"
 #include "svga_3d.h"
 #include <drivers/pci/pci.h>
 #include <common/lib.h>
@@ -59,102 +59,6 @@ static inline uint32_t svga_read(uint32_t reg) {
 	return inl(io_base + SVGA_VALUE_PORT);
 }
 
-/*typedef struct {
-	float position[3];
-	uint32_t color;
-} MyVertex;
-
-static const MyVertex vertexData[] = {
-	{ {-1, -1, -1}, 0x7FFFFFFF },
-	{ {-1, -1,  1}, 0x7FFFFF00 },
-	{ {-1,  1, -1}, 0x7FFF00FF },
-	{ {-1,  1,  1}, 0x7FFF0000 },
-	{ { 1, -1, -1}, 0x7F00FFFF },
-	{ { 1, -1,  1}, 0x7F00FF00 },
-	{ { 1,  1, -1}, 0x7F0000FF },
-	{ { 1,  1,  1}, 0x7F000000 },
-};
-
-#define QUAD(a,b,c,d) a, b, d, d, c, a
-
-static const uint16_t indexData[] = {
-	QUAD(0,1,2,3), // -X
-	QUAD(4,5,6,7), // +X
-	QUAD(0,1,4,5), // -Y
-	QUAD(2,3,6,7), // +Y
-	QUAD(0,2,4,6), // -Z
-	QUAD(1,3,5,7), // +Z
-};
-
-#undef QUAD
-
-const uint32_t numTriangles = sizeof indexData / sizeof indexData[0] / 3;
-
-#include "../graphics.h"
-
-void *
-SVGA_AllocGMR(uint32_t size,        // IN
-			  SVGAGuestPtr *ptr)  // OUT
-{
-	static SVGAGuestPtr nextPtr = { SVGA_GMR_FRAMEBUFFER, 0 };
-	*ptr = nextPtr;
-	nextPtr.offset += size;
-	return fb_base + ptr->offset;
-}
-
-void
-SVGA3DUtil_SurfaceDMA2D(uint32_t sid,                   // IN
-						SVGAGuestPtr *guestPtr,       // IN
-						SVGA3dTransferType transfer,  // IN
-						uint32_t width,                 // IN
-						uint32_t height)                // IN
-{
-	SVGA3dCopyBox boxes;
-	SVGA3dGuestImage guestImage;
-	SVGA3dSurfaceImageId hostImage;
-	memset(&hostImage, 0, sizeof(SVGA3dSurfaceImageId));
-	hostImage.sid = sid;
-	
-	memset(&guestImage, 0, sizeof(SVGA3dGuestImage));
-	guestImage.ptr = *guestPtr;
-	guestImage.pitch = 0;
-	memset(&boxes, 0, sizeof(SVGA3dCopyBox));
-	boxes.w = width;
-	boxes.h = height;
-	boxes.d = 1;
-	
-	svga3d_surface_dma(&guestImage, &hostImage, transfer, &boxes, 1);
-}
-
-uint32_t define_static_buffer(void* data, uint32_t size) {
-	SVGA3dSurfaceFace faces[SVGA3D_MAX_SURFACE_FACES];
-	memset(faces, 0, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
-	faces[0].numMipLevels = 1;
-	SVGA3dSize mip_sizes;
-	mip_sizes.width = size;
-	mip_sizes.height = 1;
-	mip_sizes.depth = 1;
-	uint32_t sid = svga3d_surface_create(0, SVGA3D_BUFFER, faces, &mip_sizes, 1);
-//	SVGAGuestPtr ptr;
-//	void* buffer = SVGA_AllocGMR(size, &ptr);
-//	memcpy(buffer, data, size);
-//
-//	SVGA3DUtil_SurfaceDMA2D(sid, &ptr, SVGA3D_WRITE_HOST_VRAM, size, 1);
-//	svga_fence_sync(svga_fence_insert());
-	
-	SVGA3dSurfaceImageId hostImage;
-	memset(&hostImage, 0, sizeof(SVGA3dSurfaceImageId));
-	hostImage.sid = sid;
-	SVGA3dCopyBox boxes;
-	memset(&boxes, 0, sizeof(SVGA3dCopyBox));
-	boxes.w = size;
-	boxes.h = 1;
-	boxes.d = 1;
-	graphics3d_surface_dma(data, size, &hostImage, SVGA3D_WRITE_HOST_VRAM, &boxes, 1);
-	
-	return sid;
-}*/
-
 // Initializes the VMWare SVGA-II device and enables it
 bool svga_init() {
 	pci_device_t dev = pci_device_info_vendor(PCI_VENDOR_ID_VMWARE, PCI_DEVICE_ID_VMWARE_SVGA2);
@@ -167,13 +71,8 @@ bool svga_init() {
 	
 	// Set the max supported version
 	uint32_t version = SVGA_ID_2;
-	while (version >= SVGA_ID_0) {
-		svga_write(SVGA_REG_ID, version);
-		if (svga_read(SVGA_REG_ID) == version)
-			break;
-		version--;
-	}
-	if (version < SVGA_ID_0)
+	svga_write(SVGA_REG_ID, version);
+	if (svga_read(SVGA_REG_ID) != version)
 		return false;
 	
 	// Get some info
@@ -198,165 +97,69 @@ bool svga_init() {
 	fifo_base = (uint32_t*)((uint32_t)fifo_base - paddr + vaddr);
 	vm_unlock();
 	
-	svga_enable();
+	/*printf("VRAM size: 0x%x\n", vram_size);
+	printf("FB size: 0x%x\n", fb_size);
+	printf("FIFO size: 0x%x\n", fifo_size);
+	printf("Capabilities: 0x%x\n", capabilities);
 	
-	/*svga_set_mode(res_width, res_height, bpp);
-	
-	// Set whole screen to black
-	memset(fb_base, 0x00, res_width * res_height * 4);
-	svga_update(0, 0, res_width, res_height);*/
-	
-	return true;
-	
-	/*SVGA3dSurfaceFace faces[SVGA3D_MAX_SURFACE_FACES];
-	memset(faces, 0, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
-	faces[0].numMipLevels = 1;
-	SVGA3dSize mip_sizes;
-	mip_sizes.width = 1280;
-	mip_sizes.height = 720;
-	mip_sizes.depth = 1;
-	uint32_t csid = svga3d_surface_create(0, SVGA3D_A8R8G8B8, faces, &mip_sizes, 1);
-	uint32_t dsid = svga3d_surface_create(0, SVGA3D_Z_D16, faces, &mip_sizes, 1);
-	uint32_t cid = svga3d_context_create();
-	SVGA3dSurfaceImageId simg;
-	memset(&simg, 0, sizeof(simg));
-	simg.sid = csid;
-	svga3d_state_render_target(cid, SVGA3D_RT_COLOR0, &simg);
-	simg.sid = dsid;
-	svga3d_state_render_target(cid, SVGA3D_RT_DEPTH, &simg);
-	SVGA3dRect rect;
-	rect.x = 0;
-	rect.y = 0;
-	rect.w = 1280;
-	rect.h = 720;
-	svga3d_state_viewport(cid, &rect);
-	svga3d_state_z_range(cid, 0.0f, 1.0f);
-	SVGA3dRenderState rs[11];
-	memset(&rs, 0, sizeof(SVGA3dRenderState) * 11);
-	rs[0].state = SVGA3D_RS_SHADEMODE;
-	rs[0].uintValue = SVGA3D_SHADEMODE_SMOOTH;
-	rs[1].state     = SVGA3D_RS_BLENDENABLE;
-	rs[1].uintValue = false;
-	rs[2].state     = SVGA3D_RS_ZENABLE;
-	rs[2].uintValue = true;
-	rs[3].state     = SVGA3D_RS_ZWRITEENABLE;
-	rs[3].uintValue = true;
-	rs[4].state     = SVGA3D_RS_ZFUNC;
-	rs[4].uintValue = SVGA3D_CMP_LESS;
-	rs[5].state     = SVGA3D_RS_LIGHTINGENABLE;
-	rs[5].uintValue = false;
-	rs[6].state     = SVGA3D_RS_CULLMODE;
-	rs[6].uintValue = SVGA3D_FACE_NONE;
-	
-	// Blending
-//	rs[7].state     = SVGA3D_RS_BLENDENABLE;
-//	rs[7].uintValue = true;
-//	rs[8].state     = SVGA3D_RS_SRCBLEND;
-//	rs[8].uintValue = SVGA3D_BLENDOP_SRCALPHA;
-//	rs[9].state     = SVGA3D_RS_DSTBLEND;
-//	rs[9].uintValue = SVGA3D_BLENDOP_INVSRCALPHA;
-//	rs[10].state     = SVGA3D_RS_BLENDEQUATION;
-//	rs[10].uintValue = SVGA3D_BLENDEQ_ADD;
-	svga3d_state_render_state(cid, rs, 7);
-	
-	uint32_t vertex_sid = define_static_buffer((void*)vertexData, sizeof(vertexData));
-	uint32_t index_sid = define_static_buffer((void*)indexData, sizeof(indexData));
-	
-	Matrix perspective;
-	Matrix_Perspective(perspective, 45.0f, 1280.0f / 720.0f, 0.01f, 100.0f);
-	
-	Matrix view;
-	
-	Matrix_Copy(view, gIdentityMatrix);
-	Matrix_Scale(view, 0.5, 0.5, 0.5, 1.0);
-	//Matrix_RotateY(view, frame++ * 0.01f);
-	Matrix_Translate(view, 0, 0, 3);
-	svga3d_transform_set(cid, SVGA3D_TRANSFORM_PROJECTION, perspective);
-	svga3d_transform_set(cid, SVGA3D_TRANSFORM_WORLD, gIdentityMatrix);
-	svga3d_transform_set(cid, SVGA3D_TRANSFORM_VIEW, view);
-	
-	
-	//uint32_t frame = 0;
-	uint32_t fence = 0;
-	uint32_t fs = 0;
-	uint32_t fps = 0;
-	for (;;) {
-		svga_fence_sync(fence);
-		
-		SVGA3dClearValue value;
-		value.color = 0x113366;
-		value.depth = 1.0f;
-		value.stencil = 0;
-		svga3d_clear(cid, SVGA3D_CLEAR_COLOR | SVGA3D_CLEAR_DEPTH, &value, &rect, 1);
-		
-		SVGA3dVertexDecl decls[2];
-		SVGA3dPrimitiveRange ranges;
-		memset(decls, 0, sizeof(SVGA3dVertexDecl) * 2);
-		memset(&ranges, 0, sizeof(SVGA3dPrimitiveRange));
-		decls[0].identity.type = SVGA3D_DECLTYPE_FLOAT3;
-		decls[0].identity.usage = SVGA3D_DECLUSAGE_POSITION;
-		decls[0].array.surfaceId = vertex_sid;
-		decls[0].array.stride = 16;
-		decls[0].array.offset = 0;
-		
-		decls[1].identity.type = SVGA3D_DECLTYPE_D3DCOLOR;
-		decls[1].identity.usage = SVGA3D_DECLUSAGE_COLOR;
-		decls[1].array.surfaceId = vertex_sid;
-		decls[1].array.stride = 16;
-		decls[1].array.offset = 3 * sizeof(float);
-		
-		ranges.primType = SVGA3D_PRIMITIVE_TRIANGLELIST;
-		ranges.primitiveCount = numTriangles;
-		ranges.indexArray.surfaceId = index_sid;
-		ranges.indexArray.stride = sizeof(uint16_t);
-		ranges.indexWidth = sizeof(uint16_t);
-		svga3d_draw(cid, decls, 2, &ranges, 1);
-		
-		SVGA3dCopyRect crect;
-		memset(&crect, 0, sizeof(crect));
-		crect.w = 1280;
-		crect.h = 720;
-		svga3d_present(csid, &crect, 1);
-		
-		fence = svga_fence_insert();
-		
-		for (int z = 0; z < 1000000; z++) {}
-		
-		fs++;
-		static uint32_t val = 0;
-		if (val != get_current_unix_time().val) {
-			fps = fs;
-			fs = 0;
-			val = get_current_unix_time().val;
-		}
+	if (capabilities & SVGA_CAP_GMR2) {
+		printf("Max GMR IDs: 0x%x\n", svga_read(SVGA_REG_GMR_MAX_IDS));
+		printf("Max GMR Pages: 0x%x\n", svga_read(SVGA_REG_GMRS_MAX_PAGES));
+		printf("Memory Size: 0x%x\n", svga_read(SVGA_REG_MEMORY_SIZE));
 	}
+	 
+	if (capabilities & SVGA_CAP_GBOBJECTS) {
+		printf("GB Mem Size: 0x%x\n", svga_read(SVGA_REG_SUGGESTED_GBOBJECT_MEM_SIZE_KB));
+		if (!(capabilities & SVGA_CAP_3D))
+			printf("3D Not Supported???\n");
+		printf("Primary BB Mem: 0x%x\n", svga_read(SVGA_REG_MAX_PRIMARY_BOUNDING_BOX_MEM));
+		printf("Max Mob Size: 0x%x\n", svga_read(SVGA_REG_MOB_MAX_SIZE));
+		printf("Screen Target Width: 0x%x\n", svga_read(SVGA_REG_SCREENTARGET_MAX_WIDTH));
+		printf("Screen Target Height: 0x%x\n", svga_read(SVGA_REG_SCREENTARGET_MAX_HEIGHT));
+		svga_write(SVGA_REG_DEV_CAP, SVGA3D_DEVCAP_MAX_TEXTURE_WIDTH);
+		printf("Max Texture Width: 0x%x\n", svga_read(SVGA_REG_DEV_CAP));
+		svga_write(SVGA_REG_DEV_CAP, SVGA3D_DEVCAP_MAX_TEXTURE_HEIGHT);
+		printf("Max Texture Height: 0x%x\n", svga_read(SVGA_REG_DEV_CAP));
+		svga_write(SVGA_REG_DEV_CAP, SVGA3D_DEVCAP_3D);
+		printf("Has 3D: 0x%x\n", svga_read(SVGA_REG_DEV_CAP));
+		svga_write(SVGA_REG_DEV_CAP, SVGA3D_DEVCAP_DX);
+		printf("Has DX: 0x%x\n", svga_read(SVGA_REG_DEV_CAP));
+	}*/
 	
-	return true;*/
+	// Init FIFO
+	svga_write(SVGA_REG_ENABLE, SVGA_REG_ENABLE_ENABLE | SVGA_REG_ENABLE_HIDE);
+	svga_write(SVGA_REG_TRACES, false);
+	
+	uint32_t min = SVGA_FIFO_NUM_REGS * sizeof(uint32_t);
+	fifo_base[SVGA_FIFO_MIN] = min;
+	fifo_base[SVGA_FIFO_MAX] = fifo_size;
+	fifo_base[SVGA_FIFO_NEXT_CMD] = min;
+	fifo_base[SVGA_FIFO_STOP] = min;
+	fifo_base[SVGA_FIFO_BUSY] = 0;
+	svga_write(SVGA_REG_CONFIG_DONE, true);
+	fifo_base[SVGA_FIFO_FENCE] = 0;
+	
+	return svga_enable();
 }
 
 // Enables the device
-void svga_enable() {
-	// Init FIFO
-	fifo_base[SVGA_FIFO_MIN] = SVGA_FIFO_NUM_REGS * sizeof(uint32_t);
-	fifo_base[SVGA_FIFO_MAX] = fifo_size;
-	fifo_base[SVGA_FIFO_NEXT_CMD] = fifo_base[SVGA_FIFO_MIN];
-	fifo_base[SVGA_FIFO_STOP] = fifo_base[SVGA_FIFO_MIN];
-	
-	// Enable 3D
-	fifo_base[SVGA_FIFO_GUEST_3D_HWVERSION] = SVGA3D_HWVERSION_CURRENT;
-	
+bool svga_enable() {
 	// Enable FIFO and device
-	svga_write(SVGA_REG_ENABLE, true);
-	svga_write(SVGA_REG_CONFIG_DONE, true);
+	svga_write(SVGA_REG_ENABLE, SVGA_REG_ENABLE_ENABLE);
 	enabled = true;
 	
-	if (fifo_base[SVGA_FIFO_3D_HWVERSION] == 0)
-		printf("3D Driver Disabled.\n");
+	if (fifo_base[SVGA_FIFO_3D_HWVERSION] == 0) {
+		svga_write(SVGA_REG_ENABLE, SVGA_REG_ENABLE_DISABLE);
+		enabled = false;
+		
+		return false;
+	}
+	return true;
 }
 
 // Disables the device (returns to text printing)
 void svga_disable() {
-	svga_write(SVGA_REG_ENABLE, false);
+	svga_write(SVGA_REG_ENABLE, SVGA_REG_ENABLE_DISABLE);
 	enabled = false;
 }
 

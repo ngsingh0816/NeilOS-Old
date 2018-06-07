@@ -28,6 +28,12 @@ uint32_t mouse_write(file_descriptor_t* f, const void* buf, uint32_t nbytes);
 // Get info
 uint32_t mouse_stat(file_descriptor_t* f, sys_stat_type* data);
 
+// Can read
+bool mouse_can_read(file_descriptor_t* f);
+
+// Can write
+bool mouse_can_write(file_descriptor_t* f);
+
 // Seek a mouse (returns error)
 uint64_t mouse_llseek(file_descriptor_t* f, uint64_t offset, int whence);
 

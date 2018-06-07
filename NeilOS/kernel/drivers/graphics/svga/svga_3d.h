@@ -10,7 +10,10 @@
 #define SVGA_3D_H
 
 #include <common/types.h>
-#include "svga3d_reg.h"
+#include "include/svga3d_reg.h"
+
+// FIFO helper
+void* svga3d_fifo_reserve(uint32_t cmd, uint32_t cmd_size);
 
 // Present rectangles on the surface
 void svga3d_present(uint32_t sid, SVGA3dCopyRect* rects, uint32_t num_rects);
@@ -25,7 +28,7 @@ uint32_t svga3d_surface_create(SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat for
 						   SVGA3dSize* mipSizes, uint32_t num_mips);
 // Copy from ram to surface's vram or vice versa
 // Note: pages must stay mapped while DMA is in progress
-void svga3d_surface_dma(SVGA3dGuestImage* guest_image, SVGA3dSurfaceImageId* host_image, SVGA3dTransferType transfer,
+void svga3d_surface_dma(SVGAGuestImage* guest_image, SVGA3dSurfaceImageId* host_image, SVGA3dTransferType transfer,
 						SVGA3dCopyBox* boxes, uint32_t num_boxes);
 // Copy rectangles from one surface to another
 void svga3d_surface_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest, SVGA3dCopyBox* boxes, uint32_t num_boxes);

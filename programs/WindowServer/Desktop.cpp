@@ -160,7 +160,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	intro_sound = NSSound::Create("/system/sounds/boot.wav");
 	percent(10);
 	
-	cursor_image = new NSImage("/system/images/cursors/default.png");
+	cursor_image = new NSImage("/system/images/cursors/cursor_large.png");
 	cursor_image->SetSize(cursor_image->GetSize() * Desktop::GetPixelScalingFactor());
 	percent(20);
 	
@@ -330,7 +330,10 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 
 void* Desktop::MouseThread(void*) {
 	int fd = open("/dev/mouse", O_RDONLY);
+	//int key_fd = open("/dev/keyboard", O_RDONLY);
+	
 	for (;;) {
+		
 		uint8_t buffer[9];
 		read(fd, buffer, 9);
 		int32_t* b = (int32_t*)&buffer;
@@ -634,8 +637,8 @@ void Desktop::MouseMoved(NSPoint p) {
 	mouse_pos = p;
 	
 	if ((mouse_down == mouse_menu_down) || mouse_menu_down) {
-		MouseMenu(p, NSMouseTypeMoved, NSMouseButtonNone, &NSMenu::MouseMoved);
-		return;
+		if (MouseMenu(p, NSMouseTypeMoved, NSMouseButtonNone, &NSMenu::MouseMoved))
+			return;
 	}
 	
 	if (Window::MouseMoved(p))

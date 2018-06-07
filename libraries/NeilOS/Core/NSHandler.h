@@ -19,9 +19,9 @@
 class NSHandler {
 public:
 	NSHandler();
-	NSHandler(std::function<void(NSThread*)> function);
+	NSHandler(const std::function<void(NSThread*)>& function);
 	
-	void SetFunction(std::function<void(NSThread*)> function);
+	void SetFunction(const std::function<void(NSThread*)>& function);
 	std::function<void(NSThread*)> GetFunction() const;
 	
 	// Posts to the main thread (asynchronous by default)

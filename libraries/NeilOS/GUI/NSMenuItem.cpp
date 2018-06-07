@@ -489,7 +489,7 @@ std::function<void(NSMenuItem*)> NSMenuItem::GetAction() const {
 	return action;
 }
 
-void NSMenuItem::SetAction(std::function<void(NSMenuItem*)> a) {
+void NSMenuItem::SetAction(const std::function<void(NSMenuItem*)>& a) {
 	action = a;
 }
 

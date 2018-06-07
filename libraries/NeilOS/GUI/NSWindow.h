@@ -32,12 +32,14 @@ public:
 	void SetContentView(NSView* view);
 	
 	graphics_context_t* GetContext();
+	float GetBackingScaleFactor() const;
 	
 	std::string GetTitle() const;
 	void SetTitle(std::string title);
 	
 	uint32_t GetWindowID() const;
 	NSRect GetFrame() const;
+	NSRect GetContentFrame() const;
 	void SetFrame(NSRect rect);
 	void SetFrameOrigin(NSPoint p);
 	void SetFrameSize(NSSize size);
@@ -57,20 +59,22 @@ public:
 	NSView* FirstResponder() const;
 	void MakeFirstResponder(NSView* view);
 	
-	void MouseDown(NSEvent* event) override;
-	void MouseDragged(NSEvent* event) override;
-	void MouseUp(NSEvent* event) override;
-	void MouseMoved(NSEvent* event) override;
-	void MouseScrolled(NSEvent* event) override;
+	void MouseDown(NSEventMouse* event) override;
+	void MouseDragged(NSEventMouse* event) override;
+	void MouseUp(NSEventMouse* event) override;
+	void MouseMoved(NSEventMouse* event) override;
+	void MouseScrolled(NSEventMouse* event) override;
 	
-	void KeyDown(NSEvent* event) override;
-	void KeyUp(NSEvent* event) override;
+	void KeyDown(NSEventKey* event) override;
+	void KeyUp(NSEventKey* event) override;
 	
 	void AddObserver(NSWindowObserver* observer);
 	void RemoveObserver(NSWindowObserver* observer);
 	
 private:
 	friend class NSView;
+	friend class NSEventWindowSetFrame;
+	friend class NSEventWindowMakeKey;
 	
 	NSWindow(std::string title, NSRect frame);
 	void SetupProjMatrix();
@@ -79,6 +83,9 @@ private:
 	void AddUpdateRects(std::vector<NSRect> rects);
 	void PushUpdates();
 	
+	void SetFrameInternal(NSRect frame);
+	void MakeKeyInternal(bool key);
+		
 	NSView* content_view = NULL;
 	NSView* first_responder = NULL;
 	NSView* down_view = NULL;
@@ -89,8 +96,10 @@ private:
 	uint32_t window_id;
 	bool dealloc = false;
 	bool visible = false;
+	bool is_key = false;
 	
 	graphics_context_t context;
+	float bsf = 1;
 	
 	NSLock rect_lock;
 	std::vector<NSRect> update_rects;

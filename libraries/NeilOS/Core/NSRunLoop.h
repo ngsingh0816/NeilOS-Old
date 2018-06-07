@@ -33,9 +33,8 @@ public:
 	~NSRunLoop();
 	
 	// Takes ownership of the event (deallocs when processed)
-	void AddEvent(NSEvent* event);
 	// Callback occurs in the run loop's thread
-	void AddEvent(NSEvent* event, std::function<void()> callback);
+	void AddEvent(NSEvent* event, const std::function<void()>& callback = nullptr);
 	uint32_t GetNumberOfEventsPending() const;
 	
 	// Takes ownership of the timer (deallocs when done)

@@ -66,6 +66,12 @@ int left_down = 0, right_down = 0, middle_down = 0;
 mutex_t mouse_lock = MUTEX_UNLOCKED;
 volatile unsigned int mouse_packet_id = 0;
 
+typedef struct {
+	uint32_t id;
+	bool is_waiting;
+	bool pass;
+} mouse_info_t;
+
 void mouse_handle() {
 	mouse_bytes[mouse_index++] = inb(DATA_PORT);
 	if (mouse_index == MOUSE_PACKET_SIZE) {
@@ -227,11 +233,20 @@ file_descriptor_t* mouse_open(const char* filename, uint32_t mode) {
 		return NULL;
 	}
 	memcpy(d->filename, filename, namelen + 1);
+	d->info = kmalloc(sizeof(mouse_info_t));
+	if (!d->info) {
+		kfree(d->filename);
+		kfree(d);
+		return NULL;
+	}
+	memset(d->info, 0, sizeof(mouse_info_t));
 	
 	// Assign the functions
 	d->read = mouse_read;
 	d->write = mouse_write;
 	d->stat = mouse_stat;
+	d->can_read = mouse_can_read;
+	d->can_write = mouse_can_write;
 	d->llseek = mouse_llseek;
 	d->duplicate = mouse_duplicate;
 	d->close = mouse_close;
@@ -254,7 +269,8 @@ uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	if (bytes != MOUSE_STRUCT_SIZE)
 		return -EINVAL;
 	
-	if (!(f->mode & FILE_MODE_NONBLOCKING)) {
+	mouse_info_t* info = (mouse_info_t*)f->info;
+	if (!(f->mode & FILE_MODE_NONBLOCKING) && !info->pass) {
 		unsigned int id = mouse_packet_id;
 		pcb_t* pcb = current_pcb;
 		while (id == mouse_packet_id && !(pcb && pcb->should_terminate) && !f->closed) {
@@ -265,6 +281,7 @@ uint32_t mouse_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 			down(&f->lock);
 		}
 	}
+	info->pass = false;
 	
 	((int*)buf)[0] = mouse_x;
 	((int*)buf)[1] = mouse_y;
@@ -296,10 +313,33 @@ uint32_t mouse_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) {
 	return MOUSE_STRUCT_SIZE;
 }
 
+// Can read
+bool mouse_can_read(file_descriptor_t* f) {
+	mouse_info_t* info = (mouse_info_t*)f->info;
+	if (info->pass)
+		return true;
+	if (info->is_waiting) {
+		bool ret = (info->id != mouse_packet_id);
+		if (ret) {
+			info->is_waiting = false;
+			info->pass = true;
+		}
+		return ret;
+	}
+	info->is_waiting = true;
+	info->id = mouse_packet_id;
+	return false;
+}
+
+// Can write
+bool mouse_can_write(file_descriptor_t* f) {
+	return true;
+}
+
 // Get info
 uint32_t mouse_stat(file_descriptor_t* f, sys_stat_type* data) {
 	data->dev_id = f->type;
-	data->size = 0;
+	data->size = MOUSE_PACKET_SIZE;
 	data->mode = f->mode;
 	return 0;
 }
@@ -322,6 +362,13 @@ file_descriptor_t* mouse_duplicate(file_descriptor_t* f) {
 		return NULL;
 	}
 	memcpy(d->filename, f->filename, namelen + 1);
+	d->info = kmalloc(sizeof(mouse_info_t));
+	if (!d->info) {
+		kfree(d->filename);
+		kfree(d);
+		return NULL;
+	}
+	memcpy(d->info, f->info, sizeof(mouse_info_t));
 	d->lock = MUTEX_UNLOCKED;
 	
 	return d;
@@ -330,5 +377,6 @@ file_descriptor_t* mouse_duplicate(file_descriptor_t* f) {
 // Close the mouse
 uint32_t mouse_close(file_descriptor_t* fd) {
 	kfree(fd->filename);
+	kfree(fd->info);
 	return 0;
 }

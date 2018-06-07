@@ -32,6 +32,8 @@ namespace NSApplication {
 		return menu;
 	}
 	
+	std::vector<NSWindow*> windows;
+	
 	pthread_t message_thread;
 	uint32_t message_fd;
 	uint32_t send_fd;
@@ -45,32 +47,75 @@ namespace NSApplication {
 		uint8_t* data = new uint8_t[32 * 1024];
 		uint32_t priority = 0;
 		uint32_t length = 0;
-		while ((length = mq_receive(message_fd, reinterpret_cast<char*>(data), 32 * 1024, &priority)) != 0) {
-			if (length == (uint32_t)-1)
+		
+		int mouse_fd = open("/dev/mouse", O_RDONLY);
+		
+		fd_set readfds;
+		
+		for (;;) {
+			FD_ZERO(&readfds);
+			FD_SET(message_fd, &readfds);
+			FD_SET(mouse_fd, &readfds);
+			
+			if (select(-1, &readfds, NULL, NULL, NULL) == -1)
 				continue;
 			
-			uint8_t* temp = new uint8_t[length];
-			memcpy(temp, data, length);
-			NSHandler([temp, length](NSThread*) {
-				NSEvent* event = NSEvent::FromData(temp, length);
-				if (event) {
-					bool process = true;
-					if (delegate)
-						process = delegate->ReceivedEvent(event, temp, length);
-					if (process)
-						event->Process();
-					delete event;
-				} else if (delegate)
-					delegate->ReceivedMessage(temp, length);
-				delete[] temp;
-			}).Post(NSThread::MainThread(), 0);
+			if (FD_ISSET(message_fd, &readfds)) {
+				length = mq_receive(message_fd, reinterpret_cast<char*>(data), 32 * 1024, &priority);
+				if (length == (uint32_t)-1)
+					continue;
+				
+				uint8_t* temp = new uint8_t[length];
+				memcpy(temp, data, length);
+				NSHandler([temp, length](NSThread*) {
+					NSEvent* event = NSEvent::FromData(temp, length);
+					if (event) {
+						bool process = true;
+						if (delegate)
+							process = delegate->ReceivedEvent(event, temp, length);
+						if (process)
+							event->Process();
+						delete event;
+					} else if (delegate)
+						delegate->ReceivedMessage(temp, length);
+					delete[] temp;
+				}).Post(NSThread::MainThread(), 0);
+			}
+			if (FD_ISSET(mouse_fd, &readfds)) {
+				uint8_t buffer[9];
+				read(mouse_fd, buffer, 9);
+				int32_t* b = (int32_t*)&buffer;
+				static int32_t prevb0 = 0, prevb1 = 0;
+				bool left_down = buffer[8] & 0x1;
+				NSPoint p = NSPoint(b[0], b[1]) / pixel_scaling_factor;
+				
+				if (prevb0 != b[0] || prevb1 != b[1]) {
+					NSHandler([p, left_down](NSThread*) {
+						for (auto window : windows) {
+							if (!window->IsKeyWindow())
+								continue;
+							auto e = NSEventMouse::Create(p - window->GetContentFrame().origin,
+														  left_down ? NSMouseTypeDragged : NSMouseTypeMoved,
+														  left_down ? NSMouseButtonLeft : NSMouseButtonNone,
+														  window->GetWindowID());
+							if (left_down)
+								window->MouseDragged(e);
+							else
+								window->MouseMoved(e);
+							break;
+						}
+					}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+				}
+				
+				prevb0 = b[0];
+				prevb1 = b[1];
+			}
 		}
+		close(mouse_fd);
 		delete[] data;
 		
 		return NULL;
 	}
-	
-	std::vector<NSWindow*> windows;
 	
 	void RegisterWindow(NSWindow* window) {
 		windows.push_back(window);

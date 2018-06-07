@@ -21,6 +21,7 @@ namespace {
 void NSThread::Setup() {
 	NSThread* main = new NSThread;
 	main->thread = pthread_self();
+	main->SetExitsWhenDone(false);
 	threads[MAIN_THREAD_TID] = main;
 }
 
@@ -47,7 +48,7 @@ NSThread* NSThread::Create() {
 	return new NSThread();
 }
 
-NSThread* NSThread::Create(std::function<void(NSThread*)> function) {
+NSThread* NSThread::Create(const std::function<void(NSThread*)>& function) {
 	return new NSThread(function);
 }
 
@@ -57,9 +58,10 @@ NSThread* NSThread::Create(std::queue<std::function<void(NSThread*)>> functions)
 
 NSThread::NSThread() {
 	thread = NULL;
+	SetExitsWhenDone(true);
 }
 
-NSThread::NSThread(std::function<void(NSThread*)> function) {
+NSThread::NSThread(const std::function<void(NSThread*)>& function) {
 	thread = NULL;
 	loop.AddEvent(NSEventFunction::Create(std::bind(function, this)));
 }

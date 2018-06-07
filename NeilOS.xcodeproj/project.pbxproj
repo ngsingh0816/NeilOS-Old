@@ -94,7 +94,6 @@
 		2801260A200329AB00647962 /* mq.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mq.c; sourceTree = "<group>"; };
 		2801262D2016BE9200647962 /* svga.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga.h; sourceTree = "<group>"; };
 		2801262E2016BE9200647962 /* svga.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = svga.c; sourceTree = "<group>"; };
-		280126302016C15300647962 /* svga_reg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga_reg.h; sourceTree = "<group>"; };
 		280126312019A24E00647962 /* graphics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics.h; sourceTree = "<group>"; };
 		280126322019A24E00647962 /* graphics.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics.c; sourceTree = "<group>"; };
 		280FE3181F003E4F00E1A724 /* sysfile.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sysfile.c; sourceTree = "<group>"; };
@@ -113,13 +112,22 @@
 		280FE33A1F00487900E1A724 /* pci.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pci.h; sourceTree = "<group>"; };
 		280FE33C1F00487900E1A724 /* i8259.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = i8259.c; sourceTree = "<group>"; };
 		280FE33D1F00487900E1A724 /* i8259.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = i8259.h; sourceTree = "<group>"; };
-		281CEB322024FA2100C7D407 /* svga_escape.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga_escape.h; sourceTree = "<group>"; };
-		281CEB332024FA2400C7D407 /* svga3d_caps.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga3d_caps.h; sourceTree = "<group>"; };
-		281CEB342024FA2800C7D407 /* svga3d_reg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga3d_reg.h; sourceTree = "<group>"; };
-		281CEB352024FA2B00C7D407 /* backdoor_def.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = backdoor_def.h; sourceTree = "<group>"; };
-		281CEB362024FA2E00C7D407 /* svga_overlay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga_overlay.h; sourceTree = "<group>"; };
-		281CEB372024FA3100C7D407 /* vmmouse_defs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vmmouse_defs.h; sourceTree = "<group>"; };
-		281CEB382024FA3500C7D407 /* svga3d_shaderdefs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga3d_shaderdefs.h; sourceTree = "<group>"; };
+		281246C320C739A800546A96 /* svga3d_caps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_caps.h; sourceTree = "<group>"; };
+		281246C420C739A800546A96 /* svga3d_surfacedefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_surfacedefs.h; sourceTree = "<group>"; };
+		281246C520C739A800546A96 /* includeCheck.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = includeCheck.h; sourceTree = "<group>"; };
+		281246C620C739A800546A96 /* svga_reg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga_reg.h; sourceTree = "<group>"; };
+		281246C720C739A800546A96 /* svga3d_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_types.h; sourceTree = "<group>"; };
+		281246C820C739A800546A96 /* svga3d_cmd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_cmd.h; sourceTree = "<group>"; };
+		281246C920C739A800546A96 /* svga3d_devcaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_devcaps.h; sourceTree = "<group>"; };
+		281246CA20C739A800546A96 /* svga3d_limits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_limits.h; sourceTree = "<group>"; };
+		281246CB20C739A800546A96 /* svga_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga_types.h; sourceTree = "<group>"; };
+		281246CC20C739A800546A96 /* svga3d_video.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_video.h; sourceTree = "<group>"; };
+		281246CD20C739A800546A96 /* vmware_pack_end.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vmware_pack_end.h; sourceTree = "<group>"; };
+		281246CE20C739A800546A96 /* svga_overlay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga_overlay.h; sourceTree = "<group>"; };
+		281246CF20C739A800546A96 /* vmware_pack_begin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vmware_pack_begin.h; sourceTree = "<group>"; };
+		281246D020C739A800546A96 /* svga_escape.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga_escape.h; sourceTree = "<group>"; };
+		281246D120C739A800546A96 /* svga3d_dx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_dx.h; sourceTree = "<group>"; };
+		281246D220C739A800546A96 /* svga3d_reg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = svga3d_reg.h; sourceTree = "<group>"; };
 		281CEB392024FA5C00C7D407 /* svga_3d.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svga_3d.h; sourceTree = "<group>"; };
 		281CEB3A2024FA5C00C7D407 /* svga_3d.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = svga_3d.c; sourceTree = "<group>"; };
 		284828821DFCBDF500E4FC62 /* product */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = product; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -254,14 +262,7 @@
 		2801262C2016BE8600647962 /* svga */ = {
 			isa = PBXGroup;
 			children = (
-				281CEB352024FA2B00C7D407 /* backdoor_def.h */,
-				281CEB322024FA2100C7D407 /* svga_escape.h */,
-				281CEB362024FA2E00C7D407 /* svga_overlay.h */,
-				280126302016C15300647962 /* svga_reg.h */,
-				281CEB332024FA2400C7D407 /* svga3d_caps.h */,
-				281CEB342024FA2800C7D407 /* svga3d_reg.h */,
-				281CEB382024FA3500C7D407 /* svga3d_shaderdefs.h */,
-				281CEB372024FA3100C7D407 /* vmmouse_defs.h */,
+				281246C220C739A800546A96 /* include */,
 				2801262D2016BE9200647962 /* svga.h */,
 				2801262E2016BE9200647962 /* svga.c */,
 				281CEB392024FA5C00C7D407 /* svga_3d.h */,
@@ -309,6 +310,29 @@
 				280FE33D1F00487900E1A724 /* i8259.h */,
 			);
 			path = pic;
+			sourceTree = "<group>";
+		};
+		281246C220C739A800546A96 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				281246C320C739A800546A96 /* svga3d_caps.h */,
+				281246C420C739A800546A96 /* svga3d_surfacedefs.h */,
+				281246C520C739A800546A96 /* includeCheck.h */,
+				281246C620C739A800546A96 /* svga_reg.h */,
+				281246C720C739A800546A96 /* svga3d_types.h */,
+				281246C820C739A800546A96 /* svga3d_cmd.h */,
+				281246C920C739A800546A96 /* svga3d_devcaps.h */,
+				281246CA20C739A800546A96 /* svga3d_limits.h */,
+				281246CB20C739A800546A96 /* svga_types.h */,
+				281246CC20C739A800546A96 /* svga3d_video.h */,
+				281246CD20C739A800546A96 /* vmware_pack_end.h */,
+				281246CE20C739A800546A96 /* svga_overlay.h */,
+				281246CF20C739A800546A96 /* vmware_pack_begin.h */,
+				281246D020C739A800546A96 /* svga_escape.h */,
+				281246D120C739A800546A96 /* svga3d_dx.h */,
+				281246D220C739A800546A96 /* svga3d_reg.h */,
+			);
+			path = include;
 			sourceTree = "<group>";
 		};
 		284827D01DFC98F800E4FC62 = {
