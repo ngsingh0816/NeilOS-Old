@@ -269,7 +269,6 @@ bool NSRect::ContainsRect(const NSRect& r) const {
 }
 
 bool NSRect::OverlapsRect(const NSRect& r) const {
-	// Increase 0.5 on both sides
 	return (origin.x <= r.origin.x + r.size.width && origin.x + size.width >= r.origin.x &&
 			origin.y <= r.origin.y + r.size.height && origin.y + size.height >= r.origin.y);
 }
@@ -355,4 +354,204 @@ NSRect NSRectCorrected(NSRect rect) {
 		rect.size.height = -rect.size.height;
 	}
 	return rect;
+}
+
+namespace {
+	bool OverlapsRectNonInclusive(const NSRect& s, const NSRect& r) {
+		return (s.origin.x < r.origin.x + r.size.width && s.origin.x + s.size.width > r.origin.x &&
+				s.origin.y < r.origin.y + r.size.height && s.origin.y + s.size.height > r.origin.y);
+	}
+	
+	std::vector<NSRect> FindIndependentOverlap(const NSRect& from, const NSRect& value,
+											   bool olt, bool olb, bool oll, bool olr) {
+		std::vector<NSRect> ret;
+		if (olt) {
+			// Overlaps top
+			ret.push_back(NSRect(value.origin.x, value.origin.y,
+								 value.size.width, from.origin.y - value.origin.y));
+		}
+		if (olb) {
+			// Overlaps bottom
+			ret.push_back(NSRect(value.origin.x, from.origin.y + from.size.height, value.size.width,
+								 value.origin.y + value.size.height - (from.origin.y + from.size.height)));
+		}
+		if (oll) {
+			// Overlaps left
+			ret.push_back(NSRect(value.origin.x, value.origin.y,
+								 from.origin.x - value.origin.x, value.size.height));
+		}
+		if (olr) {
+			// Overlaps right
+			ret.push_back(NSRect(from.origin.x + from.size.width, value.origin.y,
+								value.origin.x + value.size.width - (from.origin.x + from.size.width),
+								 value.size.height));
+		}
+		return ret;
+	}
+	
+	std::vector<NSRect> FindDependentOverlap(const NSRect& from, const NSRect& value,
+											 bool olt, bool olb, bool oll, bool olr) {
+		std::vector<NSRect> ret;
+		ret.resize(2);
+		if (olt && olr) {
+			// Top-right
+			ret[0] = NSRect(value.origin.x, value.origin.y,
+							value.size.width, from.origin.y - value.origin.y);
+			ret[1] = NSRect(from.origin.x + from.size.width, from.origin.y,
+							value.origin.x + value.size.width - (from.origin.x + from.size.width),
+							value.origin.y + value.size.height - from.origin.y);
+		} else if (olt && oll) {
+			// Top-left
+			ret[0] = NSRect(value.origin.x, value.origin.y,
+							value.size.width, from.origin.y - value.origin.y);
+			ret[1] = NSRect(value.origin.x, from.origin.y, from.origin.x - value.origin.x,
+							value.origin.y + value.size.height - from.origin.y);
+		} else if (olb && olr) {
+			// Bottom-right
+			ret[0] = NSRect(value.origin.x, from.origin.y + from.size.height, value.size.width,
+							value.origin.y + value.size.height - (from.origin.y + from.size.height));
+			ret[1] = NSRect(from.origin.x + from.size.width, value.origin.y,
+							value.origin.x + value.size.width - (from.origin.x + from.size.width),
+							from.origin.y + from.size.height - value.origin.y);
+		} else if (olb && oll) {
+			// Bottom-left
+			ret[0] = NSRect(value.origin.x, from.origin.y + from.size.height, value.size.width,
+							value.origin.y + value.size.height - (from.origin.y + from.size.height));
+			ret[1] = NSRect(value.origin.x, value.origin.y, from.origin.x - value.origin.x,
+							from.origin.y + from.size.height - value.origin.y);
+		}
+		return ret;
+	}
+	
+	std::vector<NSRect> RectSubtract(const NSRect& from, const NSRect& value, bool* remove) {
+		*remove = false;
+
+		/* Cases (| = from, - = value, + = overlap)
+		 0) value completely in from -> 0 rects
+		 |||||||||
+		 |||+++|||
+		 |||+++|||
+		 |||||||||
+		 1) value goes out a single side -> 1 rect
+		    ---
+		 |||+++|||
+		 |||+++|||
+		 |||||||||
+		 2.1) value goes out two opposite sides  -> 2 rects
+		    ---
+		 |||+++|||
+		 |||+++|||
+		 |||+++|||
+		    ---
+		 2.2) value goes out two adjacent sides -> 2 rects - these rects could potentially overlap though
+		        ----
+		 |||||||++--
+		 |||||||++--
+		 |||||||||
+		 3) value goes out three sides -> 1 rect (reverse)
+		    |||
+		 ---+++---
+		 ---+++---
+		 ---------
+		 4) from completely in value -> 0 rects (reverse)
+		 ---------
+		 ---+++---
+		 ---+++---
+		 ---------
+		 */
+		
+		// Find the number of overlaps and which ones
+		bool overlaps_top = (value.origin.y < from.origin.y) && (value.origin.y + value.size.height > from.origin.y);
+		bool overlaps_bottom = (value.origin.y < from.origin.y + from.size.height) &&
+								(value.origin.y + value.size.height > from.origin.y + from.size.height);
+		bool overlaps_left = (value.origin.x < from.origin.x) && (value.origin.x + value.size.width > from.origin.x);
+		bool overlaps_right = (value.origin.x < from.origin.x + from.size.width) &&
+								(value.origin.x + value.size.width > from.origin.x + from.size.width);
+		
+		int num_overlaps = 0;
+		if (overlaps_top)
+			num_overlaps++;
+		if (overlaps_bottom)
+			num_overlaps++;
+		if (overlaps_left)
+			num_overlaps++;
+		if (overlaps_right)
+			num_overlaps++;
+		
+		// Cases
+		switch (num_overlaps) {
+			default:
+			case 0: {
+				return std::vector<NSRect>();
+			}
+			case 1:
+				return FindIndependentOverlap(from, value, overlaps_top, overlaps_bottom,
+											overlaps_left, overlaps_right);
+			case 2:
+				// Case 2.1
+				if ((overlaps_top && overlaps_bottom) || (overlaps_left && overlaps_right)) {
+					return FindIndependentOverlap(from, value, overlaps_top, overlaps_bottom,
+												overlaps_left, overlaps_right);
+				}
+				// Case 2.2
+				return FindDependentOverlap(from, value, overlaps_top, overlaps_bottom,
+											  overlaps_left, overlaps_right);
+			case 3: {
+				bool other_remove = false;
+				std::vector<NSRect> other = RectSubtract(value, from, &other_remove);
+				other.push_back(value);
+				*remove = true;
+				return other;
+			}
+			case 4: {
+				*remove = true;
+				std::vector<NSRect> ret = { value };
+				return ret;
+			}
+		}
+	}
+	
+	void AddRectangle(std::vector<NSRect>& rects, const NSRect& rect) {
+		for (unsigned int z = 0; z < rects.size(); z++) {
+			const NSRect& original = rects[z];
+			if (OverlapsRectNonInclusive(rect, original)) {
+				// Split up
+				bool remove = false;
+				auto new_rects = RectSubtract(original, rect, &remove);
+				if (remove) {
+					// Remove original
+					rects.erase(rects.begin() + z);
+				}
+				// Add new
+				for (unsigned int z = 0; z < new_rects.size(); z++)
+						AddRectangle(rects, new_rects[z]);
+				return;
+			}
+		}
+		rects.push_back(rect);
+	}
+}
+
+// Given a vector of NSRects, return the minimum number of nonoverlapping rects that cover the same region
+std::vector<NSRect> NSRectConsolidate(const std::vector<NSRect>& rects) {
+	// TODO: Apparently this problem is NP-Hard, so
+	// real algorithm seems to be here - rectangle dissection of axis aligned polygon:
+	// https://stackoverflow.com/questions/5919298/algorithm-for-finding-the-fewest-rectangles-to-cover-a-set-of-rectangles-without
+	
+	// For now, take the slow and non-optimal approach - O(exp(n))?
+	// 1) Add each rectangle one at a time
+	// 2) See if it overlaps any other rectangle
+	// 3) If it does cut up the single rectangle and get multiple non overlapping rectangles
+	// 4) Add ^those rectangles one at a time (recursively)
+	
+	std::vector<NSRect> output;
+	for (unsigned int z = 0; z < rects.size(); z++)
+		AddRectangle(output, rects[z]);
+	
+	return output;
+}
+
+// For adding one at a time
+void NSRectAddConsolidated(std::vector<NSRect>& rects, const NSRect& rect) {
+	AddRectangle(rects, rect);
 }

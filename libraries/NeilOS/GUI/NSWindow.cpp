@@ -351,7 +351,7 @@ void NSWindow::PushUpdates() {
 	if (!visible)
 		return;
 	
-	NSEventWindowDraw* event = NSEventWindowDraw::Create(getpid(), window_id, rects);
+	NSEventWindowDraw* event = NSEventWindowDraw::Create(getpid(), window_id, NSRectConsolidate(rects));
 	if (!event)
 		return;
 	

@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include <vector>
+
 typedef double NSTimeInterval;
 
 class NSRect;
@@ -105,5 +107,10 @@ public:
 bool NSRectClamp(NSRect rect, NSRect clamp, NSRect* rect_out);
 // Correct negative dimensions
 NSRect NSRectCorrected(NSRect rect);
+
+// Given a vector of NSRects, return the minimum number of nonoverlapping rects that cover the same region
+std::vector<NSRect> NSRectConsolidate(const std::vector<NSRect>& rects);
+// For adding one at a time
+void NSRectAddConsolidated(std::vector<NSRect>& rects, const NSRect& rect);
 
 #endif /* NSTYPES_H */
