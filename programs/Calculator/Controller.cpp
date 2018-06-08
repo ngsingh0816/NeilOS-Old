@@ -26,6 +26,7 @@ void Controller::DidFinishLaunching() {
 	window->GetContentView()->AddSubview(img_view);
 	
 	NSButton* button = NSButton::Create("Click Me!", NSRect(230, 15, 155, NSButtonDefaultSize.height));
+	button->SetResizingMask(NSViewMaxXMargin | NSViewWidthSizable | NSViewMinYMargin | NSViewMinXMargin);
 	button->SetAction([label](NSControl*) {
 		static int clicked = 0;
 		clicked++;

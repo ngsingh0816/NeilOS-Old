@@ -22,7 +22,8 @@
 #include <chrono>
 #include <vector>
 
-#define BORDER_RECT	NSRect(-2, -2, 4, 4)
+#define BORDER_RECT		NSRect(-2, -2, 4, 4)
+#define CURSOR_SIZE		20
 
 using std::vector;
 
@@ -33,7 +34,8 @@ namespace Desktop {
 	bool loaded = false;
 	
 	NSImage* background_image = NULL;
-	NSImage* cursor_image = NULL;
+	NSImage* cursor_image[CURSOR_MAX];
+	NSPoint cursor_hotspot[CURSOR_MAX];
 	NSSound* intro_sound = NULL;
 	
 	NSMenu* app_menu;		// on the left
@@ -67,6 +69,9 @@ namespace Desktop {
 	NSLock rect_lock;
 	bool update_requested = false;
 	float pixel_scaling_factor = 2.0f;
+	float original_psf = 2.0f;
+	
+	Cursor current_cursor = CURSOR_MAX;
 	
 	struct timeval fade_start;
 	
@@ -100,6 +105,8 @@ namespace Desktop {
 		0.0, 1.0,
 		1.0, 1.0
 	};
+
+	NSSize AdjustCursorSize(NSSize size);
 	
 	void* MouseThread(void*);
 	void* KeyThread(void*);
@@ -160,15 +167,39 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	intro_sound = NSSound::Create("/system/sounds/boot.wav");
 	percent(10);
 	
-	cursor_image = new NSImage("/system/images/cursors/cursor_large.png");
-	cursor_image->SetSize(cursor_image->GetSize() * Desktop::GetPixelScalingFactor());
-	percent(20);
+	static const char* cursor_names[] = {
+		"default", "ibeam", "move", "cross", "drag_and_drop", "screenshot", "open_hand", "closed_hand",
+		"pointing_hand", "resize_north", "resize_northeast", "resize_northwest", "resize_south",
+		"resize_southeast", "resize_southwest", "resize_northeast_southwest", "resize_northwest_southeast",
+		"resize_north_south", "resize_east", "resize_west", "resize_east_west", "resize_up", "resize_down",
+		"resize_up_down", "resize_left", "resize_right", "resize_left_right", "zoom_in", "zoom_out",
+	};
+	
+	for (int z = 0; z < CURSOR_MAX; z++) {
+		cursor_image[z] = new NSImage(std::string("/system/images/cursors/") +
+								   std::string(cursor_names[z]) + std::string(".png"));
+		NSSize old_size = cursor_image[z]->GetSize();
+		cursor_image[z]->SetSize(AdjustCursorSize(cursor_image[z]->GetSize()));
+		NSSize new_size = cursor_image[z]->GetSize();
+		
+		FILE* hotspot = fopen((std::string("/system/images/cursors/") +
+							  std::string(cursor_names[z]) + std::string(".txt")).c_str(), "r");
+		if (hotspot) {
+			int x, y;
+			fscanf(hotspot, "%i, %i\n", &x, &y);
+			fclose(hotspot);
+			cursor_hotspot[z] = NSPoint(x * (new_size.width / old_size.width), y * (new_size.height / old_size.height));
+		} else
+			cursor_hotspot[z] = NSPoint();
+		
+		percent(10 + (float(z + 1) / CURSOR_MAX) * 40);
+	}
 	
 	background_image = new NSImage("/system/images/background.jpg");
 	int img_width = int(background_image->GetSize().width + 0.5f);
 	int img_height = int(background_image->GetSize().height + 0.5f);
 	
-	percent(50);
+	percent(65);
 	
 	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC);
 	graphics_buffer_data(square_vbo, square, sizeof(square));
@@ -181,13 +212,9 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	mouse_vbo = graphics_buffer_create(sizeof(mouse_colors), GRAPHICS_BUFFER_STATIC);
 	graphics_buffer_data(mouse_vbo, mouse_colors, sizeof(mouse_colors));
 	
-	percent(60);
-	
 	background_vbo = graphics_buffer_create(img_width, img_height, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
 	graphics_buffer_data(background_vbo, background_image->GetPixelData(),
 						 img_width, img_height, img_width * img_height * 4);
-	
-	percent(70);
 	
 	memset(background_vao, 0, sizeof(graphics_vertex_array_t) * 3);
 	background_vao[0].bid = square_vbo;
@@ -233,7 +260,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	pthread_create(&mouse_thread, NULL, MouseThread, NULL);
 	pthread_create(&key_thread, NULL, KeyThread, NULL);
 	
-	percent(80);
+	percent(70);
 	
 	app_menu = new NSMenu;
 	system_menu = new NSMenu;
@@ -406,9 +433,7 @@ void* Desktop::KeyThread(void*) {
 
 void Desktop::Start(NSThread*) {
 	// Set the cursor
-	graphics_cursor_image_set(0, 0, int(cursor_image->GetSize().width + 0.5f), int(cursor_image->GetSize().height + 0.5f),
-							  const_cast<void*>(reinterpret_cast<const void*>(cursor_image->GetPixelData())));
-	delete cursor_image;
+	SetCursor(CURSOR_DEFAULT);
 	
 	// Play the boot sound
 	intro_sound->Play();
@@ -779,4 +804,28 @@ void Desktop::UpdateMenu() {
 	app_menu->SetContext(&context);
 	
 	Desktop::UpdateRect(app_menu_rect + NSRect(-1, -1, 2, 2));
+}
+
+NSSize Desktop::AdjustCursorSize(NSSize size) {
+	float aspect = size.width / size.height;
+	float new_height = CURSOR_SIZE * Desktop::GetPixelScalingFactor();
+	return NSSize(new_height * aspect, new_height);
+}
+
+void Desktop::SetCursor(Cursor cursor) {
+	if (current_cursor == cursor)
+		return;
+	int z = static_cast<int>(cursor);
+	graphics_cursor_image_set(round(cursor_hotspot[z].x), round(cursor_hotspot[z].y), int(cursor_image[z]->GetSize().width + 0.5f),
+							  int(cursor_image[z]->GetSize().height + 0.5f),
+							  const_cast<void*>(reinterpret_cast<const void*>(cursor_image[z]->GetPixelData())));
+	current_cursor = cursor;
+}
+
+void Desktop::SetCursor(NSImage* image, NSPoint hotspot) {
+	image->SetSize(AdjustCursorSize(image->GetSize()));
+	graphics_cursor_image_set(round(hotspot.x), round(hotspot.y), int(image->GetSize().width + 0.5f),
+							  int(image->GetSize().height + 0.5f),
+							  const_cast<void*>(reinterpret_cast<const void*>(image->GetPixelData())));
+	current_cursor = CURSOR_MAX;
 }

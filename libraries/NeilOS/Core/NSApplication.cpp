@@ -38,6 +38,12 @@ namespace NSApplication {
 	uint32_t message_fd;
 	uint32_t send_fd;
 	
+	NSPoint mouse_pos;
+	
+	NSPoint GetMousePosition() {
+		return mouse_pos;
+	}
+	
 	float pixel_scaling_factor = 1.0f;
 	void SetPixelScalingFactor(float factor);
 	
@@ -88,6 +94,7 @@ namespace NSApplication {
 				static int32_t prevb0 = 0, prevb1 = 0;
 				bool left_down = buffer[8] & 0x1;
 				NSPoint p = NSPoint(b[0], b[1]) / pixel_scaling_factor;
+				mouse_pos = p;
 				
 				if (prevb0 != b[0] || prevb1 != b[1]) {
 					NSHandler([p, left_down](NSThread*) {

@@ -190,6 +190,8 @@ void Boot::Load(NSThread* main) {
 	vao[1].stride = 4 * sizeof(float);
 	vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	vao[1].usage = GRAPHICS_USAGE_COLOR;
+	
+	Draw(NULL);
 		
 	// Start the drawing timer
 	timer = NSTimer::Create(Draw, 1.0 / 60, true);

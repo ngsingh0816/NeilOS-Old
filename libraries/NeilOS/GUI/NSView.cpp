@@ -77,14 +77,56 @@ void NSView::SetFrame(NSRect f) {
 	NSRect old_frame = frame;
 	frame = f;
 	
-	if (old_frame.size != frame.size)
+	if (old_frame.size != frame.size) {
 		UpdateVBO();
+		for (unsigned int z = 0; z < subviews.size(); z++)
+			Resize(subviews[z], old_frame.size, frame.size);
+	}
 	
 	if (superview) {
 		superview->DrawRect(old_frame);
 		superview->DrawRect(frame);
 	} else
 		DrawRect(GetBounds());
+}
+
+void NSView::Resize(NSView* view, NSSize old_sv_size, NSSize sv_size) {
+	NSAutoResizingMask mask = view->resizing_mask;
+	if (mask == NSViewNotResizable)
+		return;
+	
+	bool width = (mask & NSViewWidthSizable) != 0, height = (mask & NSViewHeightSizable) != 0;
+	bool x_min = (mask & NSViewMinXMargin) != 0, x_max = (mask & NSViewMaxXMargin) != 0;
+	bool y_min = (mask & NSViewMinYMargin) != 0, y_max = (mask & NSViewMaxYMargin) != 0;
+	
+	NSRect frame = view->frame;
+	NSRect old_frame = view->frame;
+	if (width)
+		frame.size.width = (frame.size.width / old_sv_size.width) * sv_size.width;
+	if (mask & NSViewHeightSizable)
+		frame.size.height = (frame.size.height / old_sv_size.height) * sv_size.height;
+	
+	if (x_min && x_max && width) {
+		float dist = old_sv_size.width - (old_frame.origin.x + old_frame.size.width);
+		frame.size.width = sv_size.width - dist - frame.origin.x;
+	} else if (x_min) {
+		// Do nothing (implicit)
+	} else if (x_max) {
+		float dist = old_sv_size.width - (old_frame.origin.x + old_frame.size.width);
+		frame.origin.x = sv_size.width - frame.size.width - dist;
+	}
+	
+	if (y_min && y_max && height) {
+		float dist = old_sv_size.height - (old_frame.origin.y + old_frame.size.height);
+		frame.size.height = sv_size.height - dist - frame.origin.y;
+	} else if (y_min) {
+		// Do nothing (implicit)
+	} else if (y_max) {
+		float dist = old_sv_size.height - (old_frame.origin.y + old_frame.size.height);
+		frame.origin.y = sv_size.height - frame.size.height - dist;
+	}
+	
+	view->SetFrame(frame);
 }
 
 void NSView::SetFrameOrigin(NSPoint p) {
@@ -108,6 +150,7 @@ NSRect NSView::GetAbsoluteRect(NSRect rect) const {
 void NSView::AddSubview(NSView* view) {
 	view->window = window;
 	view->superview = this;
+	view->WindowWasSet();
 
 	subviews.push_back(view);
 	
@@ -173,6 +216,9 @@ NSWindow* NSView::GetWindow() const {
 	return window;
 }
 
+void NSView::WindowWasSet() {
+}
+
 NSView* NSView::GetSuperview() const {
 	return superview;
 }
@@ -190,6 +236,14 @@ void NSView::SetVisible(bool is) {
 		superview->DrawRect(frame);
 	else
 		DrawRect(GetBounds());
+}
+
+NSAutoResizingMask NSView::GetResizingMask() const {
+	return resizing_mask;
+}
+
+void NSView::SetResizingMask(NSAutoResizingMask mask) {
+	resizing_mask = mask;
 }
 
 void NSView::DrawRect(NSRect rect) {

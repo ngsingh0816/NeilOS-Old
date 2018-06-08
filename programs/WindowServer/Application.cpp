@@ -22,7 +22,8 @@ using std::vector;
 namespace Application {
 	// Events
 	void QuitEvent(uint8_t* data, uint32_t length);
-	void SetMenu(uint8_t* data, uint32_t length);
+	void SetMenuEvent(uint8_t* data, uint32_t length);
+	void SetCursorEvent(uint8_t* data, uint32_t length);
 	
 	void SetActiveApplication(uint32_t pid);
 	bool SendActiveEvent(NSEvent* event);
@@ -50,7 +51,10 @@ void Application::ProcessEvent(uint8_t* data, uint32_t length) {
 			QuitEvent(data, length);
 			break;
 		case APPLICATION_EVENT_SET_MENU:
-			SetMenu(data, length);
+			SetMenuEvent(data, length);
+			break;
+		case APPLICATION_EVENT_SET_CURSOR:
+			SetCursorEvent(data, length);
 			break;
 	}
 }
@@ -82,7 +86,7 @@ void SetMenuActions(uint32_t pid, NSMenu* menu, std::vector<unsigned int> indice
 	}
 }
 
-void Application::SetMenu(uint8_t* data, uint32_t length) {
+void Application::SetMenuEvent(uint8_t* data, uint32_t length) {
 	NSEventApplicationSetMenu* e = NSEventApplicationSetMenu::FromData(data, length);
 	if (!e)
 		return;
@@ -100,6 +104,19 @@ void Application::SetMenu(uint8_t* data, uint32_t length) {
 	
 	if (active_app == app)
 		Desktop::UpdateMenu();
+}
+
+void Application::SetCursorEvent(uint8_t* data, uint32_t length) {
+	NSEventApplicationCursor* e = NSEventApplicationCursor::FromData(data, length);
+	if (!e)
+		return;
+	
+	if (e->GetImage())
+		Desktop::SetCursor(e->GetImage(), e->GetHotspot());
+	else
+		Desktop::SetCursor(Desktop::Cursor(e->GetCursor()));
+	
+	delete e;
 }
 
 void Application::SetActiveApplication(uint32_t pid) {

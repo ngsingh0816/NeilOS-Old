@@ -17,6 +17,16 @@
 #include <map>
 #include <list>
 
+#define WINDOW_CORNER_LEFT			(1 << 1)
+#define WINDOW_CORNER_RIGHT			(1 << 2)
+#define WINDOW_CORNER_TOP			(1 << 3)
+#define WINDOW_CORNER_BOTTOM		(1 << 4)
+
+#define BUTTON_OFFSET		10
+#define BUTTON_SPACING		6
+#define BUTTON_WIDTH		12
+#define TOTAL_BUTTON_SIZE	((2 * BUTTON_OFFSET) + (BUTTON_SPACING + BUTTON_WIDTH) * 3)
+
 using std::string;
 
 class WSWindow;
@@ -27,18 +37,12 @@ namespace Window {
 	
 	constexpr float round_width = 5.0;
 	constexpr int num_title_vertices = 22;	// must be multiple of 2 + 4
-	constexpr float button_width = 12;
-	constexpr float button_spacing = 6;
-	constexpr float button_offset = 10;
 	
 	uint32_t title_key_colors_vbo;
 	uint32_t title_colors_vbo;
 	uint32_t border_color_vbo;
-	uint32_t button_vbo;
 	uint32_t square_vbo;
-	uint32_t border_vbo;
 	uint32_t button_images[3];
-	graphics_vertex_array_t button_vao[6];
 	graphics_vertex_array_t square_vao[2];
 	graphics_vertex_array_t view_border_vao[2];
 	
@@ -60,6 +64,12 @@ namespace Window {
 	// Key window
 	void MakeKeyWindow(WSWindow* key);
 	WSWindow* key_window = NULL;
+	
+	// Cursor
+	Desktop::Cursor GetCursorForFrame(const NSRect& frame, const NSPoint& p);
+	int GetCornersForFrame(const NSRect& frame, const NSPoint& p);
+	
+	void UpdateFrame(WSWindow* window, NSRect frame, bool delayed=false);
 	
 	inline uint64_t MakeKey(uint32_t pid, uint32_t id) {
 		return (uint64_t(pid) << 32) | id;
@@ -99,6 +109,11 @@ public:
 	NSSize text_size;
 	float text_height;
 	
+	Desktop::Cursor cursor = Desktop::CURSOR_DEFAULT;
+	bool resizing = false;
+	int resizing_corners = 0;
+	bool needs_frame_update = false;
+	
 	bool visible;
 	
 	inline NSRect GetTitleFrame() const {
@@ -108,6 +123,9 @@ public:
 		return NSRect(frame.origin.x, frame.origin.y + WINDOW_TITLE_BAR_HEIGHT, frame.size.width,
 					  frame.size.height - WINDOW_TITLE_BAR_HEIGHT);
 	}
+	inline NSSize GetMinimumSize() const {
+		return NSSize(text_size.width + TOTAL_BUTTON_SIZE + BUTTON_OFFSET, WINDOW_TITLE_BAR_HEIGHT * 2);
+	}
 	
 	WSWindow() {
 		using namespace Window;
@@ -116,6 +134,9 @@ public:
 		memset(title_vao, 0, sizeof(title_vao));
 		memset(title_border_vao, 0, sizeof(title_border_vao));
 		visible = false;
+		
+		title_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 2, GRAPHICS_BUFFER_STATIC);
+		title_border_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 2, GRAPHICS_BUFFER_STATIC);
 		
 		title_vao[0].bid = title_vbo;
 		title_vao[0].offset = 0;
@@ -184,14 +205,40 @@ public:
 		
 		if (visible)
 			Desktop::UpdateRect(GetTitleFrame());
+		
+		NSSize min_size = GetMinimumSize();
+		if (min_size.width > frame.size.width) {
+			NSRect f = frame;
+			frame.size.width = min_size.width;
+			SetFrame(f);
+		}
 	}
 	
-	void SetFrame(NSRect f) {
-		using namespace Window;
+	void SetFrame(NSRect f, bool update=true) {
+		NSSize min_size = GetMinimumSize();
+		if (f.size.height < min_size.height)
+			f.size.height = min_size.height;
+		if (f.size.width < min_size.width)
+			f.size.width = min_size.width;
 		
 		NSRect old_frame = frame;
 		frame = f;
 		
+		if (old_frame.size != frame.size)
+			needs_frame_update = true;
+			
+		if (visible && update) {
+			Desktop::UpdateRect(old_frame);
+			Desktop::UpdateRect(frame);
+		}
+	}
+	
+	void UpdateFrameIfNeeded() {
+		using namespace Window;
+
+		if (!needs_frame_update)
+			return;
+		needs_frame_update = false;
 		float vertices[num_title_vertices * 2];
 		float border_verts[(num_title_vertices - 1) * 2];
 		vertices[0] = frame.size.width / 2;
@@ -203,8 +250,8 @@ public:
 			float y = -sinf(angle) * round_width + round_width;
 			border_verts[pos - 2] = x;
 			border_verts[pos - 1] = y;
-			vertices[pos++] = x;
-			vertices[pos++] = y;
+			vertices[pos++] = x + 1;
+			vertices[pos++] = y + 1;
 		}
 		for (int z = 0; z < (num_title_vertices - 4) / 2; z++) {
 			float angle = (90.0f - (float(z) / (((num_title_vertices - 4) / 2) - 1)) * 90.0f) / 180.0f * M_PI;
@@ -212,38 +259,24 @@ public:
 			float y = -sinf(angle) * round_width + round_width;
 			border_verts[pos - 2] = x;
 			border_verts[pos - 1] = y;
-			vertices[pos++] = x;
-			vertices[pos++] = y;
+			vertices[pos++] = x - 1;
+			vertices[pos++] = y + 1;
 		}
 		border_verts[pos - 2] = frame.size.width;
 		border_verts[pos - 1] = WINDOW_TITLE_BAR_HEIGHT;
-		vertices[pos++] = frame.size.width;
+		vertices[pos++] = frame.size.width - 1;
 		vertices[pos++] = WINDOW_TITLE_BAR_HEIGHT;
 		border_verts[pos - 2] = 0;
 		border_verts[pos - 1] = WINDOW_TITLE_BAR_HEIGHT;
-		vertices[pos++] = 0;
+		vertices[pos++] = 1;
 		vertices[pos++] = WINDOW_TITLE_BAR_HEIGHT;
 		border_verts[pos - 2] = 0;
 		border_verts[pos - 1] = round_width;
-		vertices[pos++] = 0;
-		vertices[pos++] = round_width;
+		vertices[pos++] = 1;
+		vertices[pos++] = round_width - 1;
 		
-		if (title_vbo)
-			graphics_buffer_destroy(title_vbo);
-		title_vbo = graphics_buffer_create(sizeof(vertices), GRAPHICS_BUFFER_STATIC);
 		graphics_buffer_data(title_vbo, vertices, sizeof(vertices));
-		title_vao[0].bid = title_vbo;
-		
-		if (title_border_vbo)
-			graphics_buffer_destroy(title_border_vbo);
-		title_border_vbo = graphics_buffer_create(sizeof(border_verts), GRAPHICS_BUFFER_STATIC);
 		graphics_buffer_data(title_border_vbo, border_verts, sizeof(border_verts));
-		title_border_vao[0].bid = title_border_vbo;
-		
-		if (visible) {
-			Desktop::UpdateRect(old_frame);
-			Desktop::UpdateRect(frame);
-		}
 	}
 };
 
@@ -272,20 +305,12 @@ void Window::Load(volatile float* p, float percent_start, float percent_end) {
 	
 	percent(20);
 	
-	const float button_verts[] = {
-		0, 0,
-		button_width, 0,
-		0, button_width,
-		button_width, button_width
-	};
 	const float square[] = {
 		0, 0,
 		1.0f, 0,
 		0, 1.0f,
 		1.0f, 1.0f
 	};
-	button_vbo = graphics_buffer_create(sizeof(button_verts), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(button_vbo, button_verts, sizeof(button_verts));
 	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC);
 	graphics_buffer_data(square_vbo, square, sizeof(square));
 	
@@ -293,7 +318,6 @@ void Window::Load(volatile float* p, float percent_start, float percent_end) {
 	
 	const char* button_imgs[] = { "/system/images/button_close.png",
 		"/system/images/button_minimize.png", "/system/images/button_maximize.png" };
-	memset(button_vao, 0, sizeof(graphics_vertex_array_t) * 6);
 	for (int z = 0; z < 3; z++) {
 		NSImage* img = new NSImage(button_imgs[z]);
 		int img_width = int(img->GetSize().width + 0.5f);
@@ -303,17 +327,6 @@ void Window::Load(volatile float* p, float percent_start, float percent_end) {
 		graphics_buffer_data(button_images[z], img->GetPixelData(), img_width, img_height,
 							 img_width * img_height * sizeof(uint32_t));
 		delete img;
-		
-		button_vao[z*2].bid = button_vbo;
-		button_vao[z*2].offset = 0;
-		button_vao[z*2].stride = 2 * sizeof(float);
-		button_vao[z*2].type = GRAPHICS_TYPE_FLOAT2;
-		button_vao[z*2].usage = GRAPHICS_USAGE_POSITION;
-		button_vao[z*2+1].bid = square_vbo;
-		button_vao[z*2+1].offset = 0;
-		button_vao[z*2+1].stride = 2 * sizeof(float);
-		button_vao[z*2+1].type = GRAPHICS_TYPE_FLOAT2;
-		button_vao[z*2+1].usage = GRAPHICS_USAGE_TEXCOORD;
 		
 		percent(50 + 20 * z);
 	}
@@ -330,16 +343,6 @@ void Window::Load(volatile float* p, float percent_start, float percent_end) {
 	square_vao[1].type = GRAPHICS_TYPE_FLOAT2;
 	square_vao[1].usage = GRAPHICS_USAGE_TEXCOORD;
 	
-	const float border_verts[] = {
-		0, 0,
-		1, 0,
-		1, 1,
-		0, 1,
-		0, 0
-	};
-	border_vbo = graphics_buffer_create(sizeof(border_verts), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(border_vbo, border_verts, sizeof(border_verts));
-	
 	c = NSColor<float>::UIGrayColor();
 	float line_colors[5*3];
 	for (int z = 0; z < 5; z++) {
@@ -351,7 +354,7 @@ void Window::Load(volatile float* p, float percent_start, float percent_end) {
 	graphics_buffer_data(border_color_vbo, line_colors, sizeof(line_colors));
 	
 	memset(view_border_vao, 0, sizeof(graphics_vertex_array_t) * 2);
-	view_border_vao[0].bid = border_vbo;
+	view_border_vao[0].bid = square_vbo;
 	view_border_vao[0].offset = 0;
 	view_border_vao[0].stride = 2 * sizeof(float);
 	view_border_vao[0].type = GRAPHICS_TYPE_FLOAT2;
@@ -550,6 +553,8 @@ void Window::Draw(const std::vector<NSRect>& rects) {
 		if (!window->visible || !Desktop::RectsIntersect(rects, window->frame))
 			continue;
 		
+		window->UpdateFrameIfNeeded();
+		
 		NSRect frame = window->frame;
 		NSMatrix window_matrix = NSMatrix::Identity();
 		window_matrix.Translate(frame.origin.x, frame.origin.y, 0);
@@ -557,28 +562,31 @@ void Window::Draw(const std::vector<NSRect>& rects) {
 		if (Desktop::RectsIntersect(rects, window->GetTitleFrame())) {
 			NSMatrix title_matrix = window_matrix;
 			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, title_matrix);
+			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, num_title_vertices - 2, window->title_border_vao, 2);
 			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, num_title_vertices - 2, window->title_vao, 2);
-			graphics_draw(&context, GRAPHICS_PRIMITIVE_LINESTRIP, num_title_vertices - 2,
-						  window->title_border_vao, 2);
 		}
 		
 		NSMatrix button_matrix = window_matrix;
-		button_matrix.Translate(button_offset, (WINDOW_TITLE_BAR_HEIGHT - button_width) / 2, 0);
+		button_matrix.Translate(BUTTON_OFFSET, (WINDOW_TITLE_BAR_HEIGHT - BUTTON_WIDTH) / 2, 0);
 		for (int z = 0; z < 3; z++) {
-			NSRect rect = NSRect(frame.origin.x + button_offset + (button_spacing + button_width) * z,
-								 frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - button_width) / 2,
-								 button_width, button_width);
+			NSRect rect = NSRect(frame.origin.x + BUTTON_OFFSET + (BUTTON_SPACING + BUTTON_WIDTH) * z,
+								 frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - BUTTON_WIDTH) / 2,
+								 BUTTON_WIDTH, BUTTON_WIDTH);
 			if (Desktop::RectsIntersect(rects, rect)) {
 				graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, button_images[z]);
-				graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, button_matrix);
-				graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, &button_vao[z * 2], 2);
+				NSMatrix m = button_matrix;
+				m.Scale(BUTTON_WIDTH, BUTTON_WIDTH, 1);
+				graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, m);
+				graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 2);
 			}
-			button_matrix.Translate(button_spacing + button_width, 0, 0);
+			button_matrix.Translate(BUTTON_SPACING + BUTTON_WIDTH, 0, 0);
 		}
 		
 		NSRect text_frame = NSRect(frame.origin.x + (frame.size.width - window->text_size.width) / 2,
 								   frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - window->text_height) / 2,
 								   window->text_size.width, window->text_size.height);
+		if (text_frame.origin.x - frame.origin.x < TOTAL_BUTTON_SIZE)
+			text_frame.origin.x = frame.origin.x + TOTAL_BUTTON_SIZE;
 		if (Desktop::RectsIntersect(rects, text_frame)) {
 			NSMatrix text_matrix = NSMatrix::Identity();
 			text_matrix.Translate(text_frame.origin.x, text_frame.origin.y, 0);
@@ -590,37 +598,32 @@ void Window::Draw(const std::vector<NSRect>& rects) {
 				
 		NSRect content_frame = window->GetContentFrame();
 		if (Desktop::RectsIntersect(rects, content_frame)) {
-			// TODO: make this not copy redundant pixels?
-			for (uint32_t z = 0; z < rects.size(); z++) {
-				NSRect intersect = rects[z].Intersection(content_frame);
-				if (intersect.size.width < 0.5f || intersect.size.height < 0.5f)
-					continue;
-				/*graphics_buffer_copy(context.color_surface, window->context.color_surface, intersect.origin.x,
-									 intersect.origin.y, intersect.origin.x - content_frame.origin.x,
-									 intersect.origin.y - content_frame.origin.y, intersect.size.width,
-									 intersect.size.height);*/
-				NSMatrix matrix = NSMatrix::Identity();
-				matrix.Translate(content_frame.origin.x, content_frame.origin.y, 0);
-				matrix.Scale(content_frame.size.width, content_frame.size.height, 1);
-				graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE,
-										   window->context.color_surface);
-				graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, matrix);
-				graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 2);
-
-			}
+			NSMatrix matrix = NSMatrix::Identity();
+			matrix.Translate(content_frame.origin.x, content_frame.origin.y, 0);
+			matrix.Scale(content_frame.size.width, content_frame.size.height, 1);
+			graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE,
+									   window->context.color_surface);
+			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, matrix);
+			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 2);
 		}
 		
 		graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
 		
-		// Draw border
-		NSRect border_rect = NSRect(frame.origin.x, frame.origin.y + WINDOW_TITLE_BAR_HEIGHT,
-									frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT);
-		if (Desktop::RectsIntersect(rects, border_rect)) {
-			NSMatrix border_matrix = NSMatrix::Identity();
-			border_matrix.Translate(border_rect.origin.x, border_rect.origin.y, 0);
-			border_matrix.Scale(border_rect.size.width, border_rect.size.height, 1);
-			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, border_matrix);
-			graphics_draw(&context, GRAPHICS_PRIMITIVE_LINESTRIP, 4, view_border_vao, 2);
+		const NSRect border_rects[4] = {
+			NSRect(content_frame.origin.x, content_frame.origin.y, content_frame.size.width, 1),
+			NSRect(content_frame.origin.x, content_frame.origin.y + content_frame.size.height - 1, content_frame.size.width, 1),
+			NSRect(content_frame.origin.x, content_frame.origin.y, 1, content_frame.size.height),
+			NSRect(content_frame.origin.x + content_frame.size.width - 1, content_frame.origin.y, 1, content_frame.size.height),
+		};
+		for (unsigned int z = 0; z < sizeof(border_rects) / sizeof(NSRect); z++) {
+			const NSRect& border_rect = border_rects[z];
+			if (Desktop::RectsIntersect(rects, border_rect)) {
+				NSMatrix border_matrix = NSMatrix::Identity();
+				border_matrix.Translate(border_rect.origin.x, border_rect.origin.y, 0);
+				border_matrix.Scale(border_rect.size.width, border_rect.size.height, 1);
+				graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, border_matrix);
+				graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, view_border_vao, 2);
+			}
 		}
 	}
 }
@@ -649,6 +652,7 @@ void Window::MakeKeyWindow(WSWindow* key) {
 	}
 	key_window = key;
 	if (key) {
+		key_window->cursor = Desktop::CURSOR_DEFAULT;
 		key_window->title_vao[1].bid = title_key_colors_vbo;
 		
 		// Move to front
@@ -703,7 +707,71 @@ void Window::DestroyWindows(uint32_t pid) {
 	}
 }
 
+int Window::GetCornersForFrame(const NSRect& frame, const NSPoint& p) {
+	NSRect left_frame = NSRect(frame.origin.x - 3, frame.origin.y, 6, frame.size.height);
+	NSRect right_frame = NSRect(frame.origin.x + frame.size.width - 3, frame.origin.y, 6, frame.size.height);
+	NSRect top_frame = NSRect(frame.origin.x, frame.origin.y - 3, frame.size.width, 6);
+	NSRect bottom_frame = NSRect(frame.origin.x, frame.origin.y + frame.size.height - 3, frame.size.width, 6);
+	
+	NSRect top_left = NSRect(frame.origin.x, frame.origin.y, 10, 10);
+	NSRect top_right = NSRect(frame.origin.x + frame.size.width - 10, frame.origin.y, 10, 10);
+	NSRect bottom_left = NSRect(frame.origin.x, frame.origin.y + frame.size.height - 10, 10, 10);
+	NSRect bottom_right = NSRect(frame.origin.x + frame.size.width - 10, frame.origin.y + frame.size.height - 10, 10, 10);
+	
+	int ret = 0;
+	if (left_frame.ContainsPoint(p))
+		ret |= WINDOW_CORNER_LEFT;
+	if (right_frame.ContainsPoint(p))
+		ret |= WINDOW_CORNER_RIGHT;
+	if (top_frame.ContainsPoint(p))
+		ret |= WINDOW_CORNER_TOP;
+	if (bottom_frame.ContainsPoint(p))
+		ret |= WINDOW_CORNER_BOTTOM;
+	if (top_left.ContainsPoint(p))
+		ret |= WINDOW_CORNER_LEFT | WINDOW_CORNER_TOP;
+	if (top_right.ContainsPoint(p))
+		ret |= WINDOW_CORNER_RIGHT | WINDOW_CORNER_TOP;
+	if (bottom_left.ContainsPoint(p))
+		ret |= WINDOW_CORNER_LEFT | WINDOW_CORNER_BOTTOM;
+	if (bottom_right.ContainsPoint(p))
+		ret |= WINDOW_CORNER_RIGHT | WINDOW_CORNER_BOTTOM;
+	
+	return ret;
+}
+
+Desktop::Cursor Window::GetCursorForFrame(const NSRect& frame, const NSPoint& p) {
+	Desktop::Cursor cursor = Desktop::CURSOR_DEFAULT;
+	
+	int corners = GetCornersForFrame(frame, p);
+	
+	bool over_left = (corners & WINDOW_CORNER_LEFT) != 0;
+	bool over_right = (corners & WINDOW_CORNER_RIGHT) != 0;
+	bool over_top = (corners & WINDOW_CORNER_TOP) != 0;
+	bool over_bottom = (corners & WINDOW_CORNER_BOTTOM) != 0;
+	
+	if ((over_left && over_top) || (over_right && over_bottom))
+		cursor = Desktop::CURSOR_RESIZE_NORTHWEST_SOUTHEAST;
+	else if ((over_left && over_bottom) || (over_right && over_top))
+		cursor = Desktop::CURSOR_RESIZE_NORTHEAST_SOUTHWEST;
+	else if (over_top || over_bottom)
+		cursor = Desktop::CURSOR_RESIZE_NORTH_SOUTH;
+	else if (over_left || over_right)
+		cursor = Desktop::CURSOR_RESIZE_EAST_WEST;
+	
+	return cursor;
+}
+
+void Window::UpdateFrame(WSWindow* window, NSRect frame, bool delayed) {
+	window->SetFrame(frame);
+	
+	if (!delayed) {
+		auto e = NSEventWindowSetFrame(window->pid, window->id, window->frame);
+		Application::SendEvent(&e, window->pid);
+	}
+}
+
 bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
+	bool found = false;
 	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
 		WSWindow* window = *it;
 		if (!window->visible)
@@ -714,12 +782,9 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 			down_title = true;
 		} else if (!content_frame.ContainsPoint(p))
 			continue;
-		mouse_down = true;
-		mouse_pos = p;
-		mouse_down_type = mouse;
 		
 		if (key_window == window && !down_title) {
-			NSEventMouse* event = NSEventMouse::Create(mouse_pos - content_frame.origin,
+			NSEventMouse* event = NSEventMouse::Create(p - content_frame.origin,
 													   NSMouseTypeDown, mouse, window->id);
 			Application::SendEvent(event, window->pid);
 			delete event;
@@ -727,25 +792,79 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 		
 		if (mouse == NSMouseButtonLeft)
 			MakeKeyWindow(window);
-		return true;
+		
+		found = true;
+		break;
 	}
 	
-	return false;
+	if (key_window && mouse == NSMouseButtonLeft) {
+		int corners = GetCornersForFrame(key_window->frame, p);
+		if (corners != 0) {
+			Desktop::SetCursor(GetCursorForFrame(key_window->frame, p));
+			key_window->resizing = true;
+			key_window->resizing_corners = corners;
+			found = true;
+			down_title = false;
+		}
+	}
+	
+	if (found) {
+		mouse_down = true;
+		mouse_pos = p;
+		mouse_down_type = mouse;
+	}
+	
+	return found;
 }
 
 bool Window::MouseMoved(NSPoint p) {
-	if (!mouse_down)
-		return false;
+	if (!mouse_down) {
+		bool over = false;
+		if (key_window && key_window->visible) {
+			NSRect frame = key_window->frame;
+			Desktop::Cursor cursor = GetCursorForFrame(frame, p);
+			
+			if (cursor != key_window->cursor) {
+				Desktop::SetCursor(cursor);
+				key_window->cursor = cursor;
+			}
+			over = frame.ContainsPoint(p) || (cursor != Desktop::CURSOR_DEFAULT);
+		}
+		if (!over)
+			Desktop::SetCursor(Desktop::CURSOR_DEFAULT);
+		return over;
+	}
 	
-	if (mouse_down_type == NSMouseButtonLeft && down_title) {
-		NSRect old_rect = key_window->frame;
-		key_window->frame.origin += (p - mouse_pos);
-	
-		auto e = NSEventWindowSetFrame(key_window->pid, key_window->id, key_window->frame);
-		Application::SendEvent(&e, key_window->pid);
+	if (mouse_down_type == NSMouseButtonLeft && down_title)
+		Window::UpdateFrame(key_window, NSRect(key_window->frame.origin + (p - mouse_pos), key_window->frame.size));
+	else if (mouse_down_type == NSMouseButtonLeft && key_window && key_window->resizing) {
+		NSRect frame = key_window->frame;
 		
-		std::vector<NSRect> rects = { old_rect, key_window->frame };
-		Desktop::UpdateRects(rects);
+		NSPoint delta = p - mouse_pos;
+		int corners = key_window->resizing_corners;
+		NSSize min_size = key_window->GetMinimumSize();
+		if (corners & WINDOW_CORNER_LEFT) {
+			frame.origin.x += delta.x;
+			frame.size.width -= delta.x;
+			if (frame.size.width < min_size.width) {
+				frame.origin.x -= (min_size.width - frame.size.width);
+				frame.size.width = min_size.width;
+			}
+		}
+		if (corners & WINDOW_CORNER_TOP) {
+			frame.origin.y += delta.y;
+			frame.size.height -= delta.y;
+			if (frame.size.height < min_size.height) {
+				frame.origin.y -= (min_size.height - frame.size.height);
+				frame.size.height = min_size.height;
+			}
+		}
+		if (corners & WINDOW_CORNER_RIGHT)
+			frame.size.width += delta.x;
+		if (corners & WINDOW_CORNER_BOTTOM)
+			frame.size.height += delta.y;
+		
+		Window::UpdateFrame(key_window, frame, true);
 	}
 	
 	mouse_pos = p;
@@ -761,6 +880,13 @@ bool Window::MouseUp(NSPoint p, NSMouseButton mouse) {
 	}
 	
 	if (key_window) {
+		if (mouse == NSMouseButtonLeft) {
+			if (key_window->resizing) {
+				key_window->resizing = false;
+				Window::UpdateFrame(key_window, key_window->frame);
+			}
+		}
+		
 		NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
 												   NSMouseTypeUp, mouse, key_window->id);
 		Application::SendEvent(event, key_window->pid);

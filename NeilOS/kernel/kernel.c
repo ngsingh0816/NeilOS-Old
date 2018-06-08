@@ -103,10 +103,9 @@
  		* Window not always showing up when opening calculator / discolored windows??
 			* visible being set to false (one time) - number of creates > number of shows, but why??
  		* Screen freezes sometimes - maybe due to FIFO error?
- 	* Cursor Images (cursor regions in api)
- 	* Window Resizing / View Resizing
- 	* NSTextField
+ 	* Consolidate rects (to optimize present)
  	* NSScrollView
+ 	* NSTextField
 	* NSRadioButton, NSCheckBox
 	* NSProgressBar, NSSlider
  	* Context Menu

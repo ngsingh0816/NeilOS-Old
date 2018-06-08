@@ -348,6 +348,9 @@ void NSImage::SetScaledSize(NSSize size) {
 
 // Will linearly resample
 void NSImage::SetSize(NSSize _size) {
+	if (_size == size)
+		return;
+	
 	float width_ratio = size.width / _size.width;
 	float height_ratio = size.height / _size.height;
 	
@@ -380,7 +383,7 @@ void NSImage::SetSize(NSSize _size) {
 	
 	delete[] pixels;
 	pixels = buffer;
-	size = _size;
+	size = NSSize(new_width, new_height);
 }
 
 void NSImage::SetPixel(int x, int y, NSColor<uint8_t> color) {

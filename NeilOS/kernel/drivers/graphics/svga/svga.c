@@ -313,7 +313,14 @@ void svga_set_cursor_image(uint32_t hotspot_x, uint32_t hotspot_y, uint32_t widt
 		cursor->hotspotY = hotspot_y;
 		cursor->width = width;
 		cursor->height = height;
-		memcpy((void*)(cursor + 1), data, size);
+		
+		// Hack?: Things with only alpha equal 0 may still show up unless all 0
+		uint32_t* cdata = (uint32_t*)(cursor + 1);
+		memcpy(cdata, data, size);
+		for (uint32_t z = 0; z < width * height; z++) {
+			if (((cdata[z] >> 24) & 0xFF) == 0)
+				cdata[z] = 0;
+		}
 		svga_fifo_commit_all();
 	} else {
 		// Fall back to more complicated implementation

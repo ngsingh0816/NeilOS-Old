@@ -23,6 +23,15 @@
 
 class NSWindow;
 
+#define NSViewNotResizable		0
+#define NSViewMinXMargin		(1 << 0)		// Min X is fixed
+#define NSViewWidthSizable		(1 << 1)
+#define NSViewMaxXMargin		(1 << 2)		// Max X is fixed
+#define NSViewMinYMargin		(1 << 3)		// Min Y is fixed
+#define NSViewHeightSizable		(1 << 4)
+#define NSViewMaxYMargin		(1 << 5)		// Max Y is fixed
+typedef uint32_t NSAutoResizingMask;
+
 class NSView : public NSResponder {
 public:
 	static NSView* Create();
@@ -53,6 +62,9 @@ public:
 	bool IsVisible() const;
 	void SetVisible(bool is);
 	
+	NSAutoResizingMask GetResizingMask() const;
+	void SetResizingMask(NSAutoResizingMask mask);
+	
 	void SetNeedsDisplay();
 	
 	virtual bool AcceptsFirstResponder() const;
@@ -78,6 +90,9 @@ protected:
 	static void BufferColor(uint32_t bid, NSColor<float> color, uint32_t num_vertices);
 	static uint32_t CreateImageBuffer(NSImage* image, NSSize* size_out);
 	NSView();
+	
+	// Called when added to a window
+	virtual void WindowWasSet();
 	
 	// Called when buffers need updating (frame resizing)
 	virtual void UpdateVBO();
@@ -105,9 +120,14 @@ private:
 	
 	void RemoveFromWindow(NSView* view);
 	
+	void Resize(NSView* view, NSSize old_sv_size, NSSize sv_size);
+	
+	void CheckCursorRegions(NSPoint p);
+	
 	NSRect frame;
 	std::vector<NSView*> subviews;
 	bool visible = true;
+	NSAutoResizingMask resizing_mask = NSViewNotResizable;
 	
 	NSWindow* window = NULL;
 	NSView* superview = NULL;

@@ -11,6 +11,7 @@
 
 #include "Core/NSApplication.h"
 #include "Core/NSColor.h"
+#include "Core/NSCursor.h"
 #include "Core/NSEvent.h"
 #include "Core/NSFont.h"
 #include "Core/NSHandler.h"

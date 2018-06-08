@@ -9,6 +9,7 @@
 #ifndef NSWINDOW_H
 #define NSWINDOW_H
 
+#include "../Core/NSCursor.h"
 #include "../Core/NSLock.h"
 #include "../Core/NSResponder.h"
 #include "../Core/NSTypes.h"
@@ -56,6 +57,13 @@ public:
 	void MakeKeyWindow();
 	void ResignKeyWindow();
 	
+	void AddCursorRegion(const NSCursorRegion& region);
+	// Removes all regions that overlap the rect
+	void RemoveCursorRegion(const NSRect& region);
+	void RemoveAllCursorRegions();
+	uint32_t GetNumberOfCursorRegions();
+	NSCursorRegion GetCursorRegionAtIndex(uint32_t index);
+	
 	NSView* FirstResponder() const;
 	void MakeFirstResponder(NSView* view);
 	
@@ -77,6 +85,7 @@ private:
 	friend class NSEventWindowMakeKey;
 	
 	NSWindow(std::string title, NSRect frame);
+	void SetupContext();
 	void SetupProjMatrix();
 	
 	void AddUpdateRect(NSRect rect);
@@ -85,6 +94,8 @@ private:
 	
 	void SetFrameInternal(NSRect frame);
 	void MakeKeyInternal(bool key);
+	
+	void CheckCursorRegions(const NSPoint& p);
 		
 	NSView* content_view = NULL;
 	NSView* first_responder = NULL;
@@ -97,6 +108,8 @@ private:
 	bool dealloc = false;
 	bool visible = false;
 	bool is_key = false;
+	std::vector<NSCursorRegion> cursor_regions;
+	NSCursor::Cursor current_cursor = NSCursor::CURSOR_DEFAULT;
 	
 	graphics_context_t context;
 	float bsf = 1;
@@ -104,6 +117,7 @@ private:
 	NSLock rect_lock;
 	std::vector<NSRect> update_rects;
 	bool update_requested = false;
+	bool enable_updates = true;
 };
 
 class NSWindowObserver {
