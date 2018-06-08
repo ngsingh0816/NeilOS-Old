@@ -95,6 +95,7 @@
  * Implement CLOSE_ON_EXEC
  * cat "binary file" crashes because it tries to output nonexistant escape sequences
  * echo what > /dev/null -> pointer being freed not allocated
+ * Sometimes on program load, kernel will page fault at address 0xbfcb4000 on elf.c:376 (ELF_REL_PC32)
  */
 
 /* TODO:
@@ -103,7 +104,6 @@
  		* Window not always showing up when opening calculator / discolored windows??
 			* visible being set to false (one time) - number of creates > number of shows, but why??
  		* Screen freezes sometimes - maybe due to FIFO error?
- 	* Consolidate rects (to optimize present)
  	* NSScrollView
  	* NSTextField
 	* NSRadioButton, NSCheckBox

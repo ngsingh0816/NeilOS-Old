@@ -564,11 +564,18 @@ void Desktop::Draw(NSThread*) {
 		menus[z]->Draw(rects);
 	
 	// TODO: get multi rect version of this
-	float psf = Desktop::GetPixelScalingFactor();
+	std::vector<NSRect> consolidated_rects;
+	consolidated_rects.reserve(rects.size());
 	for (uint32_t z = 0; z < rects.size(); z++) {
 		NSRect rect = rects[z] - BORDER_RECT / 2;
 		if (!NSRectClamp(rect, NSRect(0, 0, res_x, res_y), &rect))
 			continue;
+		consolidated_rects.emplace_back(rect);
+	}
+	consolidated_rects = NSRectConsolidate(consolidated_rects);
+	float psf = Desktop::GetPixelScalingFactor();
+	for (uint32_t z = 0; z < consolidated_rects.size(); z++) {
+		const NSRect& rect = consolidated_rects[z];
 		graphics_present(context.color_surface, rect.origin.x * psf, rect.origin.y * psf,
 						 rect.origin.x * psf, rect.origin.y * psf,
 						 round(rect.size.width * psf + 0.5), round(rect.size.height * psf + 0.5));
@@ -583,8 +590,6 @@ void Desktop::UpdateRect(NSRect rect) {
 void Desktop::UpdateRects(const std::vector<NSRect>& rects) {
 	std::vector<NSRect> real;
 	real.reserve(rects.size());
-	
-	// TODO: remove redundant rects
 	
 	for (uint32_t z = 0; z < rects.size(); z++) {
 		NSRect rect = NSRectCorrected(rects[z]).IntegerRect() + BORDER_RECT;
@@ -661,14 +666,6 @@ void Desktop::MouseMoved(NSPoint p) {
 	NSPoint old_pos = mouse_pos;
 	mouse_pos = p;
 	
-	if ((mouse_down == mouse_menu_down) || mouse_menu_down) {
-		if (MouseMenu(p, NSMouseTypeMoved, NSMouseButtonNone, &NSMenu::MouseMoved))
-			return;
-	}
-	
-	if (Window::MouseMoved(p))
-		return;
-	
 	if (mouse_desktop_down) {
 		// Update the difference
 		NSPoint diff = mouse_pos - old_pos;
@@ -676,7 +673,16 @@ void Desktop::MouseMoved(NSPoint p) {
 			NSRect(mouse_down_pos.x, old_pos.y, old_pos.x - mouse_down_pos.x, diff.y),
 			NSRect(old_pos.x, old_pos.y, diff.x, diff.y) };
 		UpdateRects(rects);
+		return;
 	}
+	
+	if ((mouse_down == mouse_menu_down) || mouse_menu_down) {
+		if (MouseMenu(p, NSMouseTypeMoved, NSMouseButtonNone, &NSMenu::MouseMoved))
+			return;
+	}
+	
+	if (Window::MouseMoved(p))
+		return;
 }
 
 void Desktop::MouseUp(NSPoint p, NSMouseButton mouse) {
