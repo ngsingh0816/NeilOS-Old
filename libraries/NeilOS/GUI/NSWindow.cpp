@@ -52,11 +52,11 @@ NSWindow::NSWindow(string t, NSRect f) {
 	float psf = NSApplication::GetPixelScalingFactor();
 	bsf = psf;
 	NSSize size = NSSize(f.size.width * psf, (f.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf);
-	context = graphics_context_create(size.width, size.height, 32, 16, 0);
-	SetupContext();
+	context = graphics_context_create(size.width, size.height, 24, 16, 0);
+	NSView::SetupContext(&context, NSSize(f.size.width, (f.size.height - WINDOW_TITLE_BAR_HEIGHT)));
 	
 	content_view = NSView::Create(NSRect(0, 0, f.size.width, f.size.height - WINDOW_TITLE_BAR_HEIGHT));
-	content_view->window = this;
+	content_view->SetWindow(this);
 	MakeFirstResponder(content_view);
 }
 
@@ -69,30 +69,6 @@ NSWindow::~NSWindow() {
 	delete content_view;
 	
 	graphics_context_destroy(&context);
-}
-
-void NSWindow::SetupContext() {
-	float psf = NSApplication::GetPixelScalingFactor();
-	bsf = psf;
-	NSSize size = NSSize(frame.size.width * psf, (frame.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf);
-	SetupProjMatrix();
-	NSMatrix iden = NSMatrix::Identity();
-	graphics_transform_set(&context, GRAPHICS_TRANSFORM_WORLD, iden);
-	graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, iden);
-	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDENABLE, true);
-	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_SRCBLEND, GRAPHICS_BLENDOP_SRCALPHA);
-	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_DSTBLEND, GRAPHICS_BLENDOP_INVSRCALPHA);
-	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDEQUATION, GRAPHICS_BLENDEQ_ADD);
-	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_SCISSORTESTENABLE, true);
-	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
-	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
-	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
-	graphics_clear(&context, 0x0, 1.0f, 0, GRAPHICS_CLEAR_COLOR, 0, 0, size.width, size.height);
-}
-
-void NSWindow::SetupProjMatrix() {
-	NSMatrix proj = NSMatrix::Ortho2D(0, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT, 0);
-	graphics_transform_set(&context, GRAPHICS_TRANSFORM_PROJECTION, proj);
 }
 
 NSView* NSWindow::GetContentView() {
@@ -139,13 +115,13 @@ NSRect NSWindow::GetContentFrame() const {
 				  NSSize(frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
 }
 
-void NSWindow::SetFrameInternal(NSRect rect) {
+void NSWindow::SetFrameInternal(const NSRect& rect) {
 	NSSize old_size = frame.size;
 	frame = rect;
 	
 	if (old_size != rect.size) {
 		graphics_context_resize(&context, frame.size.width * bsf, (frame.size.height - WINDOW_TITLE_BAR_HEIGHT) * bsf);
-		SetupProjMatrix();
+		NSView::SetupContext(&context, NSSize(frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
 		
 		enable_updates = false;
 		content_view->SetFrame(NSRect(0, 0, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
@@ -157,18 +133,18 @@ void NSWindow::SetFrameInternal(NSRect rect) {
 		i->SetFrame();
 }
 
-void NSWindow::SetFrame(NSRect rect) {
+void NSWindow::SetFrame(const NSRect& rect) {
 	SetFrameInternal(rect);
 	
 	auto event = NSEventWindowSetFrame(getpid(), window_id, frame);
 	NSApplication::SendEvent(&event);
 }
 
-void NSWindow::SetFrameOrigin(NSPoint p) {
+void NSWindow::SetFrameOrigin(const NSPoint& p) {
 	SetFrame(NSRect(p, frame.size));
 }
 
-void NSWindow::SetFrameSize(NSSize size) {
+void NSWindow::SetFrameSize(const NSSize& size) {
 	SetFrame(NSRect(frame.origin, size));
 }
 
@@ -245,55 +221,23 @@ void NSWindow::ResignKeyWindow() {
 	MakeKeyInternal(false);
 }
 
-void NSWindow::AddCursorRegion(const NSCursorRegion& region) {
-	cursor_regions.push_back(region);
-}
-
-// Removes all regions that overlap the rect
-void NSWindow::RemoveCursorRegion(const NSRect& region) {
-	for (unsigned int z = 0; z < cursor_regions.size(); z++) {
-		if (region.OverlapsRect(cursor_regions[z].GetRegion())) {
-			cursor_regions.erase(cursor_regions.begin() + z);
-			z--;
+void NSWindow::CheckCursorRegions(const NSPoint& p) {
+	NSCursorRegion* region = content_view->GetCursorRegionAtPoint(p);
+	if (region) {
+		if (current_region != region) {
+			NSImage* image = region->GetImage();
+			if (image)
+				NSCursor::SetCursor(image, region->GetHotspot());
+			else
+				NSCursor::SetCursor(region->GetCursor());
+			current_cursor = region->GetCursor();
 		}
 	}
-}
-
-void NSWindow::RemoveAllCursorRegions() {
-	cursor_regions.clear();
-}
-
-uint32_t NSWindow::GetNumberOfCursorRegions() {
-	return cursor_regions.size();
-}
-
-NSCursorRegion NSWindow::GetCursorRegionAtIndex(uint32_t index) {
-	return cursor_regions[index];
-}
-
-void NSWindow::CheckCursorRegions(const NSPoint& p) {
-	bool found = false;
-	for (unsigned int z = 0; z < cursor_regions.size(); z++) {
-		NSCursorRegion& region = cursor_regions[z];
-		if (region.GetRegion().ContainsPoint(p)) {
-			found = true;
-			if (region.IsActive())
-				continue;
-			
-			NSImage* image = region.GetImage();
-			if (image)
-				NSCursor::SetCursor(image, region.GetHotspot());
-			else
-				NSCursor::SetCursor(region.GetCursor());
-			current_cursor = region.GetCursor();
-			region.SetIsActive(true);
-		} else
-			region.SetIsActive(false);
-	}
-	if (!found && current_cursor != NSCursor::CURSOR_DEFAULT) {
+	else if (current_cursor != NSCursor::CURSOR_DEFAULT) {
 		NSCursor::SetCursor(NSCursor::CURSOR_DEFAULT);
 		current_cursor = NSCursor::CURSOR_DEFAULT;
 	}
+	current_region = region;
 }
 
 NSView* NSWindow::FirstResponder() const {
@@ -311,7 +255,7 @@ void NSWindow::MakeFirstResponder(NSView* view) {
 	view->BecomeFirstResponder();
 }
 
-void NSWindow::AddUpdateRect(NSRect rect) {
+void NSWindow::AddUpdateRect(const NSRect& rect) {
 	std::vector<NSRect> rects = { rect };
 	AddUpdateRects(rects);
 }
@@ -362,13 +306,14 @@ void NSWindow::PushUpdates() {
 void NSWindow::MouseDown(NSEventMouse* event) {
 	if (!content_view)
 		return;
-		
+	
 	NSView* view = content_view->GetViewAtPoint(event->GetPosition());
 	if (!view)
 		return;
 	
 	down_view = view;
-	view->MouseDown(event);
+	MakeFirstResponder(down_view);
+	content_view->MouseDown(event);
 }
 
 void NSWindow::MouseDragged(NSEventMouse* event) {
@@ -384,7 +329,7 @@ void NSWindow::MouseUp(NSEventMouse* event) {
 	if (!down_view)
 		return;
 	
-	down_view->MouseUp(event);
+	content_view->MouseUp(event);
 	down_view = NULL;
 }
 
@@ -394,35 +339,28 @@ void NSWindow::MouseMoved(NSEventMouse* event) {
 	
 	CheckCursorRegions(event->GetPosition());
 	
-	std::function<void(NSView*)> recurse = [&recurse, event](NSView* view) {
-		if (!view->visible)
-			return;
-		view->MouseMoved(event);
-		for (unsigned int z = 0; z < view->subviews.size(); z++)
-			recurse(view->subviews[z]);
-	};
-	recurse(content_view);
+	content_view->MouseMoved(event);
 }
 
 void NSWindow::MouseScrolled(NSEventMouse* event) {
 	if (!content_view)
 		return;
 	
-	NSView* view = content_view->GetViewAtPoint(event->GetPosition());
-	if (!view)
-		return;
-	
-	view->MouseScrolled(event);
+	content_view->MouseScrolled(event);
 };
 
 void NSWindow::KeyDown(NSEventKey* event) {
-	if (first_responder)
-		first_responder->KeyDown(event);
+	if (!content_view)
+		return;
+	
+	content_view->KeyDown(event);
 }
 
 void NSWindow::KeyUp(NSEventKey* event) {
-	if (first_responder)
-		first_responder->KeyDown(event);
+	if (!content_view)
+		return;
+	
+	content_view->KeyUp(event);
 }
 
 void NSWindow::AddObserver(NSWindowObserver* observer) {

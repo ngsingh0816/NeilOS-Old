@@ -31,7 +31,7 @@ void NSMenu::SetupVAO() {
 		0, 1.0f,
 		1.0f, 1.0f
 	};
-	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC);
+	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
 	graphics_buffer_data(square_vbo, square, sizeof(square));
 	
 	const float triangle[] = {
@@ -39,7 +39,7 @@ void NSMenu::SetupVAO() {
 		0, 1.0f,
 		1.0f, 0.5f
 	};
-	triangle_vbo = graphics_buffer_create(sizeof(triangle), GRAPHICS_BUFFER_STATIC);
+	triangle_vbo = graphics_buffer_create(sizeof(triangle), GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
 	graphics_buffer_data(triangle_vbo, triangle, sizeof(triangle));
 	
 	NSColor<float> c[5] = { background_color, highlight_color, border_color, text_color,
@@ -53,7 +53,7 @@ void NSMenu::SetupVAO() {
 			colors[z * 4 + 2] = c[i].b;
 			colors[z * 4 + 3] = c[i].a;
 		}
-		color_vbo[i] = graphics_buffer_create(sizeof(colors), GRAPHICS_BUFFER_STATIC);
+		color_vbo[i] = graphics_buffer_create(sizeof(colors), GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
 		graphics_buffer_data(color_vbo[i], colors, sizeof(colors));
 	}
 	
@@ -399,7 +399,8 @@ uint32_t NSMenu::IndexOfItem(NSMenuItem* item) {
 	return -1;
 }
 
-NSRect NSMenu::AdjustRect(NSRect rect) {
+NSRect NSMenu::AdjustRect(const NSRect& r) {
+	NSRect rect = r;
 	NSSize max_size = GetSize();
 	if (is_context_menu) {
 		rect.size = max_size;
@@ -651,7 +652,7 @@ NSRect NSMenu::GetFrame() const {
 	return frame;
 }
 
-void NSMenu::SetFrame(NSRect f) {
+void NSMenu::SetFrame(const NSRect& f) {
 	NSRect old_frame = frame;
 	frame = f;
 	

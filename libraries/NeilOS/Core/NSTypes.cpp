@@ -156,12 +156,23 @@ NSSize& NSSize::operator *=(const float& scalar) {
 
 // Piecewise multiplication
 NSSize NSSize::operator *(const NSSize& p2) const {
-	return NSSize(width + p2.width, height + p2.height);
+	return NSSize(width * p2.width, height * p2.height);
 }
 
 NSSize& NSSize::operator *=(const NSSize& p2) {
 	width *= p2.width;
 	height *= p2.height;
+	return *this;
+}
+
+// Piecewise division
+NSSize NSSize::operator /(const NSSize& p2) const {
+	return NSSize(width / p2.width, height / p2.height);
+}
+
+NSSize& NSSize::operator /=(const NSSize& p2) {
+	width /= p2.width;
+	height /= p2.height;
 	return *this;
 }
 
@@ -322,7 +333,8 @@ NSRect NSRect::FromData(const uint8_t* data, uint32_t length) {
 }
 
 // Clamp a rectangle to the clamp rectangle
-bool NSRectClamp(NSRect rect, NSRect clamp, NSRect* rect_out) {
+bool NSRectClamp(const NSRect& r, NSRect clamp, NSRect* rect_out) {
+	NSRect rect = r;
 	if (!rect.OverlapsRect(clamp))
 		return false;
 	if (rect.origin.x < clamp.origin.x) {
@@ -344,7 +356,8 @@ bool NSRectClamp(NSRect rect, NSRect clamp, NSRect* rect_out) {
 }
 
 // Correct negative dimensions
-NSRect NSRectCorrected(NSRect rect) {
+NSRect NSRectCorrected(const NSRect& r) {
+	NSRect rect = r;
 	if (rect.size.width < 0) {
 		rect.origin.x += rect.size.width;
 		rect.size.width = -rect.size.width;

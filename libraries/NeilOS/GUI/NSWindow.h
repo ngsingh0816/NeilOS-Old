@@ -41,9 +41,9 @@ public:
 	uint32_t GetWindowID() const;
 	NSRect GetFrame() const;
 	NSRect GetContentFrame() const;
-	void SetFrame(NSRect rect);
-	void SetFrameOrigin(NSPoint p);
-	void SetFrameSize(NSSize size);
+	void SetFrame(const NSRect& rect);
+	void SetFrameOrigin(const NSPoint& p);
+	void SetFrameSize(const NSSize& size);
 	
 	void SetDeallocsWhenClose(bool close);
 	bool GetDeallocsWhenClose() const;
@@ -56,14 +56,7 @@ public:
 	// Makes this window the key window and moves it to the front
 	void MakeKeyWindow();
 	void ResignKeyWindow();
-	
-	void AddCursorRegion(const NSCursorRegion& region);
-	// Removes all regions that overlap the rect
-	void RemoveCursorRegion(const NSRect& region);
-	void RemoveAllCursorRegions();
-	uint32_t GetNumberOfCursorRegions();
-	NSCursorRegion GetCursorRegionAtIndex(uint32_t index);
-	
+		
 	NSView* FirstResponder() const;
 	void MakeFirstResponder(NSView* view);
 	
@@ -85,14 +78,12 @@ private:
 	friend class NSEventWindowMakeKey;
 	
 	NSWindow(std::string title, NSRect frame);
-	void SetupContext();
-	void SetupProjMatrix();
 	
-	void AddUpdateRect(NSRect rect);
+	void AddUpdateRect(const NSRect& rect);
 	void AddUpdateRects(std::vector<NSRect> rects);
 	void PushUpdates();
 	
-	void SetFrameInternal(NSRect frame);
+	void SetFrameInternal(const NSRect& frame);
 	void MakeKeyInternal(bool key);
 	
 	void CheckCursorRegions(const NSPoint& p);
@@ -108,7 +99,7 @@ private:
 	bool dealloc = false;
 	bool visible = false;
 	bool is_key = false;
-	std::vector<NSCursorRegion> cursor_regions;
+	NSCursorRegion* current_region = NULL;
 	NSCursor::Cursor current_cursor = NSCursor::CURSOR_DEFAULT;
 	
 	graphics_context_t context;

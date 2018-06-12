@@ -61,7 +61,7 @@ public:
 	
 	NSSize GetSize();
 	NSRect GetFrame() const;
-	void SetFrame(NSRect frame);
+	void SetFrame(const NSRect& frame);
 	
 	graphics_context_t* GetContext() const;
 	void SetContext(graphics_context_t* context);
@@ -84,7 +84,7 @@ private:
 	friend class NSMenuItem;
 	
 	void SetupVAO();
-	NSRect AdjustRect(NSRect rect);
+	NSRect AdjustRect(const NSRect& rect);
 	bool MouseEvent(NSEventMouse* event, bool down);
 	void ClearSubmenu();
 	void Clear();

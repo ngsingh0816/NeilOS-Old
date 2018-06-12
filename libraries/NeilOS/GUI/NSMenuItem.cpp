@@ -454,7 +454,7 @@ NSSize NSMenuItem::GetSize() const {
 	return item_size;
 }
 
-void NSMenuItem::SetSize(NSSize size) {
+void NSMenuItem::SetSize(const NSSize& size) {
 	item_size = size;
 	Update(menu);
 }

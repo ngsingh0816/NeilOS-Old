@@ -61,6 +61,9 @@ public:
 	// Piecewise multiplication
 	NSSize operator *(const NSSize& p2) const;
 	NSSize& operator *=(const NSSize& p2);
+	// Piecewise division
+	NSSize operator /(const NSSize& p2) const;
+	NSSize& operator /=(const NSSize& p2);
 	NSSize operator /(const float& scalar) const;
 	NSSize& operator /=(const float& scalar);
 	
@@ -104,9 +107,9 @@ public:
 
 // Clamp a rect to be within the clamp bounds
 // Returns false if result is an empty rect
-bool NSRectClamp(NSRect rect, NSRect clamp, NSRect* rect_out);
+bool NSRectClamp(const NSRect& rect, NSRect clamp, NSRect* rect_out);
 // Correct negative dimensions
-NSRect NSRectCorrected(NSRect rect);
+NSRect NSRectCorrected(const NSRect& rect);
 
 // Given a vector of NSRects, return the minimum number of nonoverlapping rects that cover the same region
 std::vector<NSRect> NSRectConsolidate(const std::vector<NSRect>& rects);

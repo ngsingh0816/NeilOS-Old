@@ -25,7 +25,7 @@ public:
 	
 	NSImage();
 	~NSImage();
-	NSImage(NSSize size);
+	NSImage(const NSSize& size);
 	// Supports (24, 32) bit RGB and (1, 8) bit grayscale
 	NSImage(const void* pixels, NSSize size, int bpp);
 	NSImage(const std::string& filename);
@@ -34,8 +34,8 @@ public:
 	// Accounts for pixel scaling
 	NSSize GetScaledSize() const;
 	NSSize GetSize() const;
-	void SetScaledSize(NSSize size);
-	void SetSize(NSSize size);		// Will linearly resample
+	void SetScaledSize(const NSSize& size);
+	void SetSize(const NSSize& size);		// Will linearly resample
 	
 	void SetPixel(int x, int y, NSColor<uint8_t> color);
 	NSColor<uint8_t> GetPixel(int x, int y) const;

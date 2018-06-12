@@ -26,7 +26,7 @@ NSImage::~NSImage() {
 		delete[] pixels;
 }
 
-NSImage::NSImage(NSSize _size) {
+NSImage::NSImage(const NSSize& _size) {
 	size = _size;
 	uint32_t width = int(size.width + 0.5f);
 	uint32_t height = int(size.height + 0.5f);
@@ -342,12 +342,12 @@ NSSize NSImage::GetSize() const {
 	return size;
 }
 
-void NSImage::SetScaledSize(NSSize size) {
+void NSImage::SetScaledSize(const NSSize& size) {
 	SetSize(size * psf);
 }
 
 // Will linearly resample
-void NSImage::SetSize(NSSize _size) {
+void NSImage::SetSize(const NSSize& _size) {
 	if (_size == size)
 		return;
 	

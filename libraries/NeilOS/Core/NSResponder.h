@@ -62,13 +62,13 @@ typedef enum {
 // Events
 class NSEventMouse : public NSEvent {
 public:
-	static NSEventMouse* Create(NSPoint position, NSMouseType type, NSMouseButton button,
+	static NSEventMouse* Create(const NSPoint& position, NSMouseType type, NSMouseButton button,
 								uint32_t window_id=-1, uint32_t priority=0);
 	
 	static NSEventMouse* FromData(uint8_t* data, uint32_t length);
 	
 	NSPoint GetPosition() const;
-	void SetPosition(NSPoint position);
+	void SetPosition(const NSPoint& position);
 	
 	NSMouseType GetType() const;
 	void SetType(NSMouseType type);
@@ -88,7 +88,7 @@ public:
 	void Process() override;
 	uint8_t* Serialize(uint32_t* length_out) const override;
 private:
-	NSEventMouse(NSPoint position, NSMouseType type, NSMouseButton button, uint32_t window_id, uint32_t priority);
+	NSEventMouse(const NSPoint& position, NSMouseType type, NSMouseButton button, uint32_t window_id, uint32_t priority);
 	
 	NSPoint position;
 	NSMouseType type;

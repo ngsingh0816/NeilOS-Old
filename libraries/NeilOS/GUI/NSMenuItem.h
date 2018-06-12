@@ -51,7 +51,7 @@ public:
 	void SetIsSeparator(bool is);
 	
 	NSSize GetSize() const;
-	void SetSize(NSSize size);
+	void SetSize(const NSSize& size);
 	
 	std::string GetKeyEquivalent() const;
 	NSModifierFlags GetKeyModifierFlags() const;

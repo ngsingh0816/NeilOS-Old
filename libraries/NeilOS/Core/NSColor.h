@@ -72,6 +72,8 @@ public:
 	NSColor<uint8_t> ByteRepresentation() const;
 	uint32_t RGBAValue() const;
 	
+	NSColor<T> AlphaColor(T a) const;
+	
 	operator NSColor<float>() const;
 	operator NSColor<uint8_t>() const;
 	explicit operator uint32_t() const;

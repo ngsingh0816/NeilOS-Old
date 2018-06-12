@@ -112,6 +112,19 @@ uint32_t NSColor<float>::RGBAValue() const {
 	return (c.a << 24) | (c.r << 16) | (c.g << 8) | c.b;
 }
 
+template<>
+NSColor<uint8_t> NSColor<uint8_t>::AlphaColor(uint8_t a) const {
+	NSColor<uint8_t> ret = *this;
+	ret.a = a;
+	return ret;
+}
+
+template<>
+NSColor<float> NSColor<float>::AlphaColor(float a) const {
+	NSColor<float> ret = *this;
+	ret.a = a;
+	return ret;
+}
 
 template <>
 NSColor<float>::operator NSColor<float>() const {

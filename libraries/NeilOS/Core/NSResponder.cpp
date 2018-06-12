@@ -20,7 +20,7 @@ namespace NSApplication {
 
 #define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
 
-NSEventMouse* NSEventMouse::Create(NSPoint position, NSMouseType type, NSMouseButton button,
+NSEventMouse* NSEventMouse::Create(const NSPoint& position, NSMouseType type, NSMouseButton button,
 								   uint32_t window_id, uint32_t priority) {
 	return new NSEventMouse(position, type, button, window_id, priority);
 }
@@ -61,7 +61,7 @@ NSPoint NSEventMouse::GetPosition() const {
 	return position;
 }
 
-void NSEventMouse::SetPosition(NSPoint p) {
+void NSEventMouse::SetPosition(const NSPoint& p) {
 	position = p;
 }
 
@@ -161,7 +161,7 @@ uint8_t* NSEventMouse::Serialize(uint32_t* length_out) const {
 	return buffer;
 }
 
-NSEventMouse::NSEventMouse(NSPoint p, NSMouseType t, NSMouseButton b, uint32_t wid, uint32_t pr) {
+NSEventMouse::NSEventMouse(const NSPoint& p, NSMouseType t, NSMouseButton b, uint32_t wid, uint32_t pr) {
 	position = p;
 	type = t;
 	button = b;
