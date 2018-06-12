@@ -371,7 +371,7 @@ void* Desktop::MouseThread(void*) {
 		// left, middle, right
 		bool down[3] = { buffer[8] & 0x1, (buffer[8] >> 2) & 0x1, (buffer[8] >> 1) & 0x1 };
 		int scroll_x = (buffer[8] >> 3) & 0x3;
-		int scroll_y = (buffer[9] >> 5) & 0x3;
+		int scroll_y = (buffer[8] >> 5) & 0x3;
 		if (loaded) {
 			for (int z = 0; z < 3; z++) {
 				if (down[z] && !prev_down[z]) {
@@ -390,9 +390,9 @@ void* Desktop::MouseThread(void*) {
 				}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
 			}
 			if (scroll_x != 0 || scroll_y != 0) {
-				if (scroll_x == 2)
+				if (scroll_x == 0x3)
 					scroll_x = -1;
-				if (scroll_y == 2)
+				if (scroll_y == 0x3)
 					scroll_y = -1;
 				NSHandler([p, scroll_x, scroll_y](NSThread*) {
 					MouseScrolled(p, scroll_x, scroll_y);
@@ -710,7 +710,23 @@ void Desktop::MouseUp(NSPoint p, NSMouseButton mouse) {
 }
 
 void Desktop::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
+#define TIMER_CUTOFF		0.2
+	
 	p /= pixel_scaling_factor;
+	
+	static timeval last = { 0, 0 };
+	
+	struct timeval current;
+	gettimeofday(&current, NULL);
+	
+	NSTimeInterval t = (current.tv_sec - last.tv_sec) + ((current.tv_usec - last.tv_usec) / (1000.0 * 1000.0));
+	last = current;
+		
+	if (t < TIMER_CUTOFF && t != 0) {
+		t = TIMER_CUTOFF / t;
+		delta_x *= t * t;
+		delta_y *= t * t;
+	}
 
 	if (Window::MouseScrolled(p, delta_x, delta_y))
 		return;

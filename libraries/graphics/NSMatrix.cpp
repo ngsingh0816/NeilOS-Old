@@ -88,7 +88,7 @@ NSMatrix::NSMatrix(const NSMatrix& matrix) {
 	memcpy(data, matrix.data, sizeof(float) * 16);
 }
 
-float* NSMatrix::GetData() {
+const float* NSMatrix::GetData() const {
 	return data;
 }
 

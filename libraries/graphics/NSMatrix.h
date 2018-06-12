@@ -23,7 +23,7 @@ public:
 	NSMatrix(const float data[16]);
 	NSMatrix(const NSMatrix& matrix);
 	
-	float* GetData();
+	const float* GetData() const;
 	void SetData(const float data[16]);
 	float& operator[](unsigned int index);
 	

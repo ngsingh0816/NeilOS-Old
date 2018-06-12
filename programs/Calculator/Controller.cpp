@@ -12,10 +12,7 @@
 NSWindow* mainWindow = NULL;
 
 void Controller::DidFinishLaunching() {
-	srand(time(NULL));
-	int x = rand() % 1300 + 50;
-	int y = rand() % 800 + 50;
-	NSWindow* window = NSWindow::Create("Calculator", NSRect(x, y, 400, 300));
+	NSWindow* window = NSWindow::Create("Calculator", NSRect((1440 - 800) / 2.0, (900 - 600) / 2.0, 800, 600));
 	
 	NSLabel* label = NSLabel::Create("Hello World!", NSRect(15, 15, 200, 15));
 	label->SizeToFit();
@@ -25,7 +22,10 @@ void Controller::DidFinishLaunching() {
 	img_view->SizeToFit();
 	window->GetContentView()->AddSubview(img_view);
 	
-	NSButton* button = NSButton::Create("Click Me!", NSRect(230, 15, 155, NSButtonDefaultSize.height));
+	NSBox* box = NSBox::Create(NSRect(230, 15, 155, 250));
+	box->SetText("Box");
+	
+	NSButton* button = NSButton::Create("Click Me!", NSRect(15, 15, 125, NSButtonDefaultSize.height));
 	button->SetResizingMask(NSViewMaxXMargin | NSViewWidthSizable | NSViewMinYMargin | NSViewMinXMargin);
 	button->SetAction([label](NSControl*) {
 		static int clicked = 0;
@@ -33,7 +33,9 @@ void Controller::DidFinishLaunching() {
 		label->SetText("Clicked " + std::to_string(clicked) + " times.");
 		label->SizeToFit();
 	});
-	window->GetContentView()->AddSubview(button);
+	box->AddSubview(button);
+	window->GetContentView()->AddSubview(box);
+	
 	
 	window->Show();
 }

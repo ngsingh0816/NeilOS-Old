@@ -107,7 +107,7 @@ void graphics_draw_elements(graphics_context_t* context, uint32_t primitive_type
 							graphics_vertex_array_t* indices, graphics_vertex_array_t* arrays, uint32_t num_arrays);
 
 // Set matrix transform
-void graphics_transform_set(graphics_context_t* context, uint32_t type, NSMatrix& matrix);
+void graphics_transform_set(graphics_context_t* context, uint32_t type, const NSMatrix& matrix);
 
 // Set render state
 void graphics_renderstate_seti(graphics_context_t* context, uint32_t type, uint32_t value);
@@ -116,6 +116,9 @@ void graphics_renderstate_setf(graphics_context_t* context, uint32_t type, float
 // Set texture state
 void graphics_texturestate_seti(graphics_context_t* context, uint32_t stage, uint32_t type, uint32_t value);
 void graphics_texturestate_setf(graphics_context_t* context, uint32_t stage, uint32_t type, uint32_t value);
+
+// Set render target
+void graphics_rendertarget_set(graphics_context_t* context, int target, int bid);
 
 // Set viewport
 void graphics_viewport_set(graphics_context_t* context, uint32_t x, uint32_t y, uint32_t width, uint32_t height);

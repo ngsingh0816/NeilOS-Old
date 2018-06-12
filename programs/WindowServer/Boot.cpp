@@ -143,7 +143,7 @@ void Boot::Load(NSThread* main) {
 	// Create graphics context
 	float psf = Desktop::GetPixelScalingFactor();
 	NSApplication::SetPixelScalingFactor(psf);
-	context = graphics_context_create(graphics_info.resolution_x * psf, graphics_info.resolution_y * psf, 32, 16, 0);
+	context = graphics_context_create(graphics_info.resolution_x * psf, graphics_info.resolution_y * psf, 24, 16, 0);
 	
 	// Setup graphics state
 	NSMatrix perspective = NSMatrix::Ortho2D(0, graphics_info.resolution_x, graphics_info.resolution_y, 0);
@@ -157,6 +157,7 @@ void Boot::Load(NSThread* main) {
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_DSTBLEND, GRAPHICS_BLENDOP_INVSRCALPHA);
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDEQUATION, GRAPHICS_BLENDEQ_ADD);
 	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
+	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEMASK, 16);
 	
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);

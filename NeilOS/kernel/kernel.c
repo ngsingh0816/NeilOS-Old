@@ -95,6 +95,7 @@
  * Implement CLOSE_ON_EXEC
  * cat "binary file" crashes because it tries to output nonexistant escape sequences
  * echo what > /dev/null -> pointer being freed not allocated
+ * First program may load NeilOS.lib at 0x3800000 vs 0x1400000
  * Sometimes on program load, kernel will page fault at address 0xbfcb4000 on elf.c:376 (ELF_REL_PC32)
  */
 
@@ -103,20 +104,21 @@
  	* Fix
  		* Window not always showing up when opening calculator / discolored windows??
 			* visible being set to false (one time) - number of creates > number of shows, but why??
+ 			* seem to only be due to buffer memory copying errors?
  		* Screen freezes sometimes - maybe due to FIFO error?
- 	* NSScrollView
- 	* NSTextField
+ 	* NSProgressBar, NSSlider
 	* NSRadioButton, NSCheckBox
-	* NSProgressBar, NSSlider
+ 	* NSTextField
  	* Context Menu
  	* NSDropdown, NSPopup
  	* NSTableView (NSTableItemView?)
  	* NSCollectionView (NSCollectionItemView?)
- 	* NSTextView
  	* NSAlert / NSRunAlert
  	* NSOpenPanel / NSSavePanel
+ 	* NSTextView
  	* etc?
  * Create applications that showcase GUI (at same time?)
+ 	* .app bundle (NSApplication::ResourcePath)
  	* Calculator - NSButton, NSLabel
  	* Text Editor - NSTextView
  	* Image Viewer - NSImageView

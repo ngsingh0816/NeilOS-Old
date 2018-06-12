@@ -100,12 +100,13 @@ void mouse_handle() {
 				case SCROLL_DOWN:
 					scroll_dy--;
 					break;
-				case SCROLL_LEFT:
+				// Disabled for now
+				/*case SCROLL_LEFT:
 					scroll_dx--;
 					break;
 				case SCROLL_RIGHT:
 					scroll_dx++;
-					break;
+					break;*/
 				default:
 					break;
 			}

@@ -190,10 +190,10 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 	rs[5].uintValue = false;
 	rs[6].state     = SVGA3D_RS_CULLMODE;
 	rs[6].uintValue = SVGA3D_FACE_NONE;
-	sys_graphics_state_render_state(context.cid, rs, 7);
+	sys_graphics_state_render_state(context.cid, rs, 8);
 	
-	SVGA3dTextureState ts[7];
-	memset(ts, 0, sizeof(SVGA3dTextureState) * 7);
+	SVGA3dTextureState ts[8];
+	memset(ts, 0, sizeof(SVGA3dTextureState) * 8);
 	ts[0].name = (SVGA3dTextureStateName)GRAPHICS_TEXTURESTATE_COLOROP;
 	ts[0].value = GRAPHICS_TC_MODULATE;
 	ts[1].name = (SVGA3dTextureStateName)GRAPHICS_TEXTURESTATE_COLORARG1;
@@ -208,10 +208,13 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 	ts[5].value = GRAPHICS_TEXTURE_ADDRESS_CLAMP;
 	ts[6].name = (SVGA3dTextureStateName)GRAPHICS_TEXTURESTATE_ADDRESSV;
 	ts[6].value = GRAPHICS_TEXTURE_ADDRESS_CLAMP;
+	ts[7].name = (SVGA3dTextureStateName)GRAPHICS_TEXTURESTATE_TEXTURETRANSFORMFLAGS;
+	ts[7].value = GRAPHICS_TEXTURE_TRANSFORM_S | GRAPHICS_TEXTURE_TRANSFORM_T |
+		GRAPHICS_TEXTURE_TRANSFORM_R | GRAPHICS_TEXTURE_TRANSFORM_Q;
 	for (int stage = 0; stage < 32; stage++) {
-		for (int z = 0; z < 7; z++)
+		for (int z = 0; z < 8; z++)
 			ts[z].stage = stage;
-		sys_graphics_state_texture_state(context.cid, ts, 7);
+		sys_graphics_state_texture_state(context.cid, ts, 8);
 	}
 	
 	return context;
@@ -459,7 +462,7 @@ void graphics_draw_elements(graphics_context_t* context, uint32_t primitive_type
 }
 
 // Set matrix transform
-void graphics_transform_set(graphics_context_t* context, uint32_t type, NSMatrix& matrix) {
+void graphics_transform_set(graphics_context_t* context, uint32_t type, const NSMatrix& matrix) {
 	sys_graphics_transform_set(context->cid, type, matrix.GetData());
 }
 
@@ -493,6 +496,14 @@ void graphics_texturestate_setf(graphics_context_t* context, uint32_t stage, uin
 	state.name = (SVGA3dTextureStateName)type;
 	state.floatValue = value;
 	sys_graphics_state_texture_state(context->cid, &state, 1);
+}
+
+// Set render target
+void graphics_rendertarget_set(graphics_context_t* context, int target, int bid) {
+	SVGA3dSurfaceImageId img;
+	memset(&img, 0, sizeof(SVGA3dSurfaceImageId));
+	img.sid = bid;
+	sys_graphics_state_render_target(context->cid, target, &img);
 }
 
 // Set viewport
