@@ -274,6 +274,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	item->GetSubmenu()->GetItems()[1]->SetIsEnabled(false);
 	item->GetSubmenu()->AddItem(new NSMenuItem("Save"));
 	item->GetSubmenu()->GetItems()[2]->SetKeyEquivalent("s", NSModifierCommand);
+	item->GetSubmenu()->GetItems()[2]->SetState(NSMenuItemStateOn);
 	app_menu->AddItem(item);
 	app_menu->AddItem(NSMenuItem::SeparatorItem());
 	item = new NSMenuItem("Edit");

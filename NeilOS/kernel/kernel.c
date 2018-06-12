@@ -106,17 +106,30 @@
 			* visible being set to false (one time) - number of creates > number of shows, but why??
  			* seem to only be due to buffer memory copying errors?
  		* Screen freezes sometimes - maybe due to FIFO error?
- 	* NSProgressBar, NSSlider
-	* NSRadioButton, NSCheckBox
+ 	* NSCheckBox, NSRadioButton
+ 	* NSProgressBar (NSView), NSSlider (NSControl that has progress bar and button subviews?)
+ 		* progress bar - stencil test?
+ 		* NSSlider could have NSButton (oval) subview which then moves on mouse down
+ 			- continous action (updating value) could be taken care of by button
+ 	* NSMultilineLabel
  	* NSTextField
+ 		* Each character is individual texture (stored as a map, no need for duplicate characters)
+ 			- only draw visible characters
+ 			- if not scrolling, only draw new character / deleted character
+ 		* Highlight
  	* Context Menu
+ 	* add view in NSMenuItem (subclass of NSMenuItem?)
+ 		* test with audio slider in system menu
  	* NSDropdown, NSPopup
  	* NSTableView (NSTableItemView?)
  	* NSCollectionView (NSCollectionItemView?)
  	* NSAlert / NSRunAlert
  	* NSOpenPanel / NSSavePanel
  	* NSTextView
+ 		* Each (character, font) pair is individual texture (stored as a map, no need for duplicate characters)
+ 			- if supporting rich text (otherwies just character is individual texture)
  	* etc?
+ 		- Add rounded rects - NSMenu, etc3
  * Create applications that showcase GUI (at same time?)
  	* .app bundle (NSApplication::ResourcePath)
  	* Calculator - NSButton, NSLabel
