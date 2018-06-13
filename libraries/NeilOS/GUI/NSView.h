@@ -34,6 +34,7 @@ class NSWindow;
 typedef uint32_t NSAutoResizingMask;
 
 class NSViewObserver;
+class NSScrollView;
 
 class NSView : public NSResponder {
 public:
@@ -61,6 +62,7 @@ public:
 	
 	NSWindow* GetWindow() const;
 	NSView* GetSuperview() const;
+	NSScrollView* GetEnclosingScrollView() const;
 	
 	bool IsVisible() const;
 	void SetVisible(bool is);
@@ -105,17 +107,27 @@ public:
 	virtual void KeyDown(NSEventKey* event) override;
 	virtual void KeyUp(NSEventKey* event) override;
 	
-protected:
+	// Drawing
 	static void BufferSquare(uint32_t bid);
 	static void BufferOval(uint32_t bid, uint32_t num_vertices);
 	// Num vertices should be divisible by 4 after subtracting 2 (ex: 38)
 	static void BufferRoundedRect(uint32_t bid, const NSSize& size, float border_radius_x, float border_radius_y,
-											uint32_t num_vertices);
+								  uint32_t num_vertices);
+#define NSVIEW_ROUNDED_UPPER_LEFT	(1 << 0)
+#define NSVIEW_ROUDNED_UPPER_RIGHT	(1 << 1)
+#define NSVIEW_ROUDNED_BOTTOM_LEFT	(1 << 2)
+#define NSVIEW_ROUNDED_BOTTOM_RIGHT	(1 << 3)
+	// num vertices = c * x + 2 + (4 - c) where c = # of corners, and x is an integer
+	static void BufferRoundedRect(uint32_t bid, const NSSize& size, float borders[4], int mask, uint32_t num_vertices);
 	// Num verticies should be divisible by 2 after subtracting 2 (ex: 18)
 	static void BufferHorizontalCurvedRect(uint32_t bid, const NSSize& size, uint32_t num_vertices);
 	static void BufferVerticalCurvedRect(uint32_t bid, const NSSize& size, uint32_t num_vertices);
 	static void BufferColor(uint32_t bid, NSColor<float> color, uint32_t num_vertices);
 	static uint32_t CreateImageBuffer(NSImage* image, NSSize* size_out);
+#define NSVIEW_CHECKMARK_VERTICES		6
+	static void BufferCheckmark(uint32_t bid);		// triangle_strip
+	
+protected:
 	static void SetupContext(graphics_context_t* context, NSSize size);
 	NSView();
 	
@@ -152,6 +164,7 @@ private:
 	
 	void SetWindow(NSWindow* window);
 	void SetContext(graphics_context_t* context);
+	void SetOwner(NSView* o);
 	void RemoveFromWindow(NSView* view);
 	
 	void Resize(NSView* view, NSSize old_sv_size, NSSize sv_size);
@@ -167,6 +180,7 @@ private:
 	
 	NSWindow* window = NULL;
 	NSView* superview = NULL;
+	NSView* owner = NULL;
 	
 	bool is_first_responder = false;
 	bool needs_display = false;

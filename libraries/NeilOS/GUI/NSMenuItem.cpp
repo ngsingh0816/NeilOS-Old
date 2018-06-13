@@ -11,10 +11,14 @@
 #include "../Core/NSFont.h"
 #include "../Core/Events/NSEventResource.hpp"
 
+#include "NSView.h"
+
 #include <string.h>
 
 #define MENU_OFFSET_X		10
 #define MENU_OFFSET_Y		5
+
+#define CHECK_SIZE			NSSize(MENU_OFFSET_X, MENU_OFFSET_X)
 
 #define MENU_COLOR_BACKGROUND	0
 #define MENU_COLOR_HIGHLIGHTED	1
@@ -27,6 +31,8 @@
 #define SEPARATOR_HORIZONTAL_HEIGHT	2
 #define SEPARATOR_HORIZONTAL_OFFSET	10
 
+#define HOVER_DURATION				0.25
+
 using std::string;
 
 NSMenuItem* NSMenuItem::SeparatorItem() {
@@ -35,11 +41,18 @@ NSMenuItem* NSMenuItem::SeparatorItem() {
 	return ret;
 }
 
-NSMenuItem::NSMenuItem() {
+void NSMenuItem::Init() {
 	border_height = 1.5 * MENU_OFFSET_Y;
+	hover_buffer = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_DYNAMIC);
+}
+
+NSMenuItem::NSMenuItem() {
+	Init();
 }
 
 NSMenuItem::NSMenuItem(const NSMenuItem& item) {
+	Init();
+	
 	*this = item;
 }
 
@@ -55,10 +68,12 @@ NSMenuItem::~NSMenuItem() {
 		graphics_buffer_destroy(img_buffer);
 	if (key_buffer)
 		graphics_buffer_destroy(key_buffer);
+	if (hover_buffer)
+		graphics_buffer_destroy(hover_buffer);
 }
 
 NSMenuItem::NSMenuItem(std::string t, string key, NSModifierFlags f) {
-	border_height = 1.5 * MENU_OFFSET_Y;
+	Init();
 
 	SetTitle(t);
 	key_equivalent = key;
@@ -66,7 +81,7 @@ NSMenuItem::NSMenuItem(std::string t, string key, NSModifierFlags f) {
 }
 
 NSMenuItem::NSMenuItem(NSImage* i, bool chr, string key, NSModifierFlags f) {
-	border_height = 1.5 * MENU_OFFSET_Y;
+	Init();
 
 	SetImage(i, chr);
 	key_equivalent = key;
@@ -98,6 +113,7 @@ NSMenuItem& NSMenuItem::operator=(const NSMenuItem& item) {
 	item_size = item.item_size;
 	user_data = item.user_data;
 	font_height = item.font_height;
+	current_color = item.current_color;
 	
 	return *this;
 }
@@ -471,7 +487,7 @@ void NSMenuItem::UpdateSize() {
 			item_size = NSSize(2 * MENU_OFFSET_X + 2 * SEPARATOR_VERTICAL_WIDTH, 15);
 		return;
 	}
-	float x_pad = menu->is_context_menu ? 0 : 2 * MENU_OFFSET_X;
+	float x_pad = menu->is_context_menu ? MENU_OFFSET_X : 2 * MENU_OFFSET_X;
 	if (submenu && menu->is_context_menu)
 		x_pad += font_height;	// for triangle
 	else if (!submenu && menu->is_context_menu)
@@ -515,12 +531,44 @@ void NSMenuItem::SetBorderHeight(float height) {
 	Update();
 }
 
+NSMenuItemState NSMenuItem::GetState() const {
+	return state;
+}
+
+void NSMenuItem::SetState(NSMenuItemState s) {
+	state = s;
+	Update();
+}
+
 void NSMenuItem::SetUserData(void* data) {
 	user_data = data;
 }
 
 void* NSMenuItem::GetUserData() const {
 	return user_data;
+}
+
+void NSMenuItem::Hover(bool over) {
+	if (!menu)
+		return;
+	
+	if (hover_animation)
+		hover_animation->Cancel();
+	NSColor<float> start = current_color;
+	NSColor<float> end = over ? menu->highlight_color : menu->background_color;
+	hover_animation = new NSAnimation([start, end, this](const NSAnimation* a) {
+		current_color = start + (end - start) * a->GetValue();
+		NSView::BufferColor(hover_buffer, current_color, 4);
+		Update();
+	}, [end, this](const NSAnimation* a, bool canceled) {
+		hover_animation = NULL;
+		if (!canceled) {
+			current_color = end;
+			Update();
+		}
+		delete a;
+	}, HOVER_DURATION);
+	hover_animation->Start();
 }
 
 void NSMenuItem::Update(bool all) {
@@ -549,7 +597,7 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 	if (image && title.length() != 0)
 		combined_size.width += MENU_OFFSET_X;
 	if (menu->is_context_menu) {
-		image_frame = NSRect(NSPoint(point.x + MENU_OFFSET_X,
+		image_frame = NSRect(NSPoint(point.x + 2 * MENU_OFFSET_X,
 									point.y + (size.height - img_size.height) / 2), img_size);
 	} else {
 		image_frame = NSRect(NSPoint(point.x + (size.width - combined_size.width) / 2,
@@ -565,7 +613,7 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 			real_point.x += (text_size.width - combined_size.width) / 2 + image_frame.size.width + MENU_OFFSET_X;
 	}
 	if (menu->is_context_menu) {
-		text_frame = NSRect(NSPoint(real_point.x + MENU_OFFSET_X,
+		text_frame = NSRect(NSPoint(real_point.x + 2 * MENU_OFFSET_X,
 									real_point.y + (size.height - font_height) / 2), text_size);
 	} else {
 		text_frame = NSRect(NSPoint(real_point.x + (size.width - text_size.width) / 2,
@@ -577,7 +625,10 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 	matrix.Translate(frame.origin.x, frame.origin.y, 0);
 	matrix.Scale(frame.size.width, frame.size.height, 1);
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
-	menu->square_vao[2].bid = menu->color_vbo[highlighted];
+	if (hover_animation)
+		menu->square_vao[2].bid = hover_buffer;
+	else
+		menu->square_vao[2].bid = menu->color_vbo[highlighted];
 	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
 	
 	if (is_separator) {
@@ -647,5 +698,20 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, menu->square_vao, 3);
 		
 		graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
+	}
+	
+	// Draw state
+	if (menu->is_context_menu && state == NSMenuItemStateOn) {
+		NSRect check_rect = NSRect(NSPoint(frame.origin.x + MENU_OFFSET_X / 2,
+								   frame.origin.y + (frame.size.height - CHECK_SIZE.height) / 2),
+								   CHECK_SIZE);
+		matrix = NSMatrix::Identity();
+		matrix.Translate(check_rect.origin.x, check_rect.origin.y, 0);
+		matrix.Scale(check_rect.size.width, check_rect.size.height, 1);
+		graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
+		menu->square_vao[0].bid = menu->check_vbo;
+		menu->square_vao[2].bid = menu->color_vbo[enabled ? (MENU_COLOR_BLACK + highlighted) : MENU_COLOR_BORDER];
+		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, NSVIEW_CHECKMARK_VERTICES - 2, menu->square_vao, 3);
+		menu->square_vao[0].bid = menu->square_vbo;
 	}
 }

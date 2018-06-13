@@ -20,6 +20,9 @@
 		281246DA20C9FA5B00546A96 /* NSEventApplicationSetCursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281246D920C9FA5B00546A96 /* NSEventApplicationSetCursor.cpp */; };
 		2812470420CB0CA900546A96 /* NSScrollView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2812470220CB0CA900546A96 /* NSScrollView.cpp */; };
 		2812479220CF78A100546A96 /* NSBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2812479020CF78A100546A96 /* NSBox.cpp */; };
+		2812479520D08FD800546A96 /* NSCheckBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2812479320D08FD800546A96 /* NSCheckBox.cpp */; };
+		2812479920D0B36800546A96 /* NSRadioButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2812479720D0B36800546A96 /* NSRadioButton.cpp */; };
+		2812479C20D0CEC200546A96 /* NSProgressBar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2812479A20D0CEC200546A96 /* NSProgressBar.cpp */; };
 		281CEB1C201FB63D00C7D407 /* NSLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB1A201FB63D00C7D407 /* NSLog.cpp */; };
 		281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB1D201FEF3200C7D407 /* NSImage.cpp */; };
 		281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB21201FF09D00C7D407 /* NSTypes.cpp */; };
@@ -92,6 +95,12 @@
 		2812470320CB0CA900546A96 /* NSScrollView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSScrollView.h; sourceTree = "<group>"; };
 		2812479020CF78A100546A96 /* NSBox.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSBox.cpp; sourceTree = "<group>"; };
 		2812479120CF78A100546A96 /* NSBox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSBox.h; sourceTree = "<group>"; };
+		2812479320D08FD800546A96 /* NSCheckBox.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSCheckBox.cpp; sourceTree = "<group>"; };
+		2812479420D08FD800546A96 /* NSCheckBox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSCheckBox.h; sourceTree = "<group>"; };
+		2812479720D0B36800546A96 /* NSRadioButton.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSRadioButton.cpp; sourceTree = "<group>"; };
+		2812479820D0B36800546A96 /* NSRadioButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSRadioButton.h; sourceTree = "<group>"; };
+		2812479A20D0CEC200546A96 /* NSProgressBar.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSProgressBar.cpp; sourceTree = "<group>"; };
+		2812479B20D0CEC200546A96 /* NSProgressBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSProgressBar.h; sourceTree = "<group>"; };
 		281CEB1A201FB63D00C7D407 /* NSLog.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSLog.cpp; sourceTree = "<group>"; };
 		281CEB1B201FB63D00C7D407 /* NSLog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSLog.h; sourceTree = "<group>"; };
 		281CEB1D201FEF3200C7D407 /* NSImage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSImage.cpp; sourceTree = "<group>"; };
@@ -214,6 +223,8 @@
 				2812479120CF78A100546A96 /* NSBox.h */,
 				281246BF20C5142400546A96 /* NSButton.cpp */,
 				281246C020C5142400546A96 /* NSButton.h */,
+				2812479320D08FD800546A96 /* NSCheckBox.cpp */,
+				2812479420D08FD800546A96 /* NSCheckBox.h */,
 				281246B620BFAB0400546A96 /* NSControl.cpp */,
 				281246B720BFAB0400546A96 /* NSControl.h */,
 				281246BC20C2161E00546A96 /* NSImageView.cpp */,
@@ -224,6 +235,10 @@
 				28F178CF20B37F5000DBF40F /* NSMenu.h */,
 				28F178D120B61D0900DBF40F /* NSMenuItem.cpp */,
 				28F178D220B61D0900DBF40F /* NSMenuItem.h */,
+				2812479A20D0CEC200546A96 /* NSProgressBar.cpp */,
+				2812479B20D0CEC200546A96 /* NSProgressBar.h */,
+				2812479720D0B36800546A96 /* NSRadioButton.cpp */,
+				2812479820D0B36800546A96 /* NSRadioButton.h */,
 				2812470220CB0CA900546A96 /* NSScrollView.cpp */,
 				2812470320CB0CA900546A96 /* NSScrollView.h */,
 				28A3BA23203AA65F0091A44E /* NSView.cpp */,
@@ -403,6 +418,7 @@
 				287D0A7720BE299300A7E675 /* NSEventWindowDraw.cpp in Sources */,
 				281246B820BFAB0400546A96 /* NSControl.cpp in Sources */,
 				287D0AA020BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp in Sources */,
+				2812479920D0B36800546A96 /* NSRadioButton.cpp in Sources */,
 				28A3BA28203AA6810091A44E /* NSWindow.cpp in Sources */,
 				28F178D320B61D0900DBF40F /* NSMenuItem.cpp in Sources */,
 				287D0A7620BE299000A7E675 /* NSEventWindowSetTitle.cpp in Sources */,
@@ -410,10 +426,12 @@
 				287D0A7820BE299500A7E675 /* NSEventWindowShow.cpp in Sources */,
 				281246D520C8735900546A96 /* NSAnimation.cpp in Sources */,
 				281246B220BF3D4C00546A96 /* NSEventApplicationMenuEvent.cpp in Sources */,
+				2812479520D08FD800546A96 /* NSCheckBox.cpp in Sources */,
 				281246BB20BFB55E00546A96 /* NSLabel.cpp in Sources */,
 				2812470420CB0CA900546A96 /* NSScrollView.cpp in Sources */,
 				281246D820C9F96600546A96 /* NSCursor.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
+				2812479C20D0CEC200546A96 /* NSProgressBar.cpp in Sources */,
 				281246DA20C9FA5B00546A96 /* NSEventApplicationSetCursor.cpp in Sources */,
 				281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */,
 				287D0A7320BE298900A7E675 /* NSEventWindowCreate.cpp in Sources */,

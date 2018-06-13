@@ -109,14 +109,15 @@ private:
 	std::function<void(std::vector<NSRect>)> update;
 	
 	NSColor<float> background_color = NSColor<float>::UILighterGrayColor();
-	NSColor<float> highlight_color = NSColor<float>::UIBlueColor();
+	NSColor<float> highlight_color = NSColor<float>::UILightGrayColor();
 	NSColor<float> border_color = NSColor<float>::UIGrayColor();
 	NSColor<float> text_color = NSColor<float>::BlackColor();
-	NSColor<float> text_highlight_color = NSColor<float>::WhiteColor();
+	NSColor<float> text_highlight_color = NSColor<float>::BlackColor();
 	
 	graphics_context_t* context = NULL;
 	uint32_t square_vbo = 0;
 	uint32_t triangle_vbo = 0;
+	uint32_t check_vbo = 0;
 	graphics_vertex_array_t square_vao[3];
 	graphics_vertex_array_t triangle_vao[2];
 	uint32_t color_vbo[5];

@@ -106,7 +106,7 @@
 			* visible being set to false (one time) - number of creates > number of shows, but why??
  			* seem to only be due to buffer memory copying errors?
  		* Screen freezes sometimes - maybe due to FIFO error?
- 	* NSProgressBar (NSView), NSSlider (NSControl that has progress bar and button subviews?)
+ 	* NSProgressBar (NSView), NSSlider (NSProgressBar that has button subview?)
  		* progress bar - stencil test?
  		* NSSlider could have NSButton (oval) subview which then moves on mouse down
  			- continous action (updating value) could be taken care of by button

@@ -52,7 +52,7 @@ NSWindow::NSWindow(string t, NSRect f) {
 	float psf = NSApplication::GetPixelScalingFactor();
 	bsf = psf;
 	NSSize size = NSSize(f.size.width * psf, (f.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf);
-	context = graphics_context_create(size.width, size.height, 24, 16, 0);
+	context = graphics_context_create(size.width, size.height, 24, 15, 1);
 	NSView::SetupContext(&context, NSSize(f.size.width, (f.size.height - WINDOW_TITLE_BAR_HEIGHT)));
 	
 	content_view = NSView::Create(NSRect(0, 0, f.size.width, f.size.height - WINDOW_TITLE_BAR_HEIGHT));

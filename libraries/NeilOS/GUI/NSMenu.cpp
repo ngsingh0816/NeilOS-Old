@@ -9,6 +9,7 @@
 #include "NSMenu.h"
 
 #include "NSMenuItem.h"
+#include "NSView.h"
 
 #include <string.h>
 
@@ -18,70 +19,82 @@ using std::vector;
 #define MENU_OFFSET_Y	5
 #define MENU_MIN_WIDTH	200
 
+#define CHECK_SIZE		NSSize(MENU_OFFSET_X, MENU_OFFSET_X)
+
 #define MENU_COLOR_BACKGROUND	0
 #define MENU_COLOR_HIGHLIGHTED	1
 #define MENU_COLOR_BORDER		2
 #define MENU_COLOR_BLACK		3
 #define MENU_COLOR_WHITE		4
 
-void NSMenu::SetupVAO() {
-	const float square[] = {
-		0, 0,
-		1.0f, 0,
-		0, 1.0f,
-		1.0f, 1.0f
-	};
-	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
-	graphics_buffer_data(square_vbo, square, sizeof(square));
+namespace {
+	bool init = false;
+	uint32_t menu_square_vbo = 0;
+	uint32_t menu_check_vbo = 0;
+	uint32_t menu_triangle_vbo = 0;
 	
-	const float triangle[] = {
-		0, 0,
-		0, 1.0f,
-		1.0f, 0.5f
-	};
-	triangle_vbo = graphics_buffer_create(sizeof(triangle), GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
-	graphics_buffer_data(triangle_vbo, triangle, sizeof(triangle));
+	void Init() {
+		if (init)
+			return;
+		
+		menu_square_vbo = graphics_buffer_create(sizeof(float) * 4 * 2,
+												 GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
+		NSView::BufferSquare(menu_square_vbo);
+		
+		const float triangle[] = {
+			0, 0,
+			0, 1.0f,
+			1.0f, 0.5f
+		};
+		menu_triangle_vbo = graphics_buffer_create(sizeof(triangle),
+												   GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
+		graphics_buffer_data(menu_triangle_vbo, triangle, sizeof(triangle));
+		
+		menu_check_vbo = graphics_buffer_create(sizeof(float) * NSVIEW_CHECKMARK_VERTICES * 2,
+												 GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
+		NSView::BufferCheckmark(menu_check_vbo);
+		
+		init = true;
+	}
+}
+
+void NSMenu::SetupVAO() {
+	Init();
+	
+	square_vbo = menu_square_vbo;
+	triangle_vbo = menu_triangle_vbo;
+	check_vbo = menu_check_vbo;
 	
 	NSColor<float> c[5] = { background_color, highlight_color, border_color, text_color,
 		text_highlight_color };
 	
 	for (unsigned int i = 0; i < sizeof(c) / sizeof(NSColor<float>); i++) {
-		float colors[4 * 4];
-		for (int z = 0; z < 4; z++) {
-			colors[z * 4 + 0] = c[i].r;
-			colors[z * 4 + 1] = c[i].g;
-			colors[z * 4 + 2] = c[i].b;
-			colors[z * 4 + 3] = c[i].a;
-		}
-		color_vbo[i] = graphics_buffer_create(sizeof(colors), GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
-		graphics_buffer_data(color_vbo[i], colors, sizeof(colors));
+		int num_verts = (i >= MENU_COLOR_BORDER) ? NSVIEW_CHECKMARK_VERTICES : 4;
+		color_vbo[i] = graphics_buffer_create(sizeof(float) * num_verts * 4,
+											  GRAPHICS_BUFFER_STATIC | GRAPHICS_BUFFER_VERTEXBUFFER);
+		NSView::BufferColor(color_vbo[i], c[i], num_verts);
 	}
 	
 	memset(square_vao, 0, sizeof(graphics_vertex_array_t) * 3);
 	square_vao[0].bid = square_vbo;
-	square_vao[0].offset = 0;
 	square_vao[0].stride = 2 * sizeof(float);
 	square_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	square_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	square_vao[1].bid = square_vbo;
-	square_vao[1].offset = 0;
 	square_vao[1].stride = 2 * sizeof(float);
 	square_vao[1].type = GRAPHICS_TYPE_FLOAT2;
 	square_vao[1].usage = GRAPHICS_USAGE_TEXCOORD;
 	square_vao[2].bid = color_vbo[0];
-	square_vao[2].offset = 0;
 	square_vao[2].stride = 4 * sizeof(float);
 	square_vao[2].type = GRAPHICS_TYPE_FLOAT4;
 	square_vao[2].usage = GRAPHICS_USAGE_COLOR;
 
 	memset(triangle_vao, 0, sizeof(graphics_vertex_array_t) * 2);
 	triangle_vao[0].bid = triangle_vbo;
-	triangle_vao[0].offset = 0;
 	triangle_vao[0].stride = 2 * sizeof(float);
 	triangle_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	triangle_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	triangle_vao[1].bid = color_vbo[MENU_COLOR_BLACK];
-	triangle_vao[1].offset = 0;
 	triangle_vao[1].stride = 4 * sizeof(float);
 	triangle_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	triangle_vao[1].usage = GRAPHICS_USAGE_COLOR;
@@ -239,11 +252,6 @@ NSMenu::NSMenu(const std::vector<NSMenuItem*>& i, bool is_context) {
 }
 
 NSMenu::~NSMenu() {
-	if (square_vbo)
-		graphics_buffer_destroy(square_vbo);
-	if (triangle_vbo)
-		graphics_buffer_destroy(triangle_vbo);
-	
 	for (unsigned int z = 0; z < sizeof(color_vbo) / sizeof(uint32_t); z++) {
 		if (color_vbo[z])
 			graphics_buffer_destroy(color_vbo[z]);
@@ -251,17 +259,8 @@ NSMenu::~NSMenu() {
 }
 
 void NSMenu::SetColor(NSColor<float> color, unsigned int index) {
-	if (!color_vbo[index])
-		color_vbo[index] = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
-	
-	float colors[4 * 4];
-	for (int z = 0; z < 4; z++) {
-		colors[z * 4 + 0] = color.r;
-		colors[z * 4 + 1] = color.g;
-		colors[z * 4 + 2] = color.b;
-		colors[z * 4 + 3] = color.a;
-	}
-	graphics_buffer_data(color_vbo[index], colors, sizeof(colors));
+	int num_verts = (index >= MENU_COLOR_BORDER) ? NSVIEW_CHECKMARK_VERTICES : 4;
+	NSView::BufferColor(color_vbo[index], color, num_verts);
 }
 
 void NSMenu::SetColors(NSColor<float> colors[5]) {
@@ -344,6 +343,7 @@ void NSMenu::SetItems(const std::vector<NSMenuItem*>& i) {
 	items = i;
 	for (auto& c : items) {
 		c->menu = this;
+		c->current_color = background_color;
 		c->UpdateSize();
 	}
 	
@@ -352,6 +352,7 @@ void NSMenu::SetItems(const std::vector<NSMenuItem*>& i) {
 
 void NSMenu::AddItem(NSMenuItem* item) {
 	item->menu = this;
+	item->current_color = background_color;
 	item->UpdateSize();
 	items.push_back(item);
 	
@@ -363,6 +364,7 @@ void NSMenu::AddItem(NSMenuItem* item, unsigned int index) {
 		index = items.size();
 	
 	item->menu = this;
+	item->current_color = background_color;
 	item->UpdateSize();
 	items.insert(items.begin() + index, item);
 	
@@ -452,6 +454,8 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 			for (unsigned int z = 0; z < items.size(); z++) {
 				if (items[z]->highlighted) {
 					items[z]->highlighted = false;
+					if (is_context_menu)
+						items[z]->Hover(false);
 					updates.push_back(z);
 				}
 			}
@@ -475,6 +479,8 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 			for (unsigned int q = 0; q < items.size(); q++) {
 				if (q != z && items[q]->highlighted) {
 					items[q]->highlighted = false;
+					if (is_context_menu)
+						items[q]->Hover(false);
 					updates.push_back(q);
 				}
 			}
@@ -482,6 +488,8 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 			if (i->highlighted) {
 				if (down && !is_context_menu) {
 					i->highlighted = false;
+					if (is_context_menu)
+						i->Hover(false);
 					ClearSubmenu();
 					mouse_captured = false;
 					updates.push_back(z);
@@ -495,6 +503,8 @@ bool NSMenu::MouseEvent(NSEventMouse* event, bool down) {
 				break;
 			
 			i->highlighted = true;
+			if (is_context_menu)
+				i->Hover(true);
 			submenu = i->submenu;
 			if (submenu && submenu->items.size() == 0)
 				submenu = NULL;

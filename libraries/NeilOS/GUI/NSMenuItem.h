@@ -12,10 +12,15 @@
 #include "../Core/NSFont.h"
 #include "../Core/NSImage.h"
 #include "../Core/NSTypes.h"
+#include "NSAnimation.h"
 #include "NSMenu.h"
 
 #include <functional>
 #include <string>
+
+#define NSMenuItemStateOff			0
+#define NSMenuItemStateOn			1
+typedef bool NSMenuItemState;
 
 class NSMenuItem {
 public:
@@ -66,10 +71,17 @@ public:
 	float GetBorderHeight() const;
 	void SetBorderHeight(float height);
 	
+	NSMenuItemState GetState() const;
+	void SetState(NSMenuItemState state);
+	
 	void SetUserData(void* data);
 	void* GetUserData() const;
 private:
 	friend class NSMenu;
+	
+	void Init();
+	
+	void Hover(bool over);
 	
 	void Draw(graphics_context_t* context, NSPoint point, NSSize size);
 	void Update(bool all=false);
@@ -86,15 +98,19 @@ private:
 	bool is_separator = false;
 	std::string key_equivalent = "";
 	NSModifierFlags flags = NSModifierNone;
+	NSMenuItemState state = NSMenuItemStateOff;
 	bool highlighted = false;
 	std::function<void(NSMenuItem*)> action;
 	bool enabled = true;
 	NSSize item_size;
 	void* user_data = NULL;
+	NSAnimation* hover_animation = NULL;
+	NSColor<float> current_color;
 	
 	uint32_t text_buffer = 0;
 	uint32_t img_buffer = 0;
 	uint32_t key_buffer = 0;
+	uint32_t hover_buffer = 0;
 	NSSize text_size = NSSize();
 	NSSize key_size = NSSize();
 	NSSize img_size = NSSize();

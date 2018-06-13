@@ -11,6 +11,7 @@
 #include "../Core/NSColor.h"
 #include "../Core/NSHandler.h"
 #include "../Core/NSTimer.h"
+#include "NSScrollView.h"
 #include "NSWindow.h"
 
 #include <math.h>
@@ -43,12 +44,10 @@ NSView::NSView() {
 	
 	memset(vao, 0, sizeof(graphics_vertex_array_t) * 3);
 	vao[0].bid = vertex_vbo;
-	vao[0].offset = 0;
 	vao[0].stride = 2 * sizeof(float);
 	vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	vao[0].usage = GRAPHICS_USAGE_POSITION;
 	vao[1].bid = color_vbo;
-	vao[1].offset = 0;
 	vao[1].stride = 4 * sizeof(float);
 	vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	vao[1].usage = GRAPHICS_USAGE_COLOR;
@@ -182,6 +181,12 @@ void NSView::SetContext(graphics_context_t* c) {
 		s->SetContext(c);
 }
 
+void NSView::SetOwner(NSView* o) {
+	owner = o;
+	for (auto& s : subviews)
+		s->SetOwner(o);
+}
+
 void NSView::RemoveFromWindow(NSView* view) {
 	if (view == window->down_view)
 		window->down_view = NULL;
@@ -254,6 +259,10 @@ void NSView::WindowWasSet() {
 
 NSView* NSView::GetSuperview() const {
 	return superview;
+}
+
+NSScrollView* NSView::GetEnclosingScrollView() const {
+	return dynamic_cast<NSScrollView*>(owner);
 }
 
 bool NSView::IsVisible() const {
@@ -638,6 +647,42 @@ void NSView::BufferRoundedRect(uint32_t bid, const NSSize& size, float border_ra
 	graphics_buffer_data(bid, vertices, sizeof(vertices));
 }
 
+void NSView::BufferRoundedRect(uint32_t bid, const NSSize& size, float borders[4], int mask, uint32_t num_vertices) {
+	int c = 0;
+	for (int z = 0; z < 4; z++) {
+		if (mask & (1 << z))
+			c++;
+	}
+	float vertices[num_vertices * 2];
+	vertices[0] = size.width / 2;
+	vertices[1] = size.height / 2;
+	uint32_t pos = 2;
+	int num = (num_vertices - 2 - (4 - c)) / c;
+	for (int z = 0; z < 4; z++) {
+		float x_pos = (z == 0 || z == 3) ? 0 : size.width;
+		float y_pos = (z >= 2) ? size.height : 0;
+		if (mask & (1 << z)) {
+			float start_angle = 180 - (z * 90);
+			float start_x = (z == 0 || z == 3) ? borders[z] : -borders[z];
+			float start_y = (z >= 2) ? -borders[z] : borders[z];
+			for (int z = 0; z < num; z++) {
+				float angle = (start_angle - (float(z) / (num - 1)) * 90.0f) / 180.0f * M_PI;
+				float x = cosf(angle) * borders[z] + x_pos + start_x;
+				float y = -sinf(angle) * borders[z] + y_pos + start_y;
+				vertices[pos++] = x;
+				vertices[pos++] = y;
+			}
+		} else {
+			vertices[pos++] = x_pos;
+			vertices[pos++] = y_pos;
+		}
+	}
+	vertices[pos++] = 0;
+	vertices[pos++] = (mask & 0x1) ? borders[0] : 0;
+	
+	graphics_buffer_data(bid, vertices, sizeof(vertices));
+}
+
 void NSView::BufferHorizontalCurvedRect(uint32_t bid, const NSSize& size, uint32_t num_vertices) {
 	float radius = size.height / 2;
 	
@@ -717,6 +762,19 @@ uint32_t NSView::CreateImageBuffer(NSImage* image, NSSize* size_out) {
 	graphics_buffer_data(img_vbo, image->GetPixelData(), w, h, w * h * 4);
 	
 	return img_vbo;
+}
+
+// num_verticies = 6, triangle_strip
+void NSView::BufferCheckmark(uint32_t bid) {
+	const float vertices[NSVIEW_CHECKMARK_VERTICES * 2] = {
+		0.125, 0.5,
+		0, 0.625,
+		0.375, 0.75,
+		0.375, 1,
+		0.875, 0,
+		1, 0.125
+	};
+	graphics_buffer_data(bid, vertices, sizeof(vertices));
 }
 
 void NSView::SetupContext(graphics_context_t* context, NSSize size) {
