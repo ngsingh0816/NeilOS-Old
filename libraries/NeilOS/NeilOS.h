@@ -37,6 +37,7 @@
 #include "GUI/NSProgressBar.h"
 #include "GUI/NSRadioButton.h"
 #include "GUI/NSScrollView.h"
+#include "GUI/NSSlider.h"
 #include "GUI/NSView.h"
 #include "GUI/NSWindow.h"
 

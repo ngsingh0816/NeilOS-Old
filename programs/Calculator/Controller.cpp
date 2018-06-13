@@ -14,16 +14,19 @@ NSWindow* mainWindow = NULL;
 void Controller::DidFinishLaunching() {
 	NSWindow* window = NSWindow::Create("Calculator", NSRect((1440 - 800) / 2.0, (900 - 600) / 2.0, 800, 600));
 	
-	NSLabel* label = NSLabel::Create("Hello World!", NSRect(15, 15, 200, 15));
+	NSLabel* label = NSLabel::Create("Hello\nWorld!", NSRect(15, 15, 200, 15));
+	label->SetTextAlignment(NSTextAlignmentCentered);
 	label->SizeToFit();
 	window->GetContentView()->AddSubview(label);
 	
-	NSImageView* img_view = NSImageView::Create(new NSImage("/system/images/background.jpg"), NSRect(15, 30, 200, 200));
+	float y_off_img = label->GetFrame().origin.y + label->GetFrame().size.height;
+	
+	NSImageView* img_view = NSImageView::Create(new NSImage("/system/images/background.jpg"),
+												NSRect(15, y_off_img + 15, 200, 200));
 	img_view->SizeToFit();
 	window->GetContentView()->AddSubview(img_view);
-	
-	float y_off_img = img_view->GetFrame().origin.y + img_view->GetFrame().size.height;
-	
+	y_off_img = img_view->GetFrame().origin.y + img_view->GetFrame().size.height;
+
 	NSCheckBox* check = NSCheckBox::Create("Red", NSRect(15, y_off_img + 15, 100, NSCheckBoxDefaultSize.height));
 	check->SizeToFit();
 	check->SetAction([label, check](NSControl*) {
@@ -57,6 +60,16 @@ void Controller::DidFinishLaunching() {
 	progress->SetMinValue(0);
 	progress->SetMaxValue(100);
 	window->GetContentView()->AddSubview(progress);
+	
+	NSSlider* slider = NSSlider::Create(NSRect(NSPoint(15, y_off_img + 120), NSSliderDefaultSize));
+	slider->SetIsContinuous(true);
+	slider->SetAction([progress](NSSlider* s) {
+		NSColor<float> from = NSColor<float>::UITurquoiseColor();
+		NSColor<float> to = NSColor<float>::UIBlueColor();
+		progress->SetFillColor(s->GetValue() * (to - from) + from);
+	});
+	//slider->SetNumberOfTickMarks(4, true);
+	window->GetContentView()->AddSubview(slider);
 	
 	NSBox* box = NSBox::Create(NSRect(630, 15, 155, window->GetContentFrame().size.height - 30));
 	box->SetText("Box");

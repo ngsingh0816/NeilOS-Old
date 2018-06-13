@@ -262,6 +262,16 @@ NSColor<float>& NSColor<float>::operator *=(float v) {
 }
 
 template<>
+NSColor<uint8_t> operator *(float v, const NSColor<uint8_t>& c) {
+	return NSColor<uint8_t>(c.r * v, c.g * v, c.b * v, c.a * v);
+}
+
+template<>
+NSColor<float> operator *(float v, const NSColor<float>& c) {
+	return NSColor<float>(c.r * v, c.g * v, c.b * v, c.a * v);
+}
+
+template<>
 NSColor<float> NSColor<float>::operator /(float v) const {
 	return NSColor<float>(r / v, g / v, b / v, a / v);
 }

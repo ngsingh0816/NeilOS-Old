@@ -313,7 +313,10 @@ void NSView::DrawSubview(NSView* subview, NSRect rect) {
 
 void NSView::PrepareDraw(const NSRect& rect) {
 	float bsf = window ? window->GetBackingScaleFactor() : 1;
-	NSRect scissor = (GetAbsoluteRect(rect) * bsf).IntegerRect();
+	NSRect total = GetAbsoluteRect(rect);
+	if (superview)
+		total = total.Intersection(superview->GetAbsoluteFrame());
+	NSRect scissor = (total * bsf).IntegerRect();
 	graphics_scissor_rect_set(context, scissor.origin.x, scissor.origin.y,
 							  scissor.size.width, scissor.size.height);
 	
@@ -520,8 +523,7 @@ void NSView::MouseDown(NSEventMouse* event) {
 		return;
 	
 	for (auto& s : subviews) {
-		NSPoint sp = p - s->frame.origin;
-		if (s->visible && s->ContainsPoint(sp))
+		if (s->visible)
 			s->MouseDown(event);
 	}
 }
@@ -541,8 +543,7 @@ void NSView::MouseDragged(NSEventMouse* event) {
 		return;
 	
 	for (auto& s : subviews) {
-		NSPoint sp = p - s->frame.origin;
-		if (s->visible && s->ContainsPoint(sp))
+		if (s->visible)
 			s->MouseDragged(event);
 	}
 }

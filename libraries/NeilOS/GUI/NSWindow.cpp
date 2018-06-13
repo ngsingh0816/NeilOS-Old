@@ -31,7 +31,7 @@ namespace NSApplication {
 	void DeregisterWindow(NSWindow* window);
 }
 
-NSWindow* NSWindow::Create(string t, NSRect r) {
+NSWindow* NSWindow::Create(string t, const NSRect& r) {
 	NSWindow* ret = new NSWindow(t, r);
 	
 	auto event = NSEventWindowCreate(ret->title, ret->frame, getpid(), ret->window_id, &ret->context);
@@ -40,7 +40,7 @@ NSWindow* NSWindow::Create(string t, NSRect r) {
 	return ret;
 }
 
-NSWindow::NSWindow(string t, NSRect f) {
+NSWindow::NSWindow(string t, const NSRect& f) {
 	title = t;
 	frame = f;
 	win_id_lock.Lock();
@@ -322,7 +322,7 @@ void NSWindow::MouseDragged(NSEventMouse* event) {
 	
 	CheckCursorRegions(event->GetPosition());
 	
-	down_view->MouseDragged(event);
+	content_view->MouseDragged(event);
 }
 
 void NSWindow::MouseUp(NSEventMouse* event) {

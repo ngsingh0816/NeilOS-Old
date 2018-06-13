@@ -93,6 +93,9 @@ public:
 	T r, g, b, a;
 };
 
+template <class T>
+NSColor<T> operator *(float v, const NSColor<T>& c);
+
 uint8_t NSColorFloatToByte(float value);
 float NSColorByteToFloat(uint8_t value);
 

@@ -26,7 +26,7 @@ class NSWindowObserver;
 
 class NSWindow : public NSResponder {
 public:
-	static NSWindow* Create(std::string title, NSRect frame);
+	static NSWindow* Create(std::string title, const NSRect& frame);
 	~NSWindow();
 	
 	NSView* GetContentView();
@@ -77,7 +77,7 @@ private:
 	friend class NSEventWindowSetFrame;
 	friend class NSEventWindowMakeKey;
 	
-	NSWindow(std::string title, NSRect frame);
+	NSWindow(std::string title, const NSRect& frame);
 	
 	void AddUpdateRect(const NSRect& rect);
 	void AddUpdateRects(std::vector<NSRect> rects);
