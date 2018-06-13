@@ -174,8 +174,8 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 	sys_graphics_state_viewport(context.cid, &rect);
 	sys_graphics_state_z_range(context.cid, 0.0f, 1.0f);
 	
-	SVGA3dRenderState rs[7];
-	memset(rs, 0, sizeof(SVGA3dRenderState) * 7);
+	SVGA3dRenderState rs[12];
+	memset(rs, 0, sizeof(rs));
 	rs[0].state = SVGA3D_RS_SHADEMODE;
 	rs[0].uintValue = SVGA3D_SHADEMODE_SMOOTH;
 	rs[1].state     = SVGA3D_RS_BLENDENABLE;
@@ -190,7 +190,17 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 	rs[5].uintValue = false;
 	rs[6].state     = SVGA3D_RS_CULLMODE;
 	rs[6].uintValue = SVGA3D_FACE_NONE;
-	sys_graphics_state_render_state(context.cid, rs, 8);
+	rs[7].state     = SVGA3D_RS_STENCILWRITEMASK;
+	rs[7].uintValue = 0xFF;
+	rs[8].state     = SVGA3D_RS_STENCILMASK;
+	rs[8].uintValue = 0xFF;
+	rs[9].state     = SVGA3D_RS_STENCILFAIL;
+	rs[9].uintValue = GRAPHICS_STENCILOP_KEEP;
+	rs[10].state     = SVGA3D_RS_STENCILZFAIL;
+	rs[10].uintValue = GRAPHICS_STENCILOP_KEEP;
+	rs[11].state     = SVGA3D_RS_STENCILPASS;
+	rs[11].uintValue = GRAPHICS_STENCILOP_KEEP;
+	sys_graphics_state_render_state(context.cid, rs, sizeof(rs) / sizeof(SVGA3dRenderState));
 	
 	SVGA3dTextureState ts[8];
 	memset(ts, 0, sizeof(SVGA3dTextureState) * 8);

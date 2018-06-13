@@ -22,6 +22,7 @@
 		280FE3291F00422000E1A724 /* systime.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3271F00422000E1A724 /* systime.c */; };
 		280FE33E1F00487900E1A724 /* pci.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE3391F00487900E1A724 /* pci.c */; };
 		280FE33F1F00487900E1A724 /* i8259.c in Sources */ = {isa = PBXBuildFile; fileRef = 280FE33C1F00487900E1A724 /* i8259.c */; };
+		2812479620D098FF00546A96 /* kernel.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AAA1EF3AB890009CA98 /* kernel.c */; };
 		281CEB3B2024FA5C00C7D407 /* svga_3d.c in Sources */ = {isa = PBXBuildFile; fileRef = 281CEB3A2024FA5C00C7D407 /* svga_3d.c */; };
 		2881223E1F10949B00A4D504 /* log.c in Sources */ = {isa = PBXBuildFile; fileRef = 2881223C1F10949B00A4D504 /* log.c */; };
 		28823B7D1F16002700089F67 /* dylib.c in Sources */ = {isa = PBXBuildFile; fileRef = 28823B7B1F16002700089F67 /* dylib.c */; };
@@ -54,7 +55,6 @@
 		28DF5AD91EF3AB890009CA98 /* pit.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5A9F1EF3AB880009CA98 /* pit.c */; };
 		28DF5ADA1EF3AB890009CA98 /* rtc.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AA21EF3AB880009CA98 /* rtc.c */; };
 		28DF5ADB1EF3AB890009CA98 /* terminal.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AA51EF3AB890009CA98 /* terminal.c */; };
-		28DF5ADD1EF3AB890009CA98 /* kernel.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AAA1EF3AB890009CA98 /* kernel.c */; };
 		28DF5ADE1EF3AB890009CA98 /* heap.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AAE1EF3AB890009CA98 /* heap.c */; };
 		28DF5ADF1EF3AB890009CA98 /* page_allocator.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AB01EF3AB890009CA98 /* page_allocator.c */; };
 		28DF5AE01EF3AB890009CA98 /* memory.c in Sources */ = {isa = PBXBuildFile; fileRef = 28DF5AB21EF3AB890009CA98 /* memory.c */; };
@@ -738,6 +738,7 @@
 				2801262F2016BE9200647962 /* svga.c in Sources */,
 				281CEB3B2024FA5C00C7D407 /* svga_3d.c in Sources */,
 				28DF5AC81EF3AB890009CA98 /* rwsem.c in Sources */,
+				2812479620D098FF00546A96 /* kernel.c in Sources */,
 				28DF5AE51EF3AB890009CA98 /* interrupt.c in Sources */,
 				28DF5AD71EF3AB890009CA98 /* keyboard.c in Sources */,
 				28C4CD8E1F5E6BDB00512DBC /* null.c in Sources */,
@@ -776,7 +777,6 @@
 				28DF5ADF1EF3AB890009CA98 /* page_allocator.c in Sources */,
 				280126062002E40300647962 /* shmem.c in Sources */,
 				28C4CD941F5E7C9D00512DBC /* zero.c in Sources */,
-				28DF5ADD1EF3AB890009CA98 /* kernel.c in Sources */,
 				28DF5AE01EF3AB890009CA98 /* memory.c in Sources */,
 				28DF5ADB1EF3AB890009CA98 /* terminal.c in Sources */,
 				28C4CD911F5E721C00512DBC /* devices.c in Sources */,
