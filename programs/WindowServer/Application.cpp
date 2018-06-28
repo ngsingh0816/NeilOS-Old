@@ -24,10 +24,14 @@ namespace Application {
 	void QuitEvent(uint8_t* data, uint32_t length);
 	void SetMenuEvent(uint8_t* data, uint32_t length);
 	void SetCursorEvent(uint8_t* data, uint32_t length);
+	void ContextMenuEvent(uint8_t* data, uint32_t length);
 	
 	void SetActiveApplication(uint32_t pid);
 	bool SendActiveEvent(NSEvent* event);
 	bool SendEvent(NSEvent* event, uint32_t pid);
+	
+	void SetMenuActions(uint32_t pid, NSMenu* menu, std::vector<unsigned int> indices,
+						bool is_context, uint32_t menu_id);
 	
 	App* GetApplication(uint32_t pid);
 	
@@ -56,6 +60,9 @@ void Application::ProcessEvent(uint8_t* data, uint32_t length) {
 		case APPLICATION_EVENT_SET_CURSOR:
 			SetCursorEvent(data, length);
 			break;
+		case APPLICATION_EVENT_CONTEXT_MENU:
+			ContextMenuEvent(data, length);
+			break;
 	}
 }
 
@@ -69,7 +76,8 @@ void Application::QuitEvent(uint8_t* data, uint32_t length) {
 	delete e;
 }
 
-void SetMenuActions(uint32_t pid, NSMenu* menu, std::vector<unsigned int> indices) {
+void Application::SetMenuActions(uint32_t pid, NSMenu* menu, std::vector<unsigned int> indices,
+								 bool is_context, uint32_t menu_id) {
 	if (!menu)
 		return;
 	
@@ -77,12 +85,21 @@ void SetMenuActions(uint32_t pid, NSMenu* menu, std::vector<unsigned int> indice
 	for (unsigned int z = 0; z < items.size(); z++) {
 		std::vector<unsigned int> i = indices;
 		i.push_back(z);
-		items[z]->SetAction([pid, i](NSMenuItem*) {
-			NSEventApplicationMenuEvent* e = NSEventApplicationMenuEvent::Create(i);
+		items[z]->SetAction([pid, i, is_context, menu_id](NSMenuItem* item) {
+			bool d = dynamic_cast<NSMenuViewItem*>(item) == NULL;
+			NSEventApplicationMenuEvent* e = NSEventApplicationMenuEvent::Create(i, d ? NULL : item,
+																				 is_context, menu_id, d);
 			Application::SendEvent(e, pid);
 			delete e;
 		});
-		SetMenuActions(pid, items[z]->GetSubmenu(), i);
+		items[z]->SetCursorEvent([](NSCursorRegion* region) {
+			NSImage* image = region->GetImage();
+			if (image)
+				Desktop::SetCursor(image, region->GetHotspot());
+			else
+				Desktop::SetCursor(region->GetCursor());
+		});
+		SetMenuActions(pid, items[z]->GetSubmenu(), i, is_context, menu_id);
 	}
 }
 
@@ -98,7 +115,7 @@ void Application::SetMenuEvent(uint8_t* data, uint32_t length) {
 	if (app->menu)
 		delete app->menu;
 	app->menu = new NSMenu(e->GetMenu());
-	SetMenuActions(e->GetPid(), app->menu, std::vector<unsigned int>());
+	SetMenuActions(e->GetPid(), app->menu, std::vector<unsigned int>(), false, 0);
 	
 	delete e;
 	
@@ -107,14 +124,30 @@ void Application::SetMenuEvent(uint8_t* data, uint32_t length) {
 }
 
 void Application::SetCursorEvent(uint8_t* data, uint32_t length) {
-	NSEventApplicationCursor* e = NSEventApplicationCursor::FromData(data, length);
+	NSEventApplicationSetCursor* e = NSEventApplicationSetCursor::FromData(data, length);
 	if (!e)
 		return;
 	
 	if (e->GetImage())
 		Desktop::SetCursor(e->GetImage(), e->GetHotspot());
 	else
-		Desktop::SetCursor(Desktop::Cursor(e->GetCursor()));
+		Desktop::SetCursor(NSCursor::Cursor(e->GetCursor()));
+	
+	delete e;
+}
+
+void Application::ContextMenuEvent(uint8_t* data, uint32_t length) {
+	NSEventApplicationContextMenu* e = NSEventApplicationContextMenu::FromData(data, length);
+	if (!e)
+		return;
+	
+	NSMenu* menu = NULL;
+	if (e->HasMenu()) {
+		menu = new NSMenu(e->GetMenu());
+		SetMenuActions(e->GetPid(), menu, std::vector<unsigned int>(), true, e->GetID());
+	}
+	
+	Desktop::PopupContextMenu(e->GetPid(), menu, e->GetPoint(), e->GetID());
 	
 	delete e;
 }

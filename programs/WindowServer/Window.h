@@ -27,7 +27,7 @@ namespace Window {
 	
 	void DestroyWindows(uint32_t pid);
 	
-	bool MouseDown(NSPoint p, NSMouseButton mouse);
+	bool MouseDown(NSPoint p, NSMouseButton mouse, uint32_t click_count);
 	bool MouseMoved(NSPoint p);
 	bool MouseUp(NSPoint p, NSMouseButton mouse);
 	bool MouseScrolled(NSPoint p, float delta_x, float delta_y);

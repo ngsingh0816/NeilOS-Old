@@ -9,25 +9,36 @@
 #include "svga_3d.h"
 #include "svga.h"
 #include <common/lib.h>
+#include <common/concurrency/semaphore.h>
 
 extern void* svga_fifo_reserve(uint32_t bytes);
 extern void svga_fifo_commit_all();
 
 // Last used number for contexts and surfaces
-uint32_t context_pos = 1;
+uint32_t context_pos = 0;
 uint32_t surface_pos = 1;
 
-// Helper for finding next position
-uint32_t svga3d_find_next_available(uint32_t* pos) {
-	// Skip non positive numbers
-	if (*pos == 0x7FFFFFFF) {
-		*pos = 1;
-		return 0x7FFFFFFF;
-	}
-	
-	return (*pos)++;
+mutex_t availability_lock = MUTEX_UNLOCKED;
+
+uint32_t svga3d_find_next_context() {
+	down(&availability_lock);
+	uint32_t ret = context_pos;
+	context_pos++;
+	if (context_pos == SVGA3D_MAX_CONTEXT_IDS)
+		context_pos = 0;
+	up(&availability_lock);
+	return ret;
 }
 
+uint32_t svga3d_find_next_surface() {
+	down(&availability_lock);
+	uint32_t ret = surface_pos;
+	surface_pos++;
+	if (surface_pos == SVGA3D_MAX_SURFACE_IDS)
+		surface_pos = 1;
+	up(&availability_lock);
+	return ret;
+}
 
 // Helper for fifo
 void* svga3d_fifo_reserve(uint32_t cmd, uint32_t cmd_size) {
@@ -55,16 +66,18 @@ void svga3d_present_readback(SVGA3dCopyRect* rects, uint32_t num_rects) {
 
 // Create a surface with the specified options and returns the surface id (sid)
 // (need SVGA3D_MAX_SURFACE_FACES faces but most of the time only one will be used)
-uint32_t svga3d_surface_create(SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat format, SVGA3dSurfaceFace* faces,
-							   SVGA3dSize* mipSizes, uint32_t num_mips) {
-	SVGA3dCmdDefineSurface* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_SURFACE_DEFINE,
-												sizeof(SVGA3dCmdDefineSurface) + num_mips * sizeof(SVGA3dSize));
-	uint32_t sid = svga3d_find_next_available(&surface_pos);
+uint32_t svga3d_surface_create(svga3d_surface_info* info) {
+	SVGA3dCmdDefineSurface_v2* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_SURFACE_DEFINE_V2,
+														 sizeof(SVGA3dCmdDefineSurface_v2) +
+														 info->num_mips * sizeof(SVGA3dSize));
+	uint32_t sid = svga3d_find_next_surface();
 	cmd->sid = sid;
-	cmd->format = format;
-	cmd->surfaceFlags = flags;
-	memcpy(cmd->face, faces, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
-	memcpy(&cmd[1], mipSizes, sizeof(SVGA3dSize) * num_mips);
+	cmd->format = info->format;
+	cmd->surfaceFlags = info->flags;
+	memcpy(cmd->face, info->faces, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
+	cmd->multisampleCount = info->num_samples;
+	cmd->autogenFilter = info->filter;
+	memcpy(&cmd[1], info->mip_sizes, sizeof(SVGA3dSize) * info->num_mips);
 	svga_fifo_commit_all();
 	
 	return sid;
@@ -107,17 +120,19 @@ void svga3d_surface_stretch_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId
 }
 
 // Reformat a surface
-void svga3d_surface_reformat(uint32_t sid, SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat format, SVGA3dSurfaceFace* faces,
-							 SVGA3dSize* mipSizes, uint32_t num_mips) {
+void svga3d_surface_reformat(uint32_t sid, svga3d_surface_info* info) {
 	svga3d_surface_destroy(sid);
 	
-	SVGA3dCmdDefineSurface* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_SURFACE_DEFINE,
-													  sizeof(SVGA3dCmdDefineSurface) + num_mips * sizeof(SVGA3dSize));
+	SVGA3dCmdDefineSurface_v2* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_SURFACE_DEFINE_V2,
+														 sizeof(SVGA3dCmdDefineSurface_v2) +
+														 info->num_mips * sizeof(SVGA3dSize));
 	cmd->sid = sid;
-	cmd->format = format;
-	cmd->surfaceFlags = flags;
-	memcpy(cmd->face, faces, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
-	memcpy(&cmd[1], mipSizes, sizeof(SVGA3dSize) * num_mips);
+	cmd->format = info->format;
+	cmd->surfaceFlags = info->flags;
+	memcpy(cmd->face, info->faces, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
+	cmd->multisampleCount = info->num_samples;
+	cmd->autogenFilter = info->filter;
+	memcpy(&cmd[1], info->mip_sizes, sizeof(SVGA3dSize) * info->num_mips);
 	svga_fifo_commit_all();
 }
 
@@ -133,7 +148,7 @@ void svga3d_surface_destroy(uint32_t sid) {
 uint32_t svga3d_context_create() {
 	SVGA3dCmdDefineContext* cmd = svga3d_fifo_reserve(SVGA_3D_CMD_CONTEXT_DEFINE,
 													  sizeof(SVGA3dCmdDefineContext));
-	uint32_t cid = svga3d_find_next_available(&context_pos);
+	uint32_t cid = svga3d_find_next_context();
 	cmd->cid = cid;
 	svga_fifo_commit_all();
 	

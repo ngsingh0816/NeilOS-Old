@@ -11,10 +11,13 @@
 #include "Application.h"
 #include "Window.h"
 
+#include "Events/Application/NSEventApplicationMenuEvent.cpp"
+
 #include <fcntl.h>
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
@@ -25,6 +28,12 @@
 #define BORDER_RECT		NSRect(-2, -2, 4, 4)
 #define CURSOR_SIZE		20
 
+#define DOUBLE_CLICK_TIME		0.5
+
+namespace NSApplication {
+	void SetPixelScalingFactor(float factor);
+}
+
 using std::vector;
 
 graphics_info_t graphics_info;
@@ -32,15 +41,18 @@ graphics_context_t context;
 
 namespace Desktop {
 	bool loaded = false;
+	bool done_fade = false;
 	
-	NSImage* background_image = NULL;
-	NSImage* cursor_image[CURSOR_MAX];
-	NSPoint cursor_hotspot[CURSOR_MAX];
+	NSImage* cursor_image[NSCursor::CURSOR_MAX];
+	NSPoint cursor_hotspot[NSCursor::CURSOR_MAX];
 	NSSound* intro_sound = NULL;
 	
-	NSMenu* app_menu;		// on the left
-	NSMenu* system_menu;	// on the right
-	NSMenu* task_bar;		// on the bottom
+	NSMenu* app_menu = NULL;		// on the left
+	NSMenu* system_menu = NULL;		// on the right
+	NSMenu* task_bar = NULL;		// on the bottom
+	NSMenu* context_menu = NULL;
+	uint32_t context_menu_pid = 0;
+	uint32_t context_menu_id = 0;
 	const float menu_height = 30;
 	
 	uint32_t square_vbo;
@@ -71,49 +83,22 @@ namespace Desktop {
 	float pixel_scaling_factor = 2.0f;
 	float original_psf = 2.0f;
 	
-	Cursor current_cursor = CURSOR_MAX;
+	NSCursor::Cursor current_cursor = NSCursor::CURSOR_MAX;
 	
 	struct timeval fade_start;
 	
-	const float square[] = {
-		0, 0,
-		1, 0,
-		0, 1,
-		1, 1
-	};
-	const float square_colors[] = {
-		1.0, 1.0, 1.0, 1.0,
-		1.0, 1.0, 1.0, 1.0,
-		1.0, 1.0, 1.0, 1.0,
-		1.0, 1.0, 1.0, 1.0,
-	};
-	float fade_colors[] = {
-		0, 0, 0, 1.0,
-		0, 0, 0, 1.0,
-		0, 0, 0, 1.0,
-		0, 0, 0, 1.0,
-	};
-	const float mouse_colors[] = {
-		0.5, 0.5, 0.5, 0.5,
-		0.5, 0.5, 0.5, 0.5,
-		0.5, 0.5, 0.5, 0.5,
-		0.5, 0.5, 0.5, 0.5,
-	};
-	const float uv[] = {
-		0, 0,
-		1.0, 0,
-		0.0, 1.0,
-		1.0, 1.0
-	};
-
 	NSSize AdjustCursorSize(NSSize size);
 	
 	void* MouseThread(void*);
 	void* KeyThread(void*);
 	void FadeFunc(NSTimer*);
 	
-	bool MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, bool (NSMenu::*func)(NSEventMouse*));
+	bool MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, uint32_t click_count,
+				   bool (NSMenu::*func)(NSEventMouse*), float delta_x = 0, float delta_y = 0);
 	bool KeyMenu(unsigned char key, NSModifierFlags flags, bool down, bool (NSMenu::*func)(NSEventKey*));
+	
+	
+	void SetMenuFrames();
 	
 	std::string GetTime();
 	uint32_t SecondsToNextMinute();
@@ -132,20 +117,30 @@ void Desktop::SetPixelScalingFactor(float factor) {
 	
 	NSMatrix perspective = NSMatrix::Ortho2D(0, graphics_info.resolution_x, graphics_info.resolution_y, 0);
 	graphics_transform_set(&context, GRAPHICS_TRANSFORM_PROJECTION, perspective);
-		
+	
+	NSApplication::SetPixelScalingFactor(factor);
 	Application::SendPixelScalingFactorEvent(factor);
 	
-	// Update menus
-	NSRect system_menu_rect = NSRect(NSPoint(graphics_info.resolution_x, 0),
-									 NSSize(system_menu->GetSize().width, menu_height - 1));	// Account for border
-	system_menu_rect.origin.x -= system_menu_rect.size.width;
-	system_menu->SetFrame(system_menu_rect);
-	NSRect app_menu_rect = NSRect(NSPoint(), NSSize(system_menu_rect.origin.x, menu_height - 1));
-	app_menu->SetFrame(app_menu_rect);
-	task_bar->SetFrame(NSRect(0, graphics_info.resolution_y - menu_height + 1,
-							  graphics_info.resolution_x, menu_height - 1));
+	SetMenuFrames();
 	
 	UpdateRect(NSRect(0, 0, graphics_info.resolution_x, graphics_info.resolution_y));
+}
+
+void Desktop::SetMenuFrames() {
+	const NSRect bounds = NSRect(0, menu_height - 1, graphics_info.resolution_x,
+								 graphics_info.resolution_y - (menu_height - 1) * 2);
+	system_menu->SetFrameBounds(bounds);
+	app_menu->SetFrameBounds(bounds);
+	task_bar->SetFrameBounds(bounds);
+	
+	NSRect system_menu_rect = NSRect(NSPoint(graphics_info.resolution_x, -1),
+									 NSSize(system_menu->GetSize().width + 1, menu_height + 1));
+	system_menu_rect.origin.x -= system_menu_rect.size.width - 1;
+	system_menu->SetFrame(system_menu_rect);
+	NSRect app_menu_rect = NSRect(NSPoint(-1, -1), NSSize(system_menu_rect.origin.x + 2, menu_height + 1));
+	app_menu->SetFrame(app_menu_rect);
+	task_bar->SetFrame(NSRect(-1, graphics_info.resolution_y - menu_height,
+							  graphics_info.resolution_x + 2, menu_height + 1));
 }
 
 std::string Desktop::GetTime() {
@@ -175,7 +170,7 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 		"resize_up_down", "resize_left", "resize_right", "resize_left_right", "zoom_in", "zoom_out",
 	};
 	
-	for (int z = 0; z < CURSOR_MAX; z++) {
+	for (int z = 0; z < NSCursor::CURSOR_MAX; z++) {
 		cursor_image[z] = new NSImage(std::string("/system/images/cursors/") +
 								   std::string(cursor_names[z]) + std::string(".png"));
 		NSSize old_size = cursor_image[z]->GetSize();
@@ -192,67 +187,57 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 		} else
 			cursor_hotspot[z] = NSPoint();
 		
-		percent(10 + (float(z + 1) / CURSOR_MAX) * 40);
+		percent(10 + (float(z + 1) / NSCursor::CURSOR_MAX) * 40);
 	}
 	
-	background_image = new NSImage("/system/images/background.jpg");
-	int img_width = int(background_image->GetSize().width + 0.5f);
-	int img_height = int(background_image->GetSize().height + 0.5f);
+	NSImage* background_image = new NSImage("/system/images/background.jpg");
 	
 	percent(65);
 	
-	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(square_vbo, square, sizeof(square));
-	color_vbo = graphics_buffer_create(sizeof(square_colors), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(color_vbo, square_colors, sizeof(square_colors));
-	fade_vbo = graphics_buffer_create(sizeof(fade_colors), GRAPHICS_BUFFER_DYNAMIC);
-	graphics_buffer_data(fade_vbo, fade_colors, sizeof(fade_colors));
-	uv_vbo = graphics_buffer_create(sizeof(uv), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(uv_vbo, uv, sizeof(uv));
-	mouse_vbo = graphics_buffer_create(sizeof(mouse_colors), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(mouse_vbo, mouse_colors, sizeof(mouse_colors));
-	
-	background_vbo = graphics_buffer_create(img_width, img_height, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
-	graphics_buffer_data(background_vbo, background_image->GetPixelData(),
-						 img_width, img_height, img_width * img_height * 4);
+	square_vbo = graphics_buffer_create(sizeof(float) * 4 * 2, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferSquare(square_vbo);
+	color_vbo = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(color_vbo, NSColor<float>::WhiteColor(), 4);
+	fade_vbo = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_DYNAMIC);
+	NSView::BufferColor(fade_vbo, NSColor<float>::BlackColor(), 4);
+	uv_vbo = graphics_buffer_create(sizeof(float) * 4 * 2, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferSquare(uv_vbo);
+	mouse_vbo = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(mouse_vbo, NSColor<float>(0.5, 0.5, 0.5, 0.5), 4);
+
+	background_vbo = NSView::CreateImageBuffer(background_image, NULL);
+	delete background_image;
 	
 	memset(background_vao, 0, sizeof(graphics_vertex_array_t) * 3);
 	background_vao[0].bid = square_vbo;
-	background_vao[0].offset = 0;
 	background_vao[0].stride = 2 * sizeof(float);
 	background_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	background_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	background_vao[1].bid = color_vbo;
-	background_vao[1].offset = 0;
 	background_vao[1].stride = 4 * sizeof(float);
 	background_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	background_vao[1].usage = GRAPHICS_USAGE_COLOR;
 	background_vao[2].bid = uv_vbo;
-	background_vao[2].offset = 0;
 	background_vao[2].stride = 2 * sizeof(float);
 	background_vao[2].type = GRAPHICS_TYPE_FLOAT2;
 	background_vao[2].usage = GRAPHICS_USAGE_TEXCOORD;
 	
 	memset(fade_vao, 0, sizeof(graphics_vertex_array_t) * 2);
 	fade_vao[0].bid = square_vbo;
-	fade_vao[0].offset = 0;
 	fade_vao[0].stride = 2 * sizeof(float);
 	fade_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	fade_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	fade_vao[1].bid = fade_vbo;
-	fade_vao[1].offset = 0;
 	fade_vao[1].stride = 4 * sizeof(float);
 	fade_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	fade_vao[1].usage = GRAPHICS_USAGE_COLOR;
 	
 	memset(mouse_vao, 0, sizeof(graphics_vertex_array_t) * 2);
 	mouse_vao[0].bid = square_vbo;
-	mouse_vao[0].offset = 0;
 	mouse_vao[0].stride = 2 * sizeof(float);
 	mouse_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	mouse_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	mouse_vao[1].bid = mouse_vbo;
-	mouse_vao[1].offset = 0;
 	mouse_vao[1].stride = 4 * sizeof(float);
 	mouse_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	mouse_vao[1].usage = GRAPHICS_USAGE_COLOR;
@@ -272,6 +257,9 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	item->GetSubmenu()->AddItem(new NSMenuItem("Open"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Close"));
 	item->GetSubmenu()->GetItems()[1]->SetIsEnabled(false);
+	NSTextField* slider = NSTextField::Create(NSRect(NSPoint(), NSTextFieldDefaultSize));
+	slider->SetResizingMask(NSViewWidthSizable | NSViewMinXMargin | NSViewMaxXMargin);
+	item->GetSubmenu()->AddItem(new NSMenuViewItem(slider));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Save"));
 	item->GetSubmenu()->GetItems()[2]->SetKeyEquivalent("s", NSModifierCommand);
 	item->GetSubmenu()->GetItems()[2]->SetState(NSMenuItemStateOn);
@@ -294,30 +282,46 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 5"));
 	item->GetSubmenu()->AddItem(new NSMenuItem("Item 6"));
 	app_menu->AddItem(item);
-	
-	system_menu->AddItem(new NSMenuItem(GetTime()));
-	system_menu->AddItem(new NSMenuItem("NeilOS"));		// TODO: replace with image?
-	NSRect system_menu_rect = NSRect(NSPoint(graphics_info.resolution_x, 0),
-									 NSSize(system_menu->GetSize().width, menu_height - 1));	// Account for border
-	system_menu_rect.origin.x -= system_menu_rect.size.width;
-	system_menu->SetFrame(system_menu_rect);
-	system_menu->SetUpdateFunction([](std::vector<NSRect> rects) {
-		UpdateRects(rects);
-	});
-	system_menu->SetContext(&context);
-	
-	NSRect app_menu_rect = NSRect(NSPoint(), NSSize(system_menu_rect.origin.x, menu_height - 1));
-	app_menu->SetFrame(app_menu_rect);
 	app_menu->SetUpdateFunction([](std::vector<NSRect> rects) {
 		UpdateRects(rects);
 	});
-	app_menu->SetContext(&context);
+	
+	int audio_fd = open("/dev/audio", O_RDONLY);
+	NSSlider* audio_slider = NSSlider::Create(NSRect(NSPoint(), NSSliderDefaultSize));
+	audio_slider->SetResizingMask(NSViewWidthSizable);
+	audio_slider->SetMinValue(0);
+	audio_slider->SetMaxValue(100);
+	audio_slider->SetValue(100);
+	audio_slider->SetIsContinuous(true);
+	audio_slider->SetAction([audio_fd](NSSlider* slider) {
+		double v = (slider->GetValue() - slider->GetMinValue()) / (slider->GetMaxValue() - slider->GetMinValue());
+		// Set master volume
+		ioctl(audio_fd, 2, v);
+	});
+	NSImage* audio_image = new NSImage("/system/images/audio.png");
+	audio_image->SetScaledSize(NSSize(menu_height - 10, menu_height - 10));
+	NSMenuItem* audio_menu = new NSMenuItem(audio_image, false);
+	audio_menu->SetBorderHeight(2);
+	delete audio_image;
+	NSMenuItem* slider_item = new NSMenuViewItem(audio_slider);
+	audio_menu->SetSubmenu(new NSMenu);
+	audio_menu->GetSubmenu()->AddItem(slider_item);
+	system_menu->AddItem(audio_menu);
+	NSMenuItem* time_item = new NSMenuItem(GetTime());
+	system_menu->AddItem(time_item);
+	system_menu->AddItem(new NSMenuItem("NeilOS"));		// TODO: replace with image?
+	system_menu->SetUpdateFunction([](std::vector<NSRect> rects) {
+		UpdateRects(rects);
+	});
+	system_menu->SetHighlightedTextColor(NSColor<float>::WhiteColor());
+	
 	
 	percent(90);
 	
 	NSImage* start_image = new NSImage("/system/images/start.png");
 	start_image->SetScaledSize(NSSize(menu_height - 5, menu_height - 5));
 	item = new NSMenuItem(start_image, false);
+	delete start_image;
 	item->SetBorderHeight(2);
 	NSMenuItem* sitem = new NSMenuItem("Calculator");
 	sitem->SetFont(NSFont(30));
@@ -326,29 +330,35 @@ void Desktop::Load(volatile float* p, float percent_start, float percent_end) {
 	});
 	item->SetSubmenu(new NSMenu);
 	item->GetSubmenu()->AddItem(sitem);
+	sitem = new NSMenuItem("Logger");
+	sitem->SetFont(NSFont(30));
+	sitem->SetAction([](NSMenuItem*) {
+		NSApplication::OpenApplication("/Applications/Logger");
+	});
+	item->GetSubmenu()->AddItem(sitem);
 	task_bar->AddItem(item);
-	delete start_image;
 	task_bar->AddItem(NSMenuItem::SeparatorItem());
 	task_bar->SetOrientation(NSMenuOrientationUp);
 	task_bar->SetHighlightColor(NSColor<float>::UIDarkGrayColor());
-	task_bar->SetFrame(NSRect(0, graphics_info.resolution_y - menu_height + 1,
-							  graphics_info.resolution_x, menu_height - 1));
 	task_bar->SetUpdateFunction([](std::vector<NSRect> rects) {
 		UpdateRects(rects);
 	});
+	
+	SetMenuFrames();
+	app_menu->SetContext(&context);
+	system_menu->SetContext(&context);
 	task_bar->SetContext(&context);
 	
 	percent(98);
-	
+		
 	// Create time timer
-	NSTimer* timer = NSTimer::Create([](NSTimer*) {
-		system_menu->GetItems()[0]->SetTitle(GetTime());
-		NSTimer::Create([](NSTimer*) {
-			system_menu->GetItems()[0]->SetTitle(GetTime());
+	NSTimer* timer = NSTimer::Create([time_item](NSTimer*) {
+		time_item->SetTitle(GetTime());
+		NSTimer::Create([time_item](NSTimer*) {
+			time_item->SetTitle(GetTime());
 		}, 60, true);
 	}, SecondsToNextMinute(), false, false);
 	NSThread::MainThread()->GetRunLoop()->AddTimer(timer);
-	
 	
 	loaded = true;
 	percent(100);
@@ -434,7 +444,7 @@ void* Desktop::KeyThread(void*) {
 
 void Desktop::Start(NSThread*) {
 	// Set the cursor
-	SetCursor(CURSOR_DEFAULT);
+	Desktop::SetCursor(NSCursor::CURSOR_DEFAULT);
 	
 	// Play the boot sound
 	intro_sound->Play();
@@ -470,13 +480,13 @@ void Desktop::FadeFunc(NSTimer* timer) {
 	if (fade <= menu_fade_length) {
 		float fade2 = fade / menu_fade_length;
 		NSRect system_menu_rect = system_menu->GetFrame();
-		system_menu_rect.origin.y = (-system_menu_rect.size.height - 1) * fade2;
+		system_menu_rect.origin.y = -system_menu_rect.size.height * fade2 - 1;
 		system_menu->SetFrame(system_menu_rect);
 		NSRect app_menu_rect = app_menu->GetFrame();
-		app_menu_rect.origin.y = -(app_menu_rect.size.height - 1) * fade2;
+		app_menu_rect.origin.y = -app_menu_rect.size.height * fade2 - 1;
 		app_menu->SetFrame(app_menu_rect);
 		NSRect task_bar_rect = task_bar->GetFrame();
-		task_bar_rect.origin.y = res_y - menu_height + 1 + (task_bar_rect.size.height + 1) * fade2;
+		task_bar_rect.origin.y = res_y - menu_height + (task_bar_rect.size.height - 1) * fade2;
 		task_bar->SetFrame(task_bar_rect);
 		
 		NSMenu* menus[] = { system_menu, app_menu, task_bar };
@@ -489,9 +499,7 @@ void Desktop::FadeFunc(NSTimer* timer) {
 					 res_y * Desktop::GetPixelScalingFactor());
 	
 	// Update fade color
-	for (int z = 0; z < 4; z++)
-		fade_colors[z * 4 + 3] = fade;
-	graphics_buffer_data(fade_vbo, fade_colors, sizeof(fade_colors));
+	NSView::BufferColor(fade_vbo, NSColor<float>::BlackColor().AlphaColor(fade), 4);
 	
 	graphics_fence_sync(graphics_fence_create());
 	
@@ -503,13 +511,14 @@ void Desktop::FadeFunc(NSTimer* timer) {
 		// Set correct menu placements
 		NSRect system_menu_rect = system_menu->GetFrame(), app_menu_rect = app_menu->GetFrame(),
 			task_bar_rect = task_bar->GetFrame();
-		system_menu_rect.origin.y = 0;
+		system_menu_rect.origin.y = -1;
 		system_menu->SetFrame(system_menu_rect);
-		app_menu_rect.origin.y = 0;
+		app_menu_rect.origin.y = -1;
 		app_menu->SetFrame(app_menu_rect);
-		task_bar_rect.origin.y = res_y - menu_height + 1;
+		task_bar_rect.origin.y = res_y - menu_height;
 		task_bar->SetFrame(task_bar_rect);
 		
+		done_fade = true;
 		UpdateRect(NSRect(0, 0, res_x, res_y));
 	}
 }
@@ -563,6 +572,8 @@ void Desktop::Draw(NSThread*) {
 	NSMenu* menus[] = { system_menu, app_menu, task_bar };
 	for (unsigned int z = 0; z < sizeof(menus) / sizeof(NSMenu*); z++)
 		menus[z]->Draw(rects);
+	if (context_menu)
+		context_menu->Draw(rects);
 	
 	// TODO: get multi rect version of this
 	std::vector<NSRect> consolidated_rects;
@@ -589,6 +600,9 @@ void Desktop::UpdateRect(NSRect rect) {
 }
 
 void Desktop::UpdateRects(const std::vector<NSRect>& rects) {
+	if (!done_fade)
+		return;
+	
 	std::vector<NSRect> real;
 	real.reserve(rects.size());
 	
@@ -608,24 +622,44 @@ void Desktop::UpdateRects(const std::vector<NSRect>& rects) {
 	rect_lock.Unlock();
 }
 
-bool Desktop::MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, bool (NSMenu::*func)(NSEventMouse*)) {
+bool Desktop::MouseMenu(NSPoint p, NSMouseType type, NSMouseButton mouse, uint32_t click_count,
+						bool (NSMenu::*func)(NSEventMouse*), float delta_x, float delta_y) {
 	NSRect system_menu_rect = NSRect(NSPoint(graphics_info.resolution_x, 0),
 									 NSSize(system_menu->GetSize().width, menu_height));
 	system_menu_rect.origin.x -= system_menu_rect.size.width;
 	NSRect app_menu_rect = NSRect(NSPoint(), NSSize(system_menu_rect.origin.x, menu_height));
 	
 	bool ret = false;
-	NSEventMouse* event = NSEventMouse::Create(p - system_menu_rect.origin, type, mouse);
+	NSEventMouse* event = NSEventMouse::Create(p - system_menu_rect.origin, type, mouse, click_count);
+	event->SetDeltaX(delta_x);
+	event->SetDeltaY(delta_y);
 	ret = (system_menu->*func)(event);
 	delete event;
 	
-	event = NSEventMouse::Create(p - app_menu_rect.origin, type, mouse);
+	event = NSEventMouse::Create(p - app_menu_rect.origin, type, mouse, click_count);
+	event->SetDeltaX(delta_x);
+	event->SetDeltaY(delta_y);
 	ret |= (app_menu->*func)(event);
 	delete event;
 	
-	event = NSEventMouse::Create(p - task_bar->GetFrame().origin, type, mouse);
+	event = NSEventMouse::Create(p - task_bar->GetFrame().origin, type, mouse, click_count);
+	event->SetDeltaX(delta_x);
+	event->SetDeltaY(delta_y);
 	ret |= (task_bar->*func)(event);
 	delete event;
+	
+	if (context_menu) {
+		event = NSEventMouse::Create(p - context_menu->GetFrame().origin, type, mouse, click_count);
+		event->SetDeltaX(delta_x);
+		event->SetDeltaY(delta_y);
+		bool context_ret = (context_menu->*func)(event);
+		delete event;
+		
+		if ((type == NSMouseTypeDown && !context_ret) || (type == NSMouseTypeUp && context_ret))
+			PopupContextMenu(context_menu_pid, NULL, NSPoint(), 0);
+		
+		ret |= context_ret;
+	}
 	
 	return ret;
 }
@@ -636,12 +670,28 @@ bool Desktop::KeyMenu(unsigned char key, NSModifierFlags flags, bool down, bool 
 	ret = (system_menu->*func)(event);
 	ret |= (app_menu->*func)(event);
 	ret |= (task_bar->*func)(event);
+	if (context_menu)
+		ret |= (context_menu->*func)(event);
 	delete event;
 	
 	return ret;
 }
 
 void Desktop::MouseDown(NSPoint p, NSMouseButton mouse) {
+	// Find time since last click
+	static timeval last = { .tv_sec = 0, .tv_usec = 0 };
+	static unsigned int click_count = 0;
+	static NSMouseButton last_button = NSMouseButtonNone;
+	struct timeval current;
+	gettimeofday(&current, NULL);
+	NSTimeInterval t = (current.tv_sec - last.tv_sec) + ((current.tv_usec - last.tv_usec) / (1000.0 * 1000.0));
+	if (t < DOUBLE_CLICK_TIME && last_button == mouse) {
+		click_count++;
+	} else
+		click_count = 1;
+	last = current;
+	last_button = mouse;
+	
 	p /= pixel_scaling_factor;
 	
 	if (mouse == NSMouseButtonLeft) {
@@ -649,12 +699,12 @@ void Desktop::MouseDown(NSPoint p, NSMouseButton mouse) {
 		mouse_down_pos = p;
 	}
 	
-	if (MouseMenu(p, NSMouseTypeDown, mouse, &NSMenu::MouseDown)) {
+	if (MouseMenu(p, NSMouseTypeDown, mouse, click_count, &NSMenu::MouseDown)) {
 		mouse_menu_down = true;
 		return;
 	}
 	
-	if (Window::MouseDown(p, mouse))
+	if (Window::MouseDown(p, mouse, click_count))
 		return;
 	
 	if (mouse == NSMouseButtonLeft)
@@ -678,7 +728,7 @@ void Desktop::MouseMoved(NSPoint p) {
 	}
 	
 	if ((mouse_down == mouse_menu_down) || mouse_menu_down) {
-		if (MouseMenu(p, NSMouseTypeMoved, NSMouseButtonNone, &NSMenu::MouseMoved))
+		if (MouseMenu(p, NSMouseTypeMoved, NSMouseButtonNone, 0, &NSMenu::MouseMoved))
 			return;
 	}
 	
@@ -695,7 +745,7 @@ void Desktop::MouseUp(NSPoint p, NSMouseButton mouse) {
 	
 	if (mouse_menu_down) {
 		mouse_menu_down = false;
-		MouseMenu(p, NSMouseTypeUp, mouse, &NSMenu::MouseUp);
+		MouseMenu(p, NSMouseTypeUp, mouse, 0, &NSMenu::MouseUp);
 		return;
 	}
 
@@ -711,7 +761,8 @@ void Desktop::MouseUp(NSPoint p, NSMouseButton mouse) {
 }
 
 void Desktop::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
-#define TIMER_CUTOFF		0.2
+#define TIMER_CUTOFF		0.5
+#define SCROLL_SENSITIVITY	2
 	
 	p /= pixel_scaling_factor;
 	
@@ -723,11 +774,15 @@ void Desktop::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
 	NSTimeInterval t = (current.tv_sec - last.tv_sec) + ((current.tv_usec - last.tv_usec) / (1000.0 * 1000.0));
 	last = current;
 		
-	if (t < TIMER_CUTOFF && t != 0) {
-		t = TIMER_CUTOFF / t;
-		delta_x *= t * t;
-		delta_y *= t * t;
+	if (t < TIMER_CUTOFF) {
+		t = SCROLL_SENSITIVITY * (TIMER_CUTOFF - t) / TIMER_CUTOFF;
+		t = t * t * t * t * t * t;
+		delta_x *= t;
+		delta_y *= t;
 	}
+	
+	if (MouseMenu(p, NSMouseTypeScrolled, NSMouseButtonNone, 0, &NSMenu::MouseScrolled, delta_x, delta_y))
+		return;
 
 	if (Window::MouseScrolled(p, delta_x, delta_y))
 		return;
@@ -748,13 +803,57 @@ void Desktop::KeyDown(unsigned char key) {
 	}
 	if (((modifier_flags & NSModifierShift) != 0) ^ caps_lock_activated)
 		key = toupper(key);
+	if ((modifier_flags & NSModifierShift) != 0) {
+		static uint8_t shift_map[] = {
+			')', '!', '@', '#', '$', '%', '^', '&', '*', '('
+		};
+		if (key >= '0' && key <= '9')
+			key = shift_map[key - '0'];
+		switch (key) {
+			case '`':
+				key = '~';
+				break;
+			case '-':
+				key = '_';
+				break;
+			case '=':
+				key = '+';
+				break;
+			case '[':
+				key = '{';
+				break;
+			case ']':
+				key = '}';
+				break;
+			case '\\':
+				key = '|';
+				break;
+			case '\'':
+				key = '"';
+				break;
+			case ';':
+				key = ':';
+				break;
+			case ',':
+				key = '<';
+				break;
+			case '.':
+				key = '>';
+				break;
+			case '/':
+				key = '?';
+				break;
+		}
+	}
 	
-	if (key == '1')
-		SetPixelScalingFactor(1);
-	else if (key == '2')
-		SetPixelScalingFactor(2);
-	else if (key == '3')
-		SetPixelScalingFactor(3);
+	if (modifier_flags & NSModifierOption) {
+		if (key == '1')
+			SetPixelScalingFactor(1);
+		else if (key == '2')
+			SetPixelScalingFactor(2);
+		else if (key == '3')
+			SetPixelScalingFactor(3);
+	}
 	
 	if (KeyMenu(key, modifier_flags, true, &NSMenu::KeyDown))
 		return;
@@ -815,18 +914,13 @@ void Desktop::UpdateMenu() {
 		return;
 	
 	app_menu = menu;
-	NSRect system_menu_rect = NSRect(NSPoint(graphics_info.resolution_x, 0),
-									 NSSize(system_menu->GetSize().width, menu_height - 1));	// Account for border
-	system_menu_rect.origin.x -= system_menu_rect.size.width;
-	
-	NSRect app_menu_rect = NSRect(NSPoint(), NSSize(system_menu_rect.origin.x, menu_height - 1));
-	app_menu->SetFrame(app_menu_rect);
+	SetMenuFrames();
 	app_menu->SetUpdateFunction([](std::vector<NSRect> rects) {
 		UpdateRects(rects);
 	});
 	app_menu->SetContext(&context);
 	
-	Desktop::UpdateRect(app_menu_rect + NSRect(-1, -1, 2, 2));
+	Desktop::UpdateRect(app_menu->GetFullFrame());
 }
 
 NSSize Desktop::AdjustCursorSize(NSSize size) {
@@ -835,7 +929,11 @@ NSSize Desktop::AdjustCursorSize(NSSize size) {
 	return NSSize(new_height * aspect, new_height);
 }
 
-void Desktop::SetCursor(Cursor cursor) {
+NSPoint Desktop::GetMousePos() {
+	return mouse_pos;
+}
+
+void Desktop::SetCursor(NSCursor::Cursor cursor) {
 	if (current_cursor == cursor)
 		return;
 	int z = static_cast<int>(cursor);
@@ -850,5 +948,44 @@ void Desktop::SetCursor(NSImage* image, NSPoint hotspot) {
 	graphics_cursor_image_set(round(hotspot.x), round(hotspot.y), int(image->GetSize().width + 0.5f),
 							  int(image->GetSize().height + 0.5f),
 							  const_cast<void*>(reinterpret_cast<const void*>(image->GetPixelData())));
-	current_cursor = CURSOR_MAX;
+	current_cursor = NSCursor::CURSOR_MAX;
+}
+
+void Desktop::PopupContextMenu(uint32_t pid, NSMenu* menu, const NSPoint& p, uint32_t context_id) {
+	if (context_menu && (menu || context_menu_pid == pid)) {
+		NSEventApplicationMenuEvent* e = NSEventApplicationMenuEvent::Create(std::vector<unsigned int>(),
+																			 NULL, true, context_menu_id, true);
+		Application::SendEvent(e, pid);
+		delete e;
+		
+		NSMenu* copy = context_menu;
+		context_menu = NULL;
+		context_menu_pid = 0;
+		context_menu_id = 0;
+		copy->Clear();
+		Desktop::UpdateRect(copy->GetFullFrame());
+		delete copy;
+	}
+	if (!menu)
+		return;
+	
+	context_menu = menu;
+	context_menu_pid = pid;
+	context_menu_id = context_id;
+	context_menu->SetIsContextMenu(true);
+	context_menu->SetFrameBounds(NSRect(0, menu_height, graphics_info.resolution_x,
+										graphics_info.resolution_y - menu_height * 2));
+	context_menu->SetFrame(NSRect(p, NSSize()));
+	context_menu->SetUpdateFunction([](std::vector<NSRect> rects) {
+		UpdateRects(rects);
+	});
+	context_menu->SetContext(&context);
+	
+	// Mouse moved event for having corrected highlighting
+	NSEventMouse* e = NSEventMouse::Create(mouse_pos - context_menu->GetFrame().origin,
+										   NSMouseTypeMoved, NSMouseButtonNone);
+	context_menu->MouseMoved(e);
+	delete e;
+	
+	Desktop::UpdateRect(context_menu->GetFullFrame());
 }

@@ -28,7 +28,7 @@ public:
 	
 	// Event handling (return true to process, false to ignore)
 	virtual bool ReceivedEvent(NSEvent* event, uint8_t* data, unsigned int length) { return true; }
-	virtual void ReceivedMessage(uint8_t* data, unsigned int length) {}
+	virtual void ReceivedMessage(const uint8_t* data, unsigned int length) {}
 	
 	// Events
 	virtual bool OpenFile(std::string filename) { return false; }

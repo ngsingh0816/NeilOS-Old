@@ -28,6 +28,8 @@
 		287D0A9B20BE2D2B00A7E675 /* NSEventDefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A8C20BE2D2B00A7E675 /* NSEventDefs.cpp */; };
 		28A3BA0A2037504D0091A44E /* Desktop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA082037504D0091A44E /* Desktop.cpp */; };
 		28A3BA31203BA2720091A44E /* Window.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA2F203BA2720091A44E /* Window.cpp */; };
+		28DC413320D7312D0056554A /* NSEventWindowSetButtonMask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413220D7312D0056554A /* NSEventWindowSetButtonMask.cpp */; };
+		28DC413720D78F3F0056554A /* NSEventApplicationContextMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413620D78F3F0056554A /* NSEventApplicationContextMenu.cpp */; };
 		28F178D820B74D1600DBF40F /* Application.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D620B74D1600DBF40F /* Application.cpp */; };
 		28F178DD20B7C33D00DBF40F /* Event.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178DB20B7C33D00DBF40F /* Event.cpp */; };
 /* End PBXBuildFile section */
@@ -71,6 +73,8 @@
 		28A3BA092037504D0091A44E /* Desktop.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Desktop.h; sourceTree = "<group>"; };
 		28A3BA2F203BA2720091A44E /* Window.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Window.cpp; sourceTree = "<group>"; };
 		28A3BA30203BA2720091A44E /* Window.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Window.h; sourceTree = "<group>"; };
+		28DC413220D7312D0056554A /* NSEventWindowSetButtonMask.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowSetButtonMask.cpp; sourceTree = "<group>"; };
+		28DC413620D78F3F0056554A /* NSEventApplicationContextMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationContextMenu.cpp; sourceTree = "<group>"; };
 		28F178D620B74D1600DBF40F /* Application.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Application.cpp; sourceTree = "<group>"; };
 		28F178D720B74D1600DBF40F /* Application.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Application.h; sourceTree = "<group>"; };
 		28F178DB20B7C33D00DBF40F /* Event.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Event.cpp; sourceTree = "<group>"; };
@@ -97,6 +101,7 @@
 				281246DF20C9FDAE00546A96 /* NSEventApplicationSetMenu.cpp */,
 				281246E020C9FDAE00546A96 /* NSEventApplicationMenuEvent.cpp */,
 				281246E120C9FDAE00546A96 /* NSEventApplicationFocus.cpp */,
+				28DC413620D78F3F0056554A /* NSEventApplicationContextMenu.cpp */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -173,6 +178,7 @@
 				287D0A8620BE2D2B00A7E675 /* NSEventWindowMakeKey.cpp */,
 				287D0A8720BE2D2B00A7E675 /* NSEventWindowDestroy.cpp */,
 				287D0A8820BE2D2B00A7E675 /* NSEventWindowSetTitle.cpp */,
+				28DC413220D7312D0056554A /* NSEventWindowSetButtonMask.cpp */,
 				287D0A8920BE2D2B00A7E675 /* NSEventWindowDraw.cpp */,
 				287D0A8A20BE2D2B00A7E675 /* NSEventWindowShow.cpp */,
 				287D0A8B20BE2D2B00A7E675 /* NSEventWindowSetFrame.cpp */,
@@ -223,7 +229,7 @@
 		281CEB002019B19F00C7D407 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 0930;
 				ORGANIZATIONNAME = "Neil Singh";
 				TargetAttributes = {
 					281CEB042019B19F00C7D407 = {
@@ -265,9 +271,11 @@
 				287D0A9B20BE2D2B00A7E675 /* NSEventDefs.cpp in Sources */,
 				287D0A9920BE2D2B00A7E675 /* NSEventWindowShow.cpp in Sources */,
 				281CEB182019B21800C7D407 /* main.cpp in Sources */,
+				28DC413320D7312D0056554A /* NSEventWindowSetButtonMask.cpp in Sources */,
 				281246E720C9FDAE00546A96 /* NSEventApplicationFocus.cpp in Sources */,
 				28A3BA31203BA2720091A44E /* Window.cpp in Sources */,
 				287D0A9820BE2D2B00A7E675 /* NSEventWindowDraw.cpp in Sources */,
+				28DC413720D78F3F0056554A /* NSEventApplicationContextMenu.cpp in Sources */,
 				28F178D820B74D1600DBF40F /* Application.cpp in Sources */,
 				287D0A9420BE2D2B00A7E675 /* NSEventWindowCreate.cpp in Sources */,
 				281246E620C9FDAE00546A96 /* NSEventApplicationMenuEvent.cpp in Sources */,
@@ -302,6 +310,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -309,6 +318,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -355,6 +365,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -362,6 +373,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;

@@ -43,6 +43,7 @@
 		287D0A7C20BE29B100A7E675 /* NSEventApplicationFocus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6F20BE297B00A7E675 /* NSEventApplicationFocus.cpp */; };
 		287D0A7D20BE29B300A7E675 /* NSEventDefs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A6B20BE297B00A7E675 /* NSEventDefs.cpp */; };
 		287D0AA020BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 287D0A9F20BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp */; };
+		2887F40C20E42A6D0062AB37 /* NSComboBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2887F40A20E42A6D0062AB37 /* NSComboBox.cpp */; };
 		28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9ED2032CCE20091A44E /* NSEvent.cpp */; };
 		28A3B9F22032CD0D0091A44E /* NSTimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F02032CD0D0091A44E /* NSTimer.cpp */; };
 		28A3B9F52032CD340091A44E /* NSRunLoop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3B9F32032CD340091A44E /* NSRunLoop.cpp */; };
@@ -53,9 +54,15 @@
 		28A3BA25203AA65F0091A44E /* NSView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA23203AA65F0091A44E /* NSView.cpp */; };
 		28A3BA28203AA6810091A44E /* NSWindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA26203AA6810091A44E /* NSWindow.cpp */; };
 		28A3BA2B203AA73C0091A44E /* NSResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28A3BA29203AA73C0091A44E /* NSResponder.cpp */; };
+		28DC413120D7301F0056554A /* NSEventWindowSetButtonMask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413020D7301F0056554A /* NSEventWindowSetButtonMask.cpp */; };
+		28DC413520D78AE30056554A /* NSEventApplicationContextMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413420D78AE30056554A /* NSEventApplicationContextMenu.cpp */; };
+		28DC413A20D8C21C0056554A /* NSMenuViewItem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413820D8C21C0056554A /* NSMenuViewItem.cpp */; };
+		28DC413E20DCB18C0056554A /* NSViewTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413D20DCB18C0056554A /* NSViewTypes.cpp */; };
+		28DC414120E190130056554A /* NSPopupButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28DC413F20E190130056554A /* NSPopupButton.cpp */; };
 		28F178D020B37F5000DBF40F /* NSMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178CE20B37F5000DBF40F /* NSMenu.cpp */; };
 		28F178D320B61D0900DBF40F /* NSMenuItem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F178D120B61D0900DBF40F /* NSMenuItem.cpp */; };
 		28F3BB7220D1A8A800CFFE0C /* NSSlider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F3BB7020D1A8A800CFFE0C /* NSSlider.cpp */; };
+		28F3BB7A20D3345E00CFFE0C /* NSTextField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 28F3BB7820D3345E00CFFE0C /* NSTextField.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -127,6 +134,8 @@
 		287D0A6E20BE297B00A7E675 /* NSEventApplicationOpenFile.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationOpenFile.cpp; sourceTree = "<group>"; };
 		287D0A6F20BE297B00A7E675 /* NSEventApplicationFocus.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationFocus.cpp; sourceTree = "<group>"; };
 		287D0A9F20BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationSetMenu.cpp; sourceTree = "<group>"; };
+		2887F40A20E42A6D0062AB37 /* NSComboBox.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSComboBox.cpp; sourceTree = "<group>"; };
+		2887F40B20E42A6D0062AB37 /* NSComboBox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSComboBox.h; sourceTree = "<group>"; };
 		28A3B9ED2032CCE20091A44E /* NSEvent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEvent.cpp; sourceTree = "<group>"; };
 		28A3B9EE2032CCE20091A44E /* NSEvent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSEvent.h; sourceTree = "<group>"; };
 		28A3B9F02032CD0D0091A44E /* NSTimer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSTimer.cpp; sourceTree = "<group>"; };
@@ -148,12 +157,22 @@
 		28A3BA27203AA6810091A44E /* NSWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSWindow.h; sourceTree = "<group>"; };
 		28A3BA29203AA73C0091A44E /* NSResponder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSResponder.cpp; sourceTree = "<group>"; };
 		28A3BA2A203AA73C0091A44E /* NSResponder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSResponder.h; sourceTree = "<group>"; };
+		28DC413020D7301F0056554A /* NSEventWindowSetButtonMask.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventWindowSetButtonMask.cpp; sourceTree = "<group>"; };
+		28DC413420D78AE30056554A /* NSEventApplicationContextMenu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSEventApplicationContextMenu.cpp; sourceTree = "<group>"; };
+		28DC413820D8C21C0056554A /* NSMenuViewItem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSMenuViewItem.cpp; sourceTree = "<group>"; };
+		28DC413920D8C21C0056554A /* NSMenuViewItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenuViewItem.h; sourceTree = "<group>"; };
+		28DC413C20DCAE630056554A /* NSViewTypes.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = NSViewTypes.hpp; sourceTree = "<group>"; };
+		28DC413D20DCB18C0056554A /* NSViewTypes.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSViewTypes.cpp; sourceTree = "<group>"; };
+		28DC413F20E190130056554A /* NSPopupButton.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSPopupButton.cpp; sourceTree = "<group>"; };
+		28DC414020E190130056554A /* NSPopupButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSPopupButton.h; sourceTree = "<group>"; };
 		28F178CE20B37F5000DBF40F /* NSMenu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSMenu.cpp; sourceTree = "<group>"; };
 		28F178CF20B37F5000DBF40F /* NSMenu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenu.h; sourceTree = "<group>"; };
 		28F178D120B61D0900DBF40F /* NSMenuItem.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSMenuItem.cpp; sourceTree = "<group>"; };
 		28F178D220B61D0900DBF40F /* NSMenuItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSMenuItem.h; sourceTree = "<group>"; };
 		28F3BB7020D1A8A800CFFE0C /* NSSlider.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSSlider.cpp; sourceTree = "<group>"; };
 		28F3BB7120D1A8A800CFFE0C /* NSSlider.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSSlider.h; sourceTree = "<group>"; };
+		28F3BB7820D3345E00CFFE0C /* NSTextField.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = NSTextField.cpp; sourceTree = "<group>"; };
+		28F3BB7920D3345E00CFFE0C /* NSTextField.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSTextField.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -228,6 +247,8 @@
 				281246C020C5142400546A96 /* NSButton.h */,
 				2812479320D08FD800546A96 /* NSCheckBox.cpp */,
 				2812479420D08FD800546A96 /* NSCheckBox.h */,
+				2887F40A20E42A6D0062AB37 /* NSComboBox.cpp */,
+				2887F40B20E42A6D0062AB37 /* NSComboBox.h */,
 				281246B620BFAB0400546A96 /* NSControl.cpp */,
 				281246B720BFAB0400546A96 /* NSControl.h */,
 				281246BC20C2161E00546A96 /* NSImageView.cpp */,
@@ -238,6 +259,10 @@
 				28F178CF20B37F5000DBF40F /* NSMenu.h */,
 				28F178D120B61D0900DBF40F /* NSMenuItem.cpp */,
 				28F178D220B61D0900DBF40F /* NSMenuItem.h */,
+				28DC413820D8C21C0056554A /* NSMenuViewItem.cpp */,
+				28DC413920D8C21C0056554A /* NSMenuViewItem.h */,
+				28DC413F20E190130056554A /* NSPopupButton.cpp */,
+				28DC414020E190130056554A /* NSPopupButton.h */,
 				2812479A20D0CEC200546A96 /* NSProgressBar.cpp */,
 				2812479B20D0CEC200546A96 /* NSProgressBar.h */,
 				2812479720D0B36800546A96 /* NSRadioButton.cpp */,
@@ -246,8 +271,12 @@
 				2812470320CB0CA900546A96 /* NSScrollView.h */,
 				28F3BB7020D1A8A800CFFE0C /* NSSlider.cpp */,
 				28F3BB7120D1A8A800CFFE0C /* NSSlider.h */,
+				28F3BB7820D3345E00CFFE0C /* NSTextField.cpp */,
+				28F3BB7920D3345E00CFFE0C /* NSTextField.h */,
 				28A3BA23203AA65F0091A44E /* NSView.cpp */,
 				28A3BA24203AA65F0091A44E /* NSView.h */,
+				28DC413D20DCB18C0056554A /* NSViewTypes.cpp */,
+				28DC413C20DCAE630056554A /* NSViewTypes.hpp */,
 				28A3BA26203AA6810091A44E /* NSWindow.cpp */,
 				28A3BA27203AA6810091A44E /* NSWindow.h */,
 			);
@@ -310,6 +339,7 @@
 				287D0A6520BE297B00A7E675 /* NSEventWindowMakeKey.cpp */,
 				287D0A6720BE297B00A7E675 /* NSEventWindowSetTitle.cpp */,
 				287D0A6A20BE297B00A7E675 /* NSEventWindowSetFrame.cpp */,
+				28DC413020D7301F0056554A /* NSEventWindowSetButtonMask.cpp */,
 				287D0A6820BE297B00A7E675 /* NSEventWindowDraw.cpp */,
 			);
 			path = Window;
@@ -324,6 +354,7 @@
 				287D0A6E20BE297B00A7E675 /* NSEventApplicationOpenFile.cpp */,
 				287D0A6F20BE297B00A7E675 /* NSEventApplicationFocus.cpp */,
 				281246D920C9FA5B00546A96 /* NSEventApplicationSetCursor.cpp */,
+				28DC413420D78AE30056554A /* NSEventApplicationContextMenu.cpp */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -371,7 +402,7 @@
 		2801260F2007205800647962 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 0930;
 				ORGANIZATIONNAME = "Neil Singh";
 				TargetAttributes = {
 					280126132007205800647962 = {
@@ -407,13 +438,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				28DC413120D7301F0056554A /* NSEventWindowSetButtonMask.cpp in Sources */,
 				281CEB22201FF09D00C7D407 /* NSTypes.cpp in Sources */,
 				287D0A7220BE298600A7E675 /* NSEventSettingsPixelScalingFactor.cpp in Sources */,
+				28F3BB7A20D3345E00CFFE0C /* NSTextField.cpp in Sources */,
 				287D0A7520BE298E00A7E675 /* NSEventWindowDestroy.cpp in Sources */,
 				287D0A7C20BE29B100A7E675 /* NSEventApplicationFocus.cpp in Sources */,
 				28A3BA012033DE7C0091A44E /* NSApplication.cpp in Sources */,
 				287D0A7420BE298C00A7E675 /* NSEventWindowMakeKey.cpp in Sources */,
 				287D0A7A20BE29AD00A7E675 /* NSEventApplicationQuit.cpp in Sources */,
+				2887F40C20E42A6D0062AB37 /* NSComboBox.cpp in Sources */,
 				28A3B9FB2032CD930091A44E /* NSHandler.cpp in Sources */,
 				28A3B9F82032CD6D0091A44E /* NSThread.cpp in Sources */,
 				281CEB1F201FEF3200C7D407 /* NSImage.cpp in Sources */,
@@ -424,9 +458,11 @@
 				287D0A7720BE299300A7E675 /* NSEventWindowDraw.cpp in Sources */,
 				281246B820BFAB0400546A96 /* NSControl.cpp in Sources */,
 				287D0AA020BE2FEF00A7E675 /* NSEventApplicationSetMenu.cpp in Sources */,
+				28DC413A20D8C21C0056554A /* NSMenuViewItem.cpp in Sources */,
 				2812479920D0B36800546A96 /* NSRadioButton.cpp in Sources */,
 				28A3BA28203AA6810091A44E /* NSWindow.cpp in Sources */,
 				28F178D320B61D0900DBF40F /* NSMenuItem.cpp in Sources */,
+				28DC413E20DCB18C0056554A /* NSViewTypes.cpp in Sources */,
 				287D0A7620BE299000A7E675 /* NSEventWindowSetTitle.cpp in Sources */,
 				28A3B9FE2032CFC10091A44E /* NSLock.cpp in Sources */,
 				287D0A7820BE299500A7E675 /* NSEventWindowShow.cpp in Sources */,
@@ -437,6 +473,7 @@
 				2812470420CB0CA900546A96 /* NSScrollView.cpp in Sources */,
 				281246D820C9F96600546A96 /* NSCursor.cpp in Sources */,
 				281CEB25201FF7FA00C7D407 /* NSColor.cpp in Sources */,
+				28DC414120E190130056554A /* NSPopupButton.cpp in Sources */,
 				2812479C20D0CEC200546A96 /* NSProgressBar.cpp in Sources */,
 				281246DA20C9FA5B00546A96 /* NSEventApplicationSetCursor.cpp in Sources */,
 				281CEB2B20211F1400C7D407 /* NSFont.cpp in Sources */,
@@ -454,6 +491,7 @@
 				28A3B9EF2032CCE20091A44E /* NSEvent.cpp in Sources */,
 				2812479220CF78A100546A96 /* NSBox.cpp in Sources */,
 				287D0A7020BE298200A7E675 /* NSEventInit.cpp in Sources */,
+				28DC413520D78AE30056554A /* NSEventApplicationContextMenu.cpp in Sources */,
 				287D0A7B20BE29AF00A7E675 /* NSEventApplicationOpenFile.cpp in Sources */,
 				287D0A7D20BE29B300A7E675 /* NSEventDefs.cpp in Sources */,
 			);
@@ -476,6 +514,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -483,6 +522,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -529,6 +569,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -536,6 +577,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;

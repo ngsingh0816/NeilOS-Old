@@ -407,6 +407,7 @@ typedef struct {
 	uint32_t color_bits;
 	uint32_t depth_bits;
 	uint32_t stencil_bits;
+	uint32_t msaa;
 	
 	uint32_t color_surface;
 	uint32_t depth_surface;	// also stencil surface

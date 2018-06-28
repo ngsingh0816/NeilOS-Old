@@ -22,10 +22,19 @@
 #define WINDOW_CORNER_TOP			(1 << 3)
 #define WINDOW_CORNER_BOTTOM		(1 << 4)
 
-#define BUTTON_OFFSET		10
-#define BUTTON_SPACING		6
-#define BUTTON_WIDTH		12
+#define NUM_BUTTONS				3
+#define BUTTON_VERTICES			16
+#define BUTTON_OFFSET			10.0
+#define BUTTON_SPACING			6.0
+#define BUTTON_WIDTH			13.0
+#define BUTTON_BORDER_SIZE		1.0
+#define BUTTON_INSET			4.0
+#define BUTTON_SYMBOL_HEIGHT	1.0
 #define TOTAL_BUTTON_SIZE	((2 * BUTTON_OFFSET) + (BUTTON_SPACING + BUTTON_WIDTH) * 3)
+
+#define BUTTON_BORDER			6
+#define BUTTON_UNHIGHLIGHTED	7
+#define BUTTON_DISABLED			8
 
 using std::string;
 
@@ -36,14 +45,18 @@ namespace Window {
 	std::list<WSWindow*> window_list;
 	
 	constexpr float round_width = 5.0;
-	constexpr int num_title_vertices = 22;	// must be multiple of 2 + 4
+	constexpr int num_title_vertices = 22;	// must be multiple of 2 + 4 (and at least 4)
 	
 	uint32_t title_key_colors_vbo;
 	uint32_t title_colors_vbo;
 	uint32_t border_color_vbo;
 	uint32_t square_vbo;
-	uint32_t button_images[3];
-	graphics_vertex_array_t square_vao[2];
+	uint32_t button_vbo;
+	// (red, yellow, green) x 2, gray (border), light gray (unhighlighted), ligher gray (disabled)
+	uint32_t button_colors_vbo[9];
+	uint32_t button_text_color_vbo;
+	graphics_vertex_array_t square_vao[3];
+	graphics_vertex_array_t button_vao[2];
 	graphics_vertex_array_t view_border_vao[2];
 	
 	// Events
@@ -53,7 +66,11 @@ namespace Window {
 	void MakeKeyEvent(uint8_t* data, uint32_t length);
 	void SetTitleEvent(uint8_t* data, uint32_t length);
 	void SetFrameEvent(uint8_t* data, uint32_t length);
+	void SetButtonMaskEvent(uint8_t* data, uint32_t length);
 	void DrawEvent(uint8_t* data, uint32_t length);
+	
+	// Drawing
+	void DrawButtons(WSWindow* window, const std::vector<NSRect>& rects);
 	
 	// Mouse
 	NSPoint mouse_pos;
@@ -66,7 +83,7 @@ namespace Window {
 	WSWindow* key_window = NULL;
 	
 	// Cursor
-	Desktop::Cursor GetCursorForFrame(const NSRect& frame, const NSPoint& p);
+	NSCursor::Cursor GetCursorForFrame(const NSRect& frame, const NSPoint& p);
 	int GetCornersForFrame(const NSRect& frame, const NSPoint& p);
 	
 	void UpdateFrame(WSWindow* window, NSRect frame, bool delayed=false);
@@ -102,14 +119,19 @@ public:
 	
 	uint32_t title_vbo;
 	graphics_vertex_array_t title_vao[2];
-	uint32_t title_border_vbo;
-	uint32_t title_border_colors_vbo;
-	graphics_vertex_array_t title_border_vao[2];
 	uint32_t text_img;
 	NSSize text_size;
 	float text_height;
+	bool highlights_buttons = false;
+#define BUTTON_MASK_CLOSE		(1 << 0)
+#define BUTTON_MASK_MIN			(1 << 1)
+#define BUTTON_MASK_MAX			(1 << 2)
+#define BUTTON_MASK_ALL			((1 << NUM_BUTTONS) - 1)
+	unsigned int button_mask = BUTTON_MASK_ALL;
+	unsigned int button_down = 0;
+	unsigned int button_over = 0;
 	
-	Desktop::Cursor cursor = Desktop::CURSOR_DEFAULT;
+	NSCursor::Cursor cursor = NSCursor::CURSOR_DEFAULT;
 	bool resizing = false;
 	int resizing_corners = 0;
 	bool needs_frame_update = false;
@@ -123,6 +145,16 @@ public:
 		return NSRect(frame.origin.x, frame.origin.y + WINDOW_TITLE_BAR_HEIGHT, frame.size.width,
 					  frame.size.height - WINDOW_TITLE_BAR_HEIGHT);
 	}
+	inline NSRect GetButtonFrame() const {
+		return NSRect(frame.origin.x + BUTTON_OFFSET,
+					  frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - BUTTON_WIDTH) / 2,
+					  TOTAL_BUTTON_SIZE, BUTTON_WIDTH);
+	}
+	inline NSRect GetButtonFrame(unsigned int z) const {
+		return NSRect(frame.origin.x + BUTTON_OFFSET + (BUTTON_SPACING + BUTTON_WIDTH) * z,
+					  frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - BUTTON_WIDTH) / 2,
+					  BUTTON_WIDTH, BUTTON_WIDTH);
+	}
 	inline NSSize GetMinimumSize() const {
 		return NSSize(text_size.width + TOTAL_BUTTON_SIZE + BUTTON_OFFSET, WINDOW_TITLE_BAR_HEIGHT * 2);
 	}
@@ -132,42 +164,18 @@ public:
 		
 		memset(&context, 0, sizeof(context));
 		memset(title_vao, 0, sizeof(title_vao));
-		memset(title_border_vao, 0, sizeof(title_border_vao));
 		visible = false;
 		
 		title_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 2, GRAPHICS_BUFFER_STATIC);
-		title_border_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 2, GRAPHICS_BUFFER_STATIC);
 		
 		title_vao[0].bid = title_vbo;
-		title_vao[0].offset = 0;
 		title_vao[0].stride = 2 * sizeof(float);
 		title_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 		title_vao[0].usage = GRAPHICS_USAGE_POSITION;
 		title_vao[1].bid = title_colors_vbo;
-		title_vao[1].offset = 0;
-		title_vao[1].stride = 3 * sizeof(float);
-		title_vao[1].type = GRAPHICS_TYPE_FLOAT3;
+		title_vao[1].stride = 4 * sizeof(float);
+		title_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 		title_vao[1].usage = GRAPHICS_USAGE_COLOR;
-		
-		NSColor<float> c = NSColor<float>::UIGrayColor();
-		float line_colors[(num_title_vertices - 1) * 3];
-		for (int z = 0; z < (num_title_vertices - 1); z++) {
-			line_colors[z * 3 + 0] = c.r;
-			line_colors[z * 3 + 1] = c.g;
-			line_colors[z * 3 + 2] = c.b;
-		}
-		title_border_colors_vbo = graphics_buffer_create(sizeof(line_colors), GRAPHICS_BUFFER_STATIC);
-		graphics_buffer_data(title_border_colors_vbo, line_colors, sizeof(line_colors));
-		title_border_vao[0].bid = title_border_vbo;
-		title_border_vao[0].offset = 0;
-		title_border_vao[0].stride = 2 * sizeof(float);
-		title_border_vao[0].type = GRAPHICS_TYPE_FLOAT2;
-		title_border_vao[0].usage = GRAPHICS_USAGE_POSITION;
-		title_border_vao[1].bid = title_border_colors_vbo;
-		title_border_vao[1].offset = 0;
-		title_border_vao[1].stride = 3 * sizeof(float);
-		title_border_vao[1].type = GRAPHICS_TYPE_FLOAT3;
-		title_border_vao[1].usage = GRAPHICS_USAGE_COLOR;
 	}
 	
 	~WSWindow() {
@@ -179,29 +187,22 @@ public:
 			graphics_buffer_destroy(text_img);
 			text_img = 0;
 		}
-		if (title_border_vbo) {
-			graphics_buffer_destroy(title_border_vbo);
-			title_border_vbo = 0;
-		}
-		if (title_border_colors_vbo) {
-			graphics_buffer_destroy(title_border_colors_vbo);
-			title_border_colors_vbo = 0;
-		}
 	}
 	
 	void SetTitle(string t) {
 		title = t;
-		NSFont font;
-		NSImage* text = font.GetImage(title, NSColor<float>::BlackColor());
-		text_size = text->GetScaledSize();
-		text_height = font.GetLineHeight();
-		int w = int(text->GetSize().width + 0.5f);
-		int h = int(text->GetSize().height + 0.5f);
+		
 		if (text_img)
 			graphics_buffer_destroy(text_img);
-		text_img = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
-		graphics_buffer_data(text_img, text->GetPixelData(), w, h, w * h * 4);
-		delete text;
+		
+		NSFont font;
+		NSImage* text = font.GetImage(title, NSColor<float>::BlackColor());
+		if (text) {
+			text_img = NSView::CreateImageBuffer(text, &text_size);
+			text_height = font.GetLineHeight();
+			delete text;
+		} else
+			text_img = 0;
 		
 		if (visible)
 			Desktop::UpdateRect(GetTitleFrame());
@@ -233,50 +234,45 @@ public:
 		}
 	}
 	
+	void SetHighlightsButtons(bool h) {
+		if (highlights_buttons != h && visible)
+			Desktop::UpdateRect(GetButtonFrame());
+		highlights_buttons = h;
+	}
+	
+	void SetButtonDown(unsigned int index, bool d) {
+		unsigned int prev = button_down;
+		if (d) {
+			button_down |= (1 << index);
+			button_over |= (1 << index);
+		}
+		else {
+			button_down &= ~(1 << index);
+			button_over &= ~(1 << index);
+		}
+		if (prev != button_down)
+			Desktop::UpdateRect(GetButtonFrame(index));
+	}
+	
+	void SetButtonOver(unsigned int index, bool o) {
+		unsigned int prev = button_over;
+		if (o)
+			button_over |= (1 << index);
+		else
+			button_over &= ~(1 << index);
+		if (prev != button_over)
+			Desktop::UpdateRect(GetButtonFrame(index));
+	}
+	
 	void UpdateFrameIfNeeded() {
 		using namespace Window;
 
 		if (!needs_frame_update)
 			return;
 		needs_frame_update = false;
-		float vertices[num_title_vertices * 2];
-		float border_verts[(num_title_vertices - 1) * 2];
-		vertices[0] = frame.size.width / 2;
-		vertices[1] = WINDOW_TITLE_BAR_HEIGHT / 2;
-		uint32_t pos = 2;
-		for (int z = 0; z < (num_title_vertices - 4) / 2; z++) {
-			float angle = (180.0f - (float(z) / (((num_title_vertices - 4) / 2) - 1)) * 90.0f) / 180.0f * M_PI;
-			float x = cosf(angle) * round_width + round_width;
-			float y = -sinf(angle) * round_width + round_width;
-			border_verts[pos - 2] = x;
-			border_verts[pos - 1] = y;
-			vertices[pos++] = x + 1;
-			vertices[pos++] = y + 1;
-		}
-		for (int z = 0; z < (num_title_vertices - 4) / 2; z++) {
-			float angle = (90.0f - (float(z) / (((num_title_vertices - 4) / 2) - 1)) * 90.0f) / 180.0f * M_PI;
-			float x = cosf(angle) * round_width + frame.size.width - round_width;
-			float y = -sinf(angle) * round_width + round_width;
-			border_verts[pos - 2] = x;
-			border_verts[pos - 1] = y;
-			vertices[pos++] = x - 1;
-			vertices[pos++] = y + 1;
-		}
-		border_verts[pos - 2] = frame.size.width;
-		border_verts[pos - 1] = WINDOW_TITLE_BAR_HEIGHT;
-		vertices[pos++] = frame.size.width - 1;
-		vertices[pos++] = WINDOW_TITLE_BAR_HEIGHT;
-		border_verts[pos - 2] = 0;
-		border_verts[pos - 1] = WINDOW_TITLE_BAR_HEIGHT;
-		vertices[pos++] = 1;
-		vertices[pos++] = WINDOW_TITLE_BAR_HEIGHT;
-		border_verts[pos - 2] = 0;
-		border_verts[pos - 1] = round_width;
-		vertices[pos++] = 1;
-		vertices[pos++] = round_width - 1;
-		
-		graphics_buffer_data(title_vbo, vertices, sizeof(vertices));
-		graphics_buffer_data(title_border_vbo, border_verts, sizeof(border_verts));
+		float borders[] = { round_width, round_width, 0, 0 };
+		NSView::BufferRoundedRect(title_vbo, NSSize(frame.size.width, WINDOW_TITLE_BAR_HEIGHT), borders,
+								  NSVIEW_ROUNDED_UPPER_LEFT | NSVIEW_ROUNDED_UPPER_RIGHT, num_title_vertices);
 	}
 };
 
@@ -285,84 +281,64 @@ void Window::Load(volatile float* p, float percent_start, float percent_end) {
 	
 	percent(0);
 	
-	float title_colors[num_title_vertices * 3];
-	NSColor<float> c = NSColor<float>::UILightGrayColor();
-	for (int z = 0; z < num_title_vertices; z++) {
-		title_colors[z * 3 + 0] = c.r;
-		title_colors[z * 3 + 1] = c.g;
-		title_colors[z * 3 + 2] = c.b;
+	title_key_colors_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 4 , GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(title_key_colors_vbo, NSColor<float>::UILightGrayColor(), num_title_vertices);
+	title_colors_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(title_colors_vbo, NSColor<float>::UILighterGrayColor(), num_title_vertices);
+	
+	square_vbo = graphics_buffer_create(sizeof(float) * 4 * 2, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferSquare(square_vbo);
+	
+	button_vbo = graphics_buffer_create(sizeof(float) * BUTTON_VERTICES * 2, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferOval(button_vbo, BUTTON_VERTICES);
+	NSColor<float> bcolors[] = { NSColor<uint8_t>(252, 97, 93), NSColor<uint8_t>(254, 189, 65),
+		NSColor<uint8_t>(52, 200, 74), NSColor<uint8_t>(189, 74, 70), NSColor<uint8_t>(190, 142, 48),
+		NSColor<uint8_t>(39, 154, 55), NSColor<float>::UIGrayColor(), NSColor<float>::UILightGrayColor(),
+		NSColor<float>::UILighterGrayColor() };
+	for (unsigned int z = 0; z < sizeof(bcolors) / sizeof(NSColor<float>); z++) {
+		button_colors_vbo[z] = graphics_buffer_create(sizeof(float) * BUTTON_VERTICES * 4, GRAPHICS_BUFFER_STATIC);
+		NSView::BufferColor(button_colors_vbo[z], bcolors[z], BUTTON_VERTICES);
 	}
-	title_key_colors_vbo = graphics_buffer_create(sizeof(title_colors), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(title_key_colors_vbo, title_colors, sizeof(title_colors));
-	c = NSColor<float>::UILighterGrayColor();
-	for (int z = 0; z < num_title_vertices; z++) {
-		title_colors[z * 3 + 0] = c.r;
-		title_colors[z * 3 + 1] = c.g;
-		title_colors[z * 3 + 2] = c.b;
-	}
-	title_colors_vbo = graphics_buffer_create(sizeof(title_colors), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(title_colors_vbo, title_colors, sizeof(title_colors));
+	button_text_color_vbo = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(button_text_color_vbo, NSColor<float>::BlackColor().AlphaColor(0.5), 4);
 	
-	percent(20);
+	border_color_vbo = graphics_buffer_create(sizeof(float) * num_title_vertices * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(border_color_vbo, NSColor<float>::UIGrayColor(), num_title_vertices);
 	
-	const float square[] = {
-		0, 0,
-		1.0f, 0,
-		0, 1.0f,
-		1.0f, 1.0f
-	};
-	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(square_vbo, square, sizeof(square));
+	percent(80);
 	
-	percent(40);
-	
-	const char* button_imgs[] = { "/system/images/button_close.png",
-		"/system/images/button_minimize.png", "/system/images/button_maximize.png" };
-	for (int z = 0; z < 3; z++) {
-		NSImage* img = new NSImage(button_imgs[z]);
-		int img_width = int(img->GetSize().width + 0.5f);
-		int img_height = int(img->GetSize().height + 0.5f);
-		button_images[z] = graphics_buffer_create(img_width, img_height, GRAPHICS_BUFFER_STATIC,
-												  GRAPHICS_FORMAT_A8R8G8B8);
-		graphics_buffer_data(button_images[z], img->GetPixelData(), img_width, img_height,
-							 img_width * img_height * sizeof(uint32_t));
-		delete img;
-		
-		percent(50 + 20 * z);
-	}
-	
-	memset(square_vao, 0, sizeof(graphics_vertex_array_t) * 2);
+	memset(square_vao, 0, sizeof(graphics_vertex_array_t) * 3);
 	square_vao[0].bid = square_vbo;
-	square_vao[0].offset = 0;
 	square_vao[0].stride = 2 * sizeof(float);
 	square_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	square_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	square_vao[1].bid = square_vbo;
-	square_vao[1].offset = 0;
 	square_vao[1].stride = 2 * sizeof(float);
 	square_vao[1].type = GRAPHICS_TYPE_FLOAT2;
 	square_vao[1].usage = GRAPHICS_USAGE_TEXCOORD;
+	square_vao[2].bid = button_text_color_vbo;
+	square_vao[2].stride = 4 * sizeof(float);
+	square_vao[2].type = GRAPHICS_TYPE_FLOAT4;
+	square_vao[2].usage = GRAPHICS_USAGE_COLOR;
 	
-	c = NSColor<float>::UIGrayColor();
-	float line_colors[5*3];
-	for (int z = 0; z < 5; z++) {
-		line_colors[z * 3 + 0] = c.r;
-		line_colors[z * 3 + 1] = c.g;
-		line_colors[z * 3 + 2] = c.b;
-	}
-	border_color_vbo = graphics_buffer_create(sizeof(line_colors), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(border_color_vbo, line_colors, sizeof(line_colors));
-	
+	memset(button_vao, 0, sizeof(graphics_vertex_array_t) * 2);
+	button_vao[0].bid = button_vbo;
+	button_vao[0].stride = 2 * sizeof(float);
+	button_vao[0].type = GRAPHICS_TYPE_FLOAT2;
+	button_vao[0].usage = GRAPHICS_USAGE_POSITION;
+	button_vao[1].bid = button_text_color_vbo;
+	button_vao[1].stride = 4 * sizeof(float);
+	button_vao[1].type = GRAPHICS_TYPE_FLOAT4;
+	button_vao[1].usage = GRAPHICS_USAGE_COLOR;
+
 	memset(view_border_vao, 0, sizeof(graphics_vertex_array_t) * 2);
 	view_border_vao[0].bid = square_vbo;
-	view_border_vao[0].offset = 0;
 	view_border_vao[0].stride = 2 * sizeof(float);
 	view_border_vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	view_border_vao[0].usage = GRAPHICS_USAGE_POSITION;
 	view_border_vao[1].bid = border_color_vbo;
-	view_border_vao[1].offset = 0;
-	view_border_vao[1].stride = 3 * sizeof(float);
-	view_border_vao[1].type = GRAPHICS_TYPE_FLOAT3;
+	view_border_vao[1].stride = 4 * sizeof(float);
+	view_border_vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	view_border_vao[1].usage = GRAPHICS_USAGE_COLOR;
 	
 	percent(100);
@@ -407,10 +383,8 @@ void Window::DestroyEvent(uint8_t* data, uint32_t length) {
 		Desktop::UpdateRect(window->frame);
 	}
 	
-	if (key_window == window) {
-		// TODO: go to the next highest window?
+	if (key_window == window)
 		key_window = NULL;
-	}
 	
 	Application::UnregisterWindow(window->pid, window->id);
 	
@@ -433,11 +407,33 @@ void Window::ShowEvent(uint8_t* data, uint32_t length) {
 	}
 	
 	window->visible = event->GetShow();
+	
+	if (event->GetAnimates()) {
+		NSSize start_size = window->GetMinimumSize();
+		NSRect start_frame = NSRect(NSPoint(window->frame.origin.x + window->frame.size.width / 2 - start_size.width / 2,
+											window->frame.origin.y + window->frame.size.height / 2 - start_size.height / 2),
+									start_size);
+		NSRect end_frame = window->frame;
+		window->SetFrame(start_frame);
+		NSAnimation* a = new NSAnimation([window, start_frame, end_frame](const NSAnimation* anim) {
+			NSPoint p = start_frame.origin + (end_frame.origin - start_frame.origin) * anim->GetValue();
+			NSSize s = start_frame.size + (end_frame.size - start_frame.size) * anim->GetValue();
+			window->SetFrame(NSRect(p, s));
+			Desktop::UpdateRect(window->frame);
+		}, [window, end_frame](const NSAnimation* anim, bool) {
+			window->SetFrame(end_frame);
+			Desktop::UpdateRect(window->frame);
+			delete anim;
+		}, 0.1);
+		a->Start();
+	} else {
+		Desktop::UpdateRect(window->frame);
+	}
+	
 	if (window->visible)
 		MakeKeyWindow(window);
-	else
+	else if (window == key_window)
 		MakeKeyWindow(NULL);
-	Desktop::UpdateRect(window->frame);
 	
 	delete event;
 }
@@ -484,6 +480,22 @@ void Window::SetFrameEvent(uint8_t* data, uint32_t length) {
 		return;
 	}
 	window->SetFrame(event->GetFrame());
+	
+	delete event;
+}
+
+void Window::SetButtonMaskEvent(uint8_t* data, uint32_t length) {
+	NSEventWindowSetButtonMask* event = NSEventWindowSetButtonMask::FromData(data, length);
+	if (!event)
+		return;
+	
+	WSWindow* window = GetWindow(event->GetPid(), event->GetWindowID());
+	if (!window) {
+		delete event;
+		return;
+	}
+	window->button_mask = event->GetMask();
+	Desktop::UpdateRect(window->GetButtonFrame());
 	
 	delete event;
 }
@@ -536,6 +548,9 @@ void Window::ProcessEvent(uint8_t* data, uint32_t length) {
 		case WINDOW_EVENT_SET_FRAME_ID:
 			SetFrameEvent(data, length);
 			break;
+		case WINDOW_EVENT_SET_BUTTON_MASK_ID:
+			SetButtonMaskEvent(data, length);
+			break;
 		case WINDOW_EVENT_DRAW_ID:
 			DrawEvent(data, length);
 		default:
@@ -543,12 +558,91 @@ void Window::ProcessEvent(uint8_t* data, uint32_t length) {
 	}
 }
 
+void Window::DrawButtons(WSWindow* window, const std::vector<NSRect>& rects) {
+	if (window->button_mask == 0)
+		return;
+	
+	NSRect button_frame = window->GetButtonFrame();
+	NSMatrix button_matrix = NSMatrix::Identity();
+	button_matrix.Translate(button_frame.origin.x, button_frame.origin.y, 0);
+	bool show_all = button_frame.ContainsPoint(Desktop::GetMousePos());
+	for (int z = 0; z < NUM_BUTTONS; z++) {
+		NSRect rect = NSRect(button_frame.origin.x + (BUTTON_SPACING + BUTTON_WIDTH) * z,
+							 button_frame.origin.y, BUTTON_WIDTH, BUTTON_WIDTH);
+		if (Desktop::RectsIntersect(rects, rect)) {
+			NSMatrix m = button_matrix;
+			NSMatrix border_matrix = button_matrix;
+			border_matrix.Scale(BUTTON_WIDTH, BUTTON_WIDTH, 1);
+			m.Translate(BUTTON_BORDER_SIZE / 2, BUTTON_BORDER_SIZE / 2, 0);
+			m.Scale(BUTTON_WIDTH - BUTTON_BORDER_SIZE, BUTTON_WIDTH - BUTTON_BORDER_SIZE, 1);
+			
+			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, border_matrix);
+			button_vao[1].bid = button_colors_vbo[BUTTON_BORDER];
+			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, BUTTON_VERTICES - 2, button_vao, 2);
+			
+			unsigned int bmask = (1 << z);
+			bool mask = (window->button_mask & bmask);
+			bool show = (((window == key_window) || show_all) && mask);
+			bool over = (window->button_down & bmask) && (window->button_over & bmask);
+			unsigned int index = mask ? BUTTON_UNHIGHLIGHTED : BUTTON_DISABLED;
+			if (show)
+				index = over ? (z + NUM_BUTTONS) : z;
+			button_vao[1].bid = button_colors_vbo[index];
+			
+			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, m);
+			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, BUTTON_VERTICES - 2, button_vao, 2);
+			
+			if (show && (window->highlights_buttons || window->button_down != 0)) {
+				// Draw symbols
+				float width = BUTTON_WIDTH - BUTTON_BORDER_SIZE - BUTTON_INSET;
+				float height = BUTTON_SYMBOL_HEIGHT;
+				switch (bmask) {
+					case BUTTON_MASK_CLOSE: {
+						float angles[] = { 45, -45 };
+						for (int t = 0; t < 2; t++) {
+							m = button_matrix;
+							m.Translate(BUTTON_WIDTH / 2, BUTTON_WIDTH / 2, 0);
+							m.Rotate(0, 0, 1, angles[t]);
+							m.Translate(-BUTTON_WIDTH / 2, -BUTTON_WIDTH / 2, 0);
+							m.Translate((BUTTON_WIDTH - height) / 2, (BUTTON_BORDER_SIZE + BUTTON_INSET) / 2, 0);
+							m.Scale(height, width, 1);
+							square_vao[2].bid = button_text_color_vbo;
+							graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, m);
+							graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
+						}
+						break;
+					}
+					case BUTTON_MASK_MAX: {
+						m = button_matrix;
+						m.Translate((BUTTON_WIDTH - height) / 2, (BUTTON_BORDER_SIZE + BUTTON_INSET) / 2, 0);
+						m.Scale(height, width, 1);
+						square_vao[2].bid = button_text_color_vbo;
+						graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, m);
+						graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
+					}
+					case BUTTON_MASK_MIN: {
+						m = button_matrix;
+						m.Translate((BUTTON_BORDER_SIZE + BUTTON_INSET) / 2, (BUTTON_WIDTH - height) / 2, 0);
+						m.Scale(width, height, 1);
+						square_vao[2].bid = button_text_color_vbo;
+						graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, m);
+						graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 3);
+						break;
+					}
+				}
+			}
+		}
+		button_matrix.Translate(BUTTON_SPACING + BUTTON_WIDTH, 0, 0);
+	}
+}
+
 void Window::Draw(const std::vector<NSRect>& rects) {
 	if (rects.size() == 0)
 		return;
 	
-	// TODO: make this iterate from farthest back to frontmost
+	// TODO: make this iterate from farthest back to frontmost (done)
 	// but then at the same time don't bother with things that are occluded
+	// maybe using Window::GetVisibleRectsForWindow(WSWindow*, std::vector<NSRect>& rects)
 	for (WSWindow* window : window_list) {
 		if (!window->visible || !Desktop::RectsIntersect(rects, window->frame))
 			continue;
@@ -559,28 +653,23 @@ void Window::Draw(const std::vector<NSRect>& rects) {
 		NSMatrix window_matrix = NSMatrix::Identity();
 		window_matrix.Translate(frame.origin.x, frame.origin.y, 0);
 		
-		if (Desktop::RectsIntersect(rects, window->GetTitleFrame())) {
+		NSRect title_frame = window->GetTitleFrame();
+		if (Desktop::RectsIntersect(rects, title_frame)) {
+			// Draw border
+			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, window_matrix);
+			uint32_t backup = window->title_vao[1].bid;
+			window->title_vao[1].bid = border_color_vbo;
+			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, num_title_vertices - 2, window->title_vao, 2);
+			
 			NSMatrix title_matrix = window_matrix;
+			title_matrix.Translate(1, 1, 0);
+			title_matrix.Scale(1 - (2 / title_frame.size.width), 1 - (1 / title_frame.size.height), 1);
 			graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, title_matrix);
-			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, num_title_vertices - 2, window->title_border_vao, 2);
+			window->title_vao[1].bid = backup;
 			graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLEFAN, num_title_vertices - 2, window->title_vao, 2);
 		}
 		
-		NSMatrix button_matrix = window_matrix;
-		button_matrix.Translate(BUTTON_OFFSET, (WINDOW_TITLE_BAR_HEIGHT - BUTTON_WIDTH) / 2, 0);
-		for (int z = 0; z < 3; z++) {
-			NSRect rect = NSRect(frame.origin.x + BUTTON_OFFSET + (BUTTON_SPACING + BUTTON_WIDTH) * z,
-								 frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - BUTTON_WIDTH) / 2,
-								 BUTTON_WIDTH, BUTTON_WIDTH);
-			if (Desktop::RectsIntersect(rects, rect)) {
-				graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, button_images[z]);
-				NSMatrix m = button_matrix;
-				m.Scale(BUTTON_WIDTH, BUTTON_WIDTH, 1);
-				graphics_transform_set(&context, GRAPHICS_TRANSFORM_VIEW, m);
-				graphics_draw(&context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, square_vao, 2);
-			}
-			button_matrix.Translate(BUTTON_SPACING + BUTTON_WIDTH, 0, 0);
-		}
+		DrawButtons(window, rects);
 		
 		NSRect text_frame = NSRect(frame.origin.x + (frame.size.width - window->text_size.width) / 2,
 								   frame.origin.y + (WINDOW_TITLE_BAR_HEIGHT - window->text_height) / 2,
@@ -652,7 +741,7 @@ void Window::MakeKeyWindow(WSWindow* key) {
 	}
 	key_window = key;
 	if (key) {
-		key_window->cursor = Desktop::CURSOR_DEFAULT;
+		key_window->cursor = NSCursor::CURSOR_DEFAULT;
 		key_window->title_vao[1].bid = title_key_colors_vbo;
 		
 		// Move to front
@@ -739,8 +828,8 @@ int Window::GetCornersForFrame(const NSRect& frame, const NSPoint& p) {
 	return ret;
 }
 
-Desktop::Cursor Window::GetCursorForFrame(const NSRect& frame, const NSPoint& p) {
-	Desktop::Cursor cursor = Desktop::CURSOR_DEFAULT;
+NSCursor::Cursor Window::GetCursorForFrame(const NSRect& frame, const NSPoint& p) {
+	NSCursor::Cursor cursor = NSCursor::CURSOR_DEFAULT;
 	
 	int corners = GetCornersForFrame(frame, p);
 	
@@ -750,13 +839,13 @@ Desktop::Cursor Window::GetCursorForFrame(const NSRect& frame, const NSPoint& p)
 	bool over_bottom = (corners & WINDOW_CORNER_BOTTOM) != 0;
 	
 	if ((over_left && over_top) || (over_right && over_bottom))
-		cursor = Desktop::CURSOR_RESIZE_NORTHWEST_SOUTHEAST;
+		cursor = NSCursor::CURSOR_RESIZE_NORTHWEST_SOUTHEAST;
 	else if ((over_left && over_bottom) || (over_right && over_top))
-		cursor = Desktop::CURSOR_RESIZE_NORTHEAST_SOUTHWEST;
+		cursor = NSCursor::CURSOR_RESIZE_NORTHEAST_SOUTHWEST;
 	else if (over_top || over_bottom)
-		cursor = Desktop::CURSOR_RESIZE_NORTH_SOUTH;
+		cursor = NSCursor::CURSOR_RESIZE_NORTH_SOUTH;
 	else if (over_left || over_right)
-		cursor = Desktop::CURSOR_RESIZE_EAST_WEST;
+		cursor = NSCursor::CURSOR_RESIZE_EAST_WEST;
 	
 	return cursor;
 }
@@ -770,8 +859,9 @@ void Window::UpdateFrame(WSWindow* window, NSRect frame, bool delayed) {
 	}
 }
 
-bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
+bool Window::MouseDown(NSPoint p, NSMouseButton mouse, uint32_t click_count) {
 	bool found = false;
+	bool process = true;
 	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
 		WSWindow* window = *it;
 		if (!window->visible)
@@ -780,12 +870,26 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 		NSRect content_frame = window->GetContentFrame();
 		if (title_bar.ContainsPoint(p)) {
 			down_title = true;
+			
+			// Check for button presses
+			for (int z = 0; z < NUM_BUTTONS; z++) {
+				if (!(window->button_mask & (1 << z)))
+					continue;
+				NSRect button_rect = window->GetButtonFrame(z);
+				if (button_rect.ContainsPoint(p)) {
+					window->SetButtonDown(z, true);
+					down_title = false;
+					process = false;
+					found = true;
+					break;
+				}
+			}
 		} else if (!content_frame.ContainsPoint(p))
 			continue;
 		
 		if (key_window == window && !down_title) {
 			NSEventMouse* event = NSEventMouse::Create(p - content_frame.origin,
-													   NSMouseTypeDown, mouse, window->id);
+													   NSMouseTypeDown, mouse, click_count, window->id);
 			Application::SendEvent(event, window->pid);
 			delete event;
 		}
@@ -797,14 +901,16 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 		break;
 	}
 	
-	if (key_window && mouse == NSMouseButtonLeft) {
-		int corners = GetCornersForFrame(key_window->frame, p);
-		if (corners != 0) {
-			Desktop::SetCursor(GetCursorForFrame(key_window->frame, p));
-			key_window->resizing = true;
-			key_window->resizing_corners = corners;
-			found = true;
-			down_title = false;
+	if (process) {
+		if (key_window && mouse == NSMouseButtonLeft) {
+			int corners = GetCornersForFrame(key_window->frame, p);
+			if (corners != 0) {
+				Desktop::SetCursor(GetCursorForFrame(key_window->frame, p));
+				key_window->resizing = true;
+				key_window->resizing_corners = corners;
+				found = true;
+				down_title = false;
+			}
 		}
 	}
 	
@@ -818,20 +924,39 @@ bool Window::MouseDown(NSPoint p, NSMouseButton mouse) {
 }
 
 bool Window::MouseMoved(NSPoint p) {
+	// Check all windows for intersecting button frame
+	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
+		WSWindow* window = *it;
+		if (!window->visible || !window->button_mask)
+			continue;
+		window->SetHighlightsButtons(window->GetButtonFrame().ContainsPoint(p));
+		bool over = false;
+		for (int z = 0; z < NUM_BUTTONS; z++) {
+			if (!(window->button_mask & (1 << z)) || !(window->button_down & (1 << z)))
+				continue;
+			bool o = window->GetButtonFrame(z).ContainsPoint(p);
+			window->SetButtonOver(z, o);
+			over |= o;
+		}
+		if (over)
+			return true;
+	}
+	
 	if (!mouse_down) {
 		bool over = false;
 		if (key_window && key_window->visible) {
 			NSRect frame = key_window->frame;
-			Desktop::Cursor cursor = GetCursorForFrame(frame, p);
+			NSCursor::Cursor cursor = GetCursorForFrame(frame, p);
 			
 			if (cursor != key_window->cursor) {
 				Desktop::SetCursor(cursor);
 				key_window->cursor = cursor;
 			}
-			over = frame.ContainsPoint(p) || (cursor != Desktop::CURSOR_DEFAULT);
+			over = frame.ContainsPoint(p) || (cursor != NSCursor::CURSOR_DEFAULT);
 		}
 		if (!over)
-			Desktop::SetCursor(Desktop::CURSOR_DEFAULT);
+			Desktop::SetCursor(NSCursor::CURSOR_DEFAULT);
+		
 		return over;
 	}
 	
@@ -879,7 +1004,28 @@ bool Window::MouseUp(NSPoint p, NSMouseButton mouse) {
 		return false;
 	}
 	
-	if (key_window) {
+	// Check if we have any window button events
+	bool process = true;
+	for (auto it = window_list.rbegin(); it != window_list.rend(); it++) {
+		WSWindow* window = *it;
+		if (!window->visible || !window->button_mask)
+			continue;
+		
+		if ((window->button_down & BUTTON_MASK_CLOSE) && (window->button_over & BUTTON_MASK_CLOSE)) {
+			// Close was pressed
+			process = false;
+			
+			auto event = NSEventWindowShow(window->pid, window->id, false, false);
+			Application::SendEvent(&event, window->pid);
+		}
+		for (int z = 0; z < NUM_BUTTONS; z++) {
+			window->SetButtonDown(z, false);
+			window->SetButtonOver(z, false);
+		}
+		window->SetHighlightsButtons(window->GetButtonFrame().ContainsPoint(p));
+	}
+	
+	if (key_window && process) {
 		if (mouse == NSMouseButtonLeft) {
 			if (key_window->resizing) {
 				key_window->resizing = false;
@@ -887,10 +1033,12 @@ bool Window::MouseUp(NSPoint p, NSMouseButton mouse) {
 			}
 		}
 		
-		NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
-												   NSMouseTypeUp, mouse, key_window->id);
-		Application::SendEvent(event, key_window->pid);
-		delete event;
+		if (!down_title) {
+			NSEventMouse* event = NSEventMouse::Create(p - key_window->GetContentFrame().origin,
+													   NSMouseTypeUp, mouse, 0, key_window->id);
+			Application::SendEvent(event, key_window->pid);
+			delete event;
+		}
 	}
 	
 	if (mouse == NSMouseButtonLeft) {
@@ -911,7 +1059,7 @@ bool Window::MouseScrolled(NSPoint p, float delta_x, float delta_y) {
 			continue;
 		
 		NSEventMouse* event = NSEventMouse::Create(p - content_frame.origin,
-													NSMouseTypeScrolled, NSMouseButtonNone, window->id);
+													NSMouseTypeScrolled, NSMouseButtonNone, 0, window->id);
 		event->SetDeltaX(delta_x);
 		event->SetDeltaY(delta_y);
 		Application::SendEvent(event, window->pid);

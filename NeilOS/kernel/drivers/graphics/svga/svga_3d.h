@@ -12,6 +12,16 @@
 #include <common/types.h>
 #include "include/svga3d_reg.h"
 
+typedef struct {
+	SVGA3dSurfaceFlags flags;
+	SVGA3dSurfaceFormat format;
+	SVGA3dSurfaceFace* faces;
+	uint32_t num_mips;
+	SVGA3dSize* mip_sizes;
+	uint32_t num_samples;
+	SVGA3dTextureFilter filter;
+} svga3d_surface_info;
+
 // FIFO helper
 void* svga3d_fifo_reserve(uint32_t cmd, uint32_t cmd_size);
 
@@ -24,8 +34,7 @@ void svga3d_present_readback(SVGA3dCopyRect* rects, uint32_t num_rects);
 
 // Create a surface with the specified options and returns the surface id (sid)
 // (need SVGA3D_MAX_SURFACE_FACES faces but most of the time only one will be used)
-uint32_t svga3d_surface_create(SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat format, SVGA3dSurfaceFace* faces,
-						   SVGA3dSize* mipSizes, uint32_t num_mips);
+uint32_t svga3d_surface_create(svga3d_surface_info* info);
 // Copy from ram to surface's vram or vice versa
 // Note: pages must stay mapped while DMA is in progress
 void svga3d_surface_dma(SVGAGuestImage* guest_image, SVGA3dSurfaceImageId* host_image, SVGA3dTransferType transfer,
@@ -36,8 +45,7 @@ void svga3d_surface_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest, 
 void svga3d_surface_stretch_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest,
 								 SVGA3dBox* src_box, SVGA3dBox* dst_box, SVGA3dStretchBltMode mode);
 // Reformat a surface
-void svga3d_surface_reformat(uint32_t sid, SVGA3dSurfaceFlags flags, SVGA3dSurfaceFormat format, SVGA3dSurfaceFace* faces,
-							 SVGA3dSize* mipSizes, uint32_t num_mips);
+void svga3d_surface_reformat(uint32_t sid, svga3d_surface_info* info);
 // Destroy a surface
 void svga3d_surface_destroy(uint32_t sid);
 

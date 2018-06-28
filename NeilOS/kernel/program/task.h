@@ -13,7 +13,7 @@
 #include <program/dylib.h>
 
 #define USER_KERNEL_STACK_SIZE		(1024 * 8)			// 8 KB
-#define USER_STACK_SIZE				(1024 * 16)			// 16 KB
+#define USER_STACK_SIZE				(1024 * 1024)		// 1 MB
 #define USER_ARGV_LOC				0x8000000
 #define USER_ADDRESS				0x8000000
 

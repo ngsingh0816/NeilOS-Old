@@ -8,6 +8,7 @@
 #include <drivers/pic/i8259.h>
 #include <drivers/pci/pci.h>
 #include <common/debug.h>
+#include <common/log.h>
 #include <syscalls/interrupt.h>
 #include <drivers/keyboard/keyboard.h>
 #include <memory/memory.h>
@@ -73,16 +74,21 @@
  * For shared memory and mqueues, could make a /dev/mqueue/ directory and put all open mqueues in there
  * Could improve read speed of large reads by reading entire block and caching it (because fread only
  	does 0x400 at a time)
- * Make libpthread work with -O3? - prob not
  * Make pthread_cond variables put the thread to sleep in the kernel (also for NSConditionalLock)
  	* needs some syscalls like thread_pause, thread_continue
  * Make asynchrous version of graphics3d_surface_dma and make it actually alloc GMR regions
+ * Update key codes to be uint32_t and change defined key codes to be real (ex: up arrow = uint32('^[[A'))
  * Serialize priority with NSEvents and add it to the Creates
  * Keep track of graphics context / buffers / etc with each process and dealloc on close
  * QEMU / VirtualBox (accelerated) VBE graphics
  * VMWare Updated SVGA - reference vmwgx_drv.c:vmw_driver_load - prob not
  * Support vector images, pdfs, gifs (cairo?) in NSImage
  	* Update support in image viewer
+ * Graphics Library Redesign
+ 	* Global context created by window server (cid = 0)
+	* graphics library manages a fifo for each process, upon graphics_flush or graphics_finish, dump fifo to kernel
+ 		- commands will executed sequentially because they are all inserted in fifo together
+	* Need to have single global state or figure out simple way to save state
  */
 
 /* TODO (bugs)
@@ -97,36 +103,28 @@
  * echo what > /dev/null -> pointer being freed not allocated
  * First program may load NeilOS.lib at 0x3800000 vs 0x1400000
  * Sometimes on program load, kernel will page fault at address 0xbfcb4000 on elf.c:376 (ELF_REL_PC32)
+ * NeilOS gets loaded multiple times? (at 0x1400000 and 0x1000000)
+ * timeout 1s /audiotest hangs
  */
 
 /* TODO:
- * GUI (Compositing Window Manager) - http://designmodo.github.io/Flat-UI/
+ * GUI (Compositing Window Manager) - http://designmodo.github.io/Flat-UI/, http://www.flaticon.com
  	* Fix
  		* Window not always showing up when opening calculator / discolored windows??
 			* visible being set to false (one time) - number of creates > number of shows, but why??
  			* seem to only be due to buffer memory copying errors?
- 		* Screen freezes sometimes - maybe due to FIFO error?
- 	* NSTextField
- 		* Each character is individual texture (stored as a map, no need for duplicate characters)
- 			- only draw visible characters
- 			- if not scrolling, only draw new character / deleted character
- 		* Highlight
- 	* Context Menu
- 	* add view in NSMenuItem (subclass of NSMenuItem?)
- 		* test with audio slider in system menu
- 	* NSDropdown, NSPopup
- 	* NSTableView (NSTableItemView?)
- 	* NSCollectionView (NSCollectionItemView?)
+ 	* NSSplitView (horizontal, vertical, 2-n views, divider width (default to 1))
+ 	* NSCollectionView (add NSView's with option to add by title, image)
+ 	* NSTableView (NSTableItemView? - object with pretty much just a NSView with convenicence
+ 					methods like settext makes the view a label)
  	* NSAlert / NSRunAlert
  	* NSOpenPanel / NSSavePanel
  	* NSTextView
  		* Each (character, font) pair is individual texture (stored as a map, no need for duplicate characters)
- 			- if supporting rich text (otherwies just character is individual texture)
- 	* etc?
- 		- Add borders - NSButton, NSCheckBox, NSRadioButton, NSProgressBar
- 			- can be done with stencil buffer (draw stencil, scale down, remove stencil, draw color)
-			- add function that draws arbitrary vao border ^
- 		- Add rounded rects (border radius) - NSMenu, NSScrollView, etc
+ 			- if supporting rich text (otherwise just character is individual texture)
+ 	* etc
+		- Render desktop to texture then filter texture (not needed if there is msaa)?
+		- make nsmenu / nsmenuitem be able to use alpha for fading out?
  * Create applications that showcase GUI (at same time?)
  	* .app bundle (NSApplication::ResourcePath)
  	* Calculator - NSButton, NSLabel
@@ -140,15 +138,15 @@
  	* Settings
  	* IDE
  	* etc
+ * Open vm-tools
+ 	* Mouse automatically capturing in VMWare (and shared files??)
  * FIX ALL BUGS (TODO bugs and could be improved)
+ * SMP?
  * Scheduler Rework
  * Ethernet Driver
  * Sockets
- * Open vm-tools
- 	* Mouse automatically capturing in VMWare (and shared files??)
  * Dylib Lazy Linking?
  * Get libtool working?
- * SMP?
  * Page files on disk?
 	* Could make loading a program only load entry point page and then lazy load the rest?
  * Module support?
@@ -160,7 +158,7 @@
  * Wifi Driver?
  * Bluetooth Driver?
  * Bootloader?
- * Internet Browser?
+ * Internet Browser? - port webkit?
  */
 
 void
@@ -260,6 +258,11 @@ entry (unsigned long magic, unsigned long addr)
 		const char* server_argv[] = { "WindowServer", NULL };
 		queue_task_load("/system/apps/WindowServer", server_argv, NULL, &pcb);
 	}
+	
+	// Log some info
+	LOG_DEBUG("System booted");
+	//fsunlink("/var/log/output.log");
+	LOG_OUTPUT_DEBUG("System booted");
 	
 	// Run the first program (auto enables interrupts)
 	run(pcb);

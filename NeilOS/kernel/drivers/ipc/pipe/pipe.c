@@ -129,8 +129,10 @@ uint32_t pipe_write(file_descriptor_t* f, const void* buf, uint32_t bytes) {
 
 	// Block until the pipe isn't full
 	while (info->pos == PIPE_MAX_BUFFER_SIZE && !current_pcb->should_terminate && !f->closed) {
-		if (signal_occurring(current_pcb))
+		if (signal_occurring(current_pcb)) {
+			up(&info->lock);
 			return -EINTR;
+		}
 		up(&info->lock);
 		up(&f->lock);
 		schedule();

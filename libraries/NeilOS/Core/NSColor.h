@@ -19,9 +19,9 @@ class NSColor {
 public:
 	static NSColor<T> WhiteColor();
 	static NSColor<T> BlackColor();
-	static NSColor<T> LightGreyColor();
-	static NSColor<T> GreyColor();
-	static NSColor<T> DarkGreyColor();
+	static NSColor<T> LightGrayColor();
+	static NSColor<T> GrayColor();
+	static NSColor<T> DarkGrayColor();
 	static NSColor<T> TransparentColor();
 	static NSColor<T> RedColor();
 	static NSColor<T> GreenColor();
@@ -46,6 +46,7 @@ public:
 	static NSColor<T> UIDarkTurquoiseColor();
 	static NSColor<T> UIGreenColor();
 	static NSColor<T> UIDarkGreenColor();
+	static NSColor<T> UILightBlueColor();
 	static NSColor<T> UIBlueColor();
 	static NSColor<T> UIDarkBlueColor();
 	static NSColor<T> UIPurpleColor();

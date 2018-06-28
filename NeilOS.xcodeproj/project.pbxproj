@@ -651,6 +651,7 @@
 				2848287F1DFCBDF500E4FC62 /* Frameworks */,
 				284828801DFCBDF500E4FC62 /* CopyFiles */,
 				288B117D1DFCC0F300473413 /* Sources */,
+				28F3BB7720D3337600CFFE0C /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -707,6 +708,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = /Users/Neil/Documents/Projects/NeilOS/NeilOS/build.sh;
+			showEnvVarsInLog = 0;
 		};
 		287CFA501EF26002005D87D3 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -720,6 +722,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = /Users/Neil/Documents/Projects/NeilOS/NeilOS/fs.sh;
+			showEnvVarsInLog = 0;
+		};
+		28F3BB7720D3337600CFFE0C /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "open /Users/Neil/Documents/Virtual\\ Machines.localized/NeilOS.vmwarevm/";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 

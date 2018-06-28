@@ -11,6 +11,8 @@
 #include "svga/svga.h"
 #include "svga/svga_3d.h"
 
+mutex_t dma_lock = MUTEX_UNLOCKED;
+
 // Initialize the graphics
 bool graphics_init() {
 	return svga_init();
@@ -129,6 +131,7 @@ void graphics3d_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* h
 	img.pitch = 0;
 	
 	// TODO: get rid of this hack
+	down(&dma_lock);
 	if (num_boxes == 1 && boxes->h > 1) {
 		SVGA3dCopyBox b = *boxes;
 		b.h = 1;
@@ -158,4 +161,5 @@ void graphics3d_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* h
 		if (transfer == SVGA3D_READ_HOST_VRAM)
 			memcpy(buffer, svga_framebuffer(), size);
 	}
+	up(&dma_lock);
 }

@@ -63,9 +63,9 @@ typedef enum {
 class NSEventMouse : public NSEvent {
 public:
 	static NSEventMouse* Create(const NSPoint& position, NSMouseType type, NSMouseButton button,
-								uint32_t window_id=-1, uint32_t priority=0);
+								uint32_t click_count=0, uint32_t window_id=-1, uint32_t priority=0);
 	
-	static NSEventMouse* FromData(uint8_t* data, uint32_t length);
+	static NSEventMouse* FromData(const uint8_t* data, uint32_t length);
 	
 	NSPoint GetPosition() const;
 	void SetPosition(const NSPoint& position);
@@ -75,6 +75,9 @@ public:
 	
 	NSMouseButton GetButton() const;
 	void SetButton(NSMouseButton button);
+	
+	uint32_t GetClickCount() const;
+	void SetClickCount(uint32_t click_count);
 	
 	uint32_t GetWindowID() const;
 	void SetWindowID(uint32_t wid);
@@ -88,7 +91,8 @@ public:
 	void Process() override;
 	uint8_t* Serialize(uint32_t* length_out) const override;
 private:
-	NSEventMouse(const NSPoint& position, NSMouseType type, NSMouseButton button, uint32_t window_id, uint32_t priority);
+	NSEventMouse(const NSPoint& position, NSMouseType type, NSMouseButton button,
+				 uint32_t click_count, uint32_t window_id, uint32_t priority);
 	
 	NSPoint position;
 	NSMouseType type;
@@ -96,6 +100,7 @@ private:
 	uint32_t window_id;
 	float delta_x;
 	float delta_y;
+	uint32_t click_count;
 };
 
 #define NSKeyCodeNUL			0x00
@@ -152,7 +157,7 @@ class NSEventKey : public NSEvent {
 public:
 	static NSEventKey* Create(unsigned char key, bool down, NSModifierFlags flags, uint32_t window_id=-1);
 	
-	static NSEventKey* FromData(uint8_t* data, uint32_t length);
+	static NSEventKey* FromData(const uint8_t* data, uint32_t length);
 	
 	unsigned char GetKey() const;
 	void SetKey(unsigned char key);

@@ -53,6 +53,8 @@ uint64_t filesystem_llseek_file(file_descriptor_t* f, uint64_t offset, int whenc
 uint32_t filesystem_stat(file_descriptor_t* f, sys_stat_type* data);
 uint64_t filesystem_truncate(file_descriptor_t* f, uint64_t nsize);
 
+bool filesystem_can_read_file(file_descriptor_t* f);
+
 uint32_t filesystem_read_directory(file_descriptor_t* f, void* buf, uint32_t length);
 uint32_t filesystem_write_directory(file_descriptor_t* f, const void* buf, uint32_t length);
 uint64_t filesystem_llseek_directory(file_descriptor_t* f, uint64_t offset, int whence);

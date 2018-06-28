@@ -22,16 +22,21 @@ public:
 	NSHandler(const std::function<void(NSThread*)>& function);
 	
 	void SetFunction(const std::function<void(NSThread*)>& function);
-	std::function<void(NSThread*)> GetFunction() const;
+	const std::function<void(NSThread*)>& GetFunction() const;
+	
+	void Cancel();
+	bool IsCanceled();
 	
 	// Posts to the main thread (asynchronous by default)
-	void Post() const;
-	void Post(uint32_t priority) const;
-	void Post(NSThread* thread, uint32_t priority) const;
-	void Post(NSThread* thread, uint32_t priority, bool sync) const;
+	void Post();
+	void Post(uint32_t priority);
+	void Post(NSThread* thread, uint32_t priority);
+	void Post(NSThread* thread, uint32_t priority, bool sync);
 	void Post(NSThread* thread, NSTimeInterval delay, uint32_t priority, bool sync);
 private:
 	std::function<void(NSThread*)> func;
+	NSEventFunction* event = NULL;
+	bool canceled = false;
 };
 
 #endif /* NSHANDLER_H */

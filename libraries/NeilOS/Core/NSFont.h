@@ -18,7 +18,7 @@ class NSImage;
 
 class NSFont {
 public:
-	static NSFont* FromData(uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
+	static NSFont* FromData(const uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
 	uint8_t* Serialize(uint32_t* length_out) const;
 
 	NSFont();
@@ -29,6 +29,7 @@ public:
 	NSFont& operator=(const NSFont& font);
 	
 	float GetLineHeight() const;
+	float GetFontHeight() const;
 	
 	// UTF8-String
 	NSImage* GetImage(const std::string& string, NSColor<uint8_t> color);
@@ -37,8 +38,10 @@ private:
 	void Init();
 	bool SetupDefault();
 	
+	void* face = NULL;
 	std::string font_name;
 	float font_size;
+	float psf;
 };
 
 #endif /* NSFONT_H */

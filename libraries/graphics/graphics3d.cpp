@@ -13,14 +13,23 @@
 #include <stdint.h>
 #include <string.h>
 
+typedef struct {
+	SVGA3dSurfaceFlags flags;
+	SVGA3dSurfaceFormat format;
+	SVGA3dSurfaceFace* faces;
+	uint32_t num_mips;
+	SVGA3dSize* mip_sizes;
+	uint32_t num_samples;
+	SVGA3dTextureFilter filter;
+} svga3d_surface_info;
+
 // Present rectangles on the surface
 extern "C" void sys_graphics_present(uint32_t sid, SVGA3dCopyRect* rects, uint32_t num_rects);
 // Present rectangles to the screen (gauaranteed to update the 2D buffer)
 extern "C" void sys_graphics_present_readback(SVGA3dCopyRect* rects, uint32_t num_rects);
 // Create a surface with the specified options and returns the surface id (sid)
 // (need SVGA3D_MAX_SURFACE_FACES faces but most of the time only one will be used)
-extern "C" uint32_t sys_graphics_surface_create(uint32_t flags, uint32_t format,
-												SVGA3dSurfaceFace* faces, SVGA3dSize* mipSizes, uint32_t num_mips);
+extern "C" uint32_t sys_graphics_surface_create(svga3d_surface_info* info);
 // Copy from ram to surface's vram or vice versa
 // Note: pages must stay mapped while DMA is in progress
 extern "C" void sys_graphics_surface_dma(void* buffer, uint32_t size, SVGA3dSurfaceImageId* host_image,
@@ -32,8 +41,7 @@ extern "C" void sys_graphics_surface_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfa
 extern "C" void sys_graphics_surface_stretch_copy(SVGA3dSurfaceImageId* src, SVGA3dSurfaceImageId* dest,
 												  SVGA3dBox* src_box, SVGA3dBox* dst_box, uint32_t mode);
 // Reformat a surface
-extern "C" uint32_t sys_graphics_surface_reformat(uint32_t sid, uint32_t flags, uint32_t format,
-												SVGA3dSurfaceFace* faces, SVGA3dSize* mipSizes, uint32_t num_mips);
+extern "C" uint32_t sys_graphics_surface_reformat(uint32_t sid, svga3d_surface_info* info);
 // Destroy a surface
 extern "C" void sys_graphics_surface_destroy(uint32_t sid);
 extern "C" uint32_t sys_graphics_context_create();
@@ -79,18 +87,22 @@ extern "C" void sys_graphics_shader_destroy(uint32_t cid, uint32_t shid, uint32_
 
 // Creates a new context with the specified options (returns the context id or 0 if error)
 graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint32_t color_bits, uint32_t depth_bits,
-										   uint32_t stencil_bits) {
+										   uint32_t stencil_bits, uint32_t msaa) {
 	graphics_context_t context;
 	memset(&context, 0, sizeof(context));
 	
 	context.cid = sys_graphics_context_create();
-	if (context.cid == 0)
-		return context;
 	
 	context.width = width;
 	context.height = height;
+	context.msaa = msaa;
 	
 	// Create the surfaces
+	svga3d_surface_info info;
+	memset(&info, 0, sizeof(svga3d_surface_info));
+	info.num_mips = 1;
+	info.filter = SVGA3D_TEX_FILTER_NONE;
+	info.num_samples = msaa;
 	if (color_bits) {
 		SVGA3dSurfaceFormat format = SVGA3D_FORMAT_INVALID;
 		if (color_bits == 24)
@@ -106,8 +118,11 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 		memset(faces, 0, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
 		faces[0].numMipLevels = 1;
 		SVGA3dSize size = { .width = width, .height = height, .depth = 1 };
-		context.color_surface = sys_graphics_surface_create(SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET,
-															format, faces, &size, 1);
+		info.faces = faces;
+		info.mip_sizes = &size;
+		info.flags = (SVGA3dSurfaceFlags)(SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET);
+		info.format = format;
+		context.color_surface = sys_graphics_surface_create(&info);
 		if (!context.color_surface) {
 			graphics_context_destroy(&context);
 			return context;
@@ -145,7 +160,12 @@ graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint
 		uint32_t flags = SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET;
 		if (stencil_bits != 0)
 			flags |= SVGA3D_SURFACE_HINT_DEPTHSTENCIL;
-		context.depth_surface = sys_graphics_surface_create((SVGA3dSurfaceFlags)flags, format, faces, &size, 1);
+		
+		info.flags = (SVGA3dSurfaceFlags)flags;
+		info.faces = faces;
+		info.mip_sizes = &size;
+		info.format = format;
+		context.depth_surface = sys_graphics_surface_create(&info);
 		if (!context.depth_surface) {
 			graphics_context_destroy(&context);
 			return context;
@@ -241,19 +261,41 @@ void graphics_context_resize(graphics_context_t* context, uint32_t width, uint32
 	memset(faces, 0, sizeof(SVGA3dSurfaceFace) * SVGA3D_MAX_SURFACE_FACES);
 	faces[0].numMipLevels = 1;
 	SVGA3dSize size = { .width = width, .height = height, .depth = 1 };
-	sys_graphics_surface_reformat(context->color_surface, SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET,
-														format, faces, &size, 1);
 	
-	if (context->depth_bits == 24)
-		format = SVGA3D_Z_D24X8;
-	else if (context->depth_bits == 32)
-		format = SVGA3D_Z_D32;
-	else if (context->depth_bits == 16)
-		format = SVGA3D_Z_D16;
+	svga3d_surface_info info;
+	memset(&info, 0, sizeof(svga3d_surface_info));
+	info.num_mips = 1;
+	info.filter = SVGA3D_TEX_FILTER_NONE;
+	info.num_samples = context->msaa;
+	info.mip_sizes = &size;
+	info.flags = (SVGA3dSurfaceFlags)(SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET);
+	info.faces = faces;
+	info.format = format;
+	sys_graphics_surface_reformat(context->color_surface, &info);
+	
+	if (context->stencil_bits) {
+		if (context->depth_bits == 24 && context->stencil_bits == 8)
+			format = SVGA3D_Z_D24S8;
+		else if (context->depth_bits == 15 && context->stencil_bits == 1)
+			format = SVGA3D_Z_D15S1;
+		else
+			return;
+	} else {
+		if (context->depth_bits == 24)
+			format = SVGA3D_Z_D24X8;
+		else if (context->depth_bits == 32)
+			format = SVGA3D_Z_D32;
+		else if (context->depth_bits == 16)
+			format = SVGA3D_Z_D16;
+		else
+			return;
+	}
 	uint32_t flags = SVGA3D_SURFACE_HINT_DYNAMIC | SVGA3D_SURFACE_HINT_RENDERTARGET;
 	if (context->stencil_bits != 0)
 		flags |= SVGA3D_SURFACE_HINT_DEPTHSTENCIL;
-	sys_graphics_surface_reformat(context->depth_surface, (SVGA3dSurfaceFlags)flags, format, faces, &size, 1);
+	info.flags = (SVGA3dSurfaceFlags)flags;
+	info.format = format;
+	sys_graphics_surface_reformat(context->depth_surface, &info);
 	
 	context->width = width;
 	context->height = height;
@@ -301,7 +343,17 @@ uint32_t graphics_buffer_create(uint32_t width, uint32_t height, uint32_t flags,
 	mip_sizes.width = width;
 	mip_sizes.height = height;
 	mip_sizes.depth = 1;
-	uint32_t sid = sys_graphics_surface_create(flags, format, faces, &mip_sizes, 1);
+	
+	svga3d_surface_info info;
+	memset(&info, 0, sizeof(info));
+	info.flags = (SVGA3dSurfaceFlags)flags;
+	info.format = (SVGA3dSurfaceFormat)format;
+	info.mip_sizes = &mip_sizes;
+	info.faces = faces;
+	info.num_samples = 0;
+	info.num_mips = 1;
+	info.filter = SVGA3D_TEX_FILTER_NONE;
+	uint32_t sid = sys_graphics_surface_create(&info);
 	graphics_fence_sync(graphics_fence_create());
 	return sid;
 }
@@ -382,7 +434,17 @@ void graphics_buffer_reformat(uint32_t bid, uint32_t width, uint32_t height, uin
 	mip_sizes.width = width;
 	mip_sizes.height = height;
 	mip_sizes.depth = 1;
-	sys_graphics_surface_reformat(bid, flags, format, faces, &mip_sizes, 1);
+	
+	svga3d_surface_info info;
+	memset(&info, 0, sizeof(info));
+	info.flags = (SVGA3dSurfaceFlags)flags;
+	info.format = (SVGA3dSurfaceFormat)format;
+	info.mip_sizes = &mip_sizes;
+	info.faces = faces;
+	info.num_samples = 0;
+	info.num_mips = 1;
+	info.filter = SVGA3D_TEX_FILTER_NONE;
+	sys_graphics_surface_reformat(bid, &info);
 	graphics_fence_sync(graphics_fence_create());
 }
 
@@ -411,6 +473,9 @@ void graphics_buffer_copy(uint32_t dest_bid, uint32_t src_bid, uint32_t dest_x, 
 
 // Destroy a buffer
 void graphics_buffer_destroy(uint32_t bid) {
+	if (bid == 0)
+		return;
+	
 	sys_graphics_surface_destroy(bid);
 }
 

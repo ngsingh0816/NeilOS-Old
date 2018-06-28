@@ -8,7 +8,7 @@
 name:                         ;\
 pushl %ebx                    ;\
 pushl %ecx                    ;\
-pushl %edi                    ;\
+pushl %edx                    ;\
 pushl %esi                    ;\
 pushl %edi					  ;\
 pushl %ebp					  ;\
@@ -23,7 +23,7 @@ int	$0x80                     ;\
 popl %ebp					  ;\
 popl %edi					  ;\
 popl %esi                     ;\
-popl %edi                     ;\
+popl %edx                     ;\
 popl %ecx                     ;\
 popl %ebx                     ;\
 ret

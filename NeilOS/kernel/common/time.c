@@ -105,8 +105,17 @@ date_t get_current_date_rtc() {
 	}
 	
 	// Convert 12 hour to 24 hour clock
-	if (options & RTC_FORMAT_12)
-		ret[0].hour = ((ret[0].hour & 0x7F) + 12) % 24;
+	if (!(options & RTC_FORMAT_12)) {
+		int hour = ret[0].hour;
+		int ampm = hour & 0x80;
+		hour = hour & 0x7f;
+		// fix 24:00 = 12am oddity
+		if (hour == 12)
+			hour = 0;
+		if (ampm)
+			hour += 12;
+		ret[0].hour = hour;
+	}
 	
 	// Calculate the full year
 	ret[0].year += century[0] * 100;
@@ -118,8 +127,8 @@ const char* months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
 
 int sget_current_date(char* str) {
 	date_t date = get_current_date();
-	return sprintf(str, "%s %d, %d %d:%d:%d", months[date.month - 1], date.day, date.year,
-			date.hour, date.month, date.second);
+	return sprintf(str, "%s %d, %d %d:%d:%d", months[date.month - 1], (int)date.day, (int)date.year,
+			(int)date.hour, (int)date.minute, (int)date.second);
 }
 
 #define SECONDS_PER_MIN				60
@@ -131,26 +140,51 @@ int sget_current_date(char* str) {
 #define EPOCH_MONTH					1
 #define EPOCH_DAY					1
 #define EPOCH_YEAR					1970
+#define IS_LEAP_YEAR(year)  ((((year)%4 == 0) && ((year)%100 != 0)) || ((year)%400 == 0))
 
 // Returns the current UNIX time
 time_t get_current_unix_time_rtc() {
-	uint32_t val = 0;
 	
 	// Adjust the time to unix
 	date_t date = get_current_date_rtc();
-	date.month -= EPOCH_MONTH;
-	date.day -= EPOCH_DAY;
-	date.year -= EPOCH_YEAR;
 	
-	// Convert to unix time
-	val = date.second +
-		date.minute * SECONDS_PER_MIN +
-		date.hour * SECONDS_PER_HOUR +
-		date.day * SECONDS_PER_DAY +
-		date.month * SECONDS_PER_MONTH +
-		date.year * SECONDS_PER_YEAR;
+	uint32_t ts = 0;
 	
-	return (time_t){ val };
+	static int days_per_month[2][12] = {
+		{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },
+		{ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
+	};
+	
+	static int days_per_year[2] = {
+		365, 366
+	};
+	
+	//  Add up the seconds from all prev years, up until this year.
+	uint8_t years = 0;
+	uint8_t leap_years = 0;
+	for(uint16_t y_k = EPOCH_YEAR; y_k < date.year; y_k++)
+	{
+		if (IS_LEAP_YEAR(y_k))
+			leap_years++;
+		else
+			years++;
+	}
+	ts += ((years*days_per_year[0]) + (leap_years*days_per_year[1])) * SECONDS_PER_DAY;
+	
+	//  Add up the seconds from all prev days this year, up until today.
+	uint8_t year_index = (IS_LEAP_YEAR(date.year)) ? 1 : 0;
+	for(uint8_t mo_k = 0; mo_k< (date.month-1); mo_k++) {
+		//  days from previous months this year
+		ts += days_per_month[year_index][mo_k] * SECONDS_PER_DAY;
+	}
+	ts += (date.day-1) * SECONDS_PER_DAY; // days from this month
+	
+	//  Calculate seconds elapsed just today.
+	ts += date.hour * SECONDS_PER_HOUR;
+	ts += date.minute * SECONDS_PER_MIN;
+	ts += date.second;
+	
+	return (time_t){ ts };
 }
 
 time_t get_current_unix_time() {
@@ -161,21 +195,30 @@ date_t get_current_date() {
 	uint32_t val = current_time.tv_sec;
 	date_t date;
 	
-	date.year = val / SECONDS_PER_YEAR;
-	val -= date.year * SECONDS_PER_YEAR;
-	date.month = val / SECONDS_PER_MONTH;
-	val -= date.month * SECONDS_PER_MONTH;
-	date.day = val / SECONDS_PER_DAY;
-	val -= date.day * SECONDS_PER_DAY;
-	date.hour = val / SECONDS_PER_HOUR;
-	val -= date.hour * SECONDS_PER_HOUR;
-	date.minute = val / SECONDS_PER_MIN;
-	val -= date.minute * SECONDS_PER_MIN;
-	date.second = val;
+	date.second = val % 60;
+	val /= 60;
+	date.minute = val % 60;
+	val /= 60;
+	date.hour = val % 24;
+	val /= 24;
 	
-	date.day += EPOCH_DAY;
-	date.month += EPOCH_MONTH;
-	date.year += EPOCH_YEAR;
+	uint32_t a = ((4 * val + 102032) / 146097 + 15);
+	uint32_t b = (val + 2442113 + a - (a / 4));
+	uint32_t c = (20 * b - 2442) / 7305;
+	uint32_t d = b - 365 * c - (c / 4);
+	uint32_t e = d * 1000 / 30601;
+	uint32_t f = d - e * 30 - e * 601 / 1000;
+	if (e <= 13) {
+		c -= 4716;
+		e--;
+	} else {
+		c -= 4715;
+		e -= 13;
+	}
+	
+	date.year = c;
+	date.month = e;
+	date.day = f;
 	
 	return date;
 }

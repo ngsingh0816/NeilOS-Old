@@ -13,6 +13,7 @@
 #include "../Core/NSColor.h"
 #include "../Core/NSCursor.h"
 #include "../Core/NSImage.h"
+#include "../Core/NSHandler.h"
 #include "../Core/NSTypes.h"
 
 #include "NSAnimation.h"
@@ -33,6 +34,8 @@ class NSWindow;
 #define NSViewMaxYMargin		(1 << 5)		// Max Y is fixed
 typedef uint32_t NSAutoResizingMask;
 
+#define NSViewDefaultBorderColor		NSColor<float>::UIGrayColor()
+
 class NSViewObserver;
 class NSScrollView;
 
@@ -40,7 +43,12 @@ class NSView : public NSResponder {
 public:
 	static NSView* Create();
 	static NSView* Create(const NSRect& frame);
-	~NSView();
+	virtual NSView* Clone();
+	static NSView* FromData(const uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
+	virtual uint8_t* Serialize(uint32_t* length_out) const;
+	virtual ~NSView();
+	
+	NSView& operator =(const NSView& v);
 	
 	NSRect GetFrame() const;
 	NSRect GetBounds() const;
@@ -55,13 +63,20 @@ public:
 	bool RemoveSubview(NSView* view);
 	void RemoveSubviewAtIndex(unsigned int index);
 	NSView* GetSubviewAtIndex(unsigned int index) const;
+	void SetSubviews(const std::vector<NSView*>& views);
+	unsigned int GetNumberOfSubviews() const;
+	unsigned int GetIndexOfSubview(NSView* view) const;
 	
 	virtual NSView* GetViewAtPoint(const NSPoint& p);
 	// Local coordinates
 	virtual bool ContainsPoint(const NSPoint& p) const;
 	
-	NSWindow* GetWindow() const;
+	const std::function<void(NSView*)>& GetAction() const;
+	void SetAction(const std::function<void(NSView*)>& action);
+	
+	virtual void SetViewContainer(NSViewContainer* container);
 	NSView* GetSuperview() const;
+	NSViewContainer* GetViewContainer() const;
 	NSScrollView* GetEnclosingScrollView() const;
 	
 	bool IsVisible() const;
@@ -73,6 +88,7 @@ public:
 	void SetNeedsDisplay();
 	void SetNeedsDisplay(const NSRect& rect);
 	void SetNeedsDisplay(const std::vector<NSRect>& rects);
+	void DrawRect(const NSRect& rect);
 	
 	virtual bool AcceptsFirstResponder() const;
 	virtual void BecomeFirstResponder();
@@ -108,14 +124,15 @@ public:
 	virtual void KeyUp(NSEventKey* event) override;
 	
 	// Drawing
+	static void SetupContext(graphics_context_t* context, NSSize size);
 	static void BufferSquare(uint32_t bid);
 	static void BufferOval(uint32_t bid, uint32_t num_vertices);
 	// Num vertices should be divisible by 4 after subtracting 2 (ex: 38)
 	static void BufferRoundedRect(uint32_t bid, const NSSize& size, float border_radius_x, float border_radius_y,
 								  uint32_t num_vertices);
 #define NSVIEW_ROUNDED_UPPER_LEFT	(1 << 0)
-#define NSVIEW_ROUDNED_UPPER_RIGHT	(1 << 1)
-#define NSVIEW_ROUDNED_BOTTOM_LEFT	(1 << 2)
+#define NSVIEW_ROUNDED_UPPER_RIGHT	(1 << 1)
+#define NSVIEW_ROUNDED_BOTTOM_LEFT	(1 << 2)
 #define NSVIEW_ROUNDED_BOTTOM_RIGHT	(1 << 3)
 	// num vertices = c * x + 2 + (4 - c) where c = # of corners, and x is an integer
 	static void BufferRoundedRect(uint32_t bid, const NSSize& size, float borders[4], int mask, uint32_t num_vertices);
@@ -128,11 +145,7 @@ public:
 	static void BufferCheckmark(uint32_t bid);		// triangle_strip
 	
 protected:
-	static void SetupContext(graphics_context_t* context, NSSize size);
 	NSView();
-	
-	// Called when added to a window
-	virtual void WindowWasSet();
 	
 	// Called when buffers need updating (frame resizing)
 	virtual void UpdateVBO();
@@ -141,7 +154,7 @@ protected:
 
 	// Just draws view (override this method for custom drawing)
 	// Rect in local view coordinates
-	virtual void Draw(const NSRect& rect);
+	virtual void Draw(graphics_context_t* context, const NSRect& rect);
 	
 	// Request screen update in local view coordinates
 	void RequestUpdate(const NSRect& rect);
@@ -150,24 +163,18 @@ protected:
 	uint32_t vertex_vbo = 0;
 	uint32_t color_vbo = 0;
 	graphics_vertex_array_t vao[3];
-	graphics_context_t* context = NULL;
+	bool requests_updates = true;
 private:
-	friend class NSWindow;
-	friend class NSScrollView;
+	friend class NSMenuViewItem;
 	
-	void PrepareDraw(const NSRect& rect);
-	void FinishDraw();
+	void SetSubview(NSView* view);
 	
-	// Draws view and subviews
-	void DrawRect(const NSRect& rect);
+	NSRect PrepareDraw(graphics_context_t* context, const NSRect& rect);
+	void FinishDraw(graphics_context_t* context, const NSRect& rect);
+	
 	void DrawSubview(NSView* subview, NSRect rect);
 	
-	void SetWindow(NSWindow* window);
-	void SetContext(graphics_context_t* context);
-	void SetOwner(NSView* o);
-	void RemoveFromWindow(NSView* view);
-	
-	void Resize(NSView* view, NSSize old_sv_size, NSSize sv_size);
+	void Resize(NSSize old_sv_size, NSSize sv_size);
 	
 	void CheckCursorRegions(const NSPoint& p);
 	
@@ -178,12 +185,14 @@ private:
 	std::vector<NSViewObserver*> observers;
 	std::vector<NSCursorRegion> cursor_regions;
 	
-	NSWindow* window = NULL;
+	NSViewContainer* container = NULL;
 	NSView* superview = NULL;
-	NSView* owner = NULL;
+	std::function<void(NSView*)> action;
 	
+	bool mouse_is_down = false;
 	bool is_first_responder = false;
-	bool needs_display = false;
+	std::vector<NSRect> dirty_rects;
+	NSHandler* display_handler = NULL;
 	
 	std::vector<NSAnimation*> animations;
 };

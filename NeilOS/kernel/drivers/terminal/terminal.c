@@ -748,6 +748,20 @@ uint32_t terminal_write(file_descriptor_t* f, const void* buf, uint32_t nbytes) 
 	}
 	cursor_position_refresh();
 	
+#if OUTPUT_LOG
+	static char buffer[2048];
+	static int buffer_pos = 0;
+	for (unsigned int z = 0; z < nbytes; z++) {
+		if (cbuf[z] == '\n') {
+			buffer[buffer_pos] = 0;
+			log_output("%s", buffer);
+			buffer_pos = 0;
+			continue;
+		}
+		buffer[buffer_pos++] = cbuf[z];
+	}
+#endif
+	
 	// Return the number of bytes written
 	return nbytes;
 }

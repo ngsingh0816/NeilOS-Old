@@ -29,7 +29,7 @@ void Controller::DidFinishLaunching() {
 
 	NSCheckBox* check = NSCheckBox::Create("Red", NSRect(15, y_off_img + 15, 100, NSCheckBoxDefaultSize.height));
 	check->SizeToFit();
-	check->SetAction([label, check](NSControl*) {
+	check->SetAction([label, check](NSView*) {
 		label->SetTextColor(check->GetState() ? NSColor<float>::RedColor() : NSColor<float>::BlackColor());
 	});
 	window->GetContentView()->AddSubview(check);
@@ -39,7 +39,7 @@ void Controller::DidFinishLaunching() {
 	rb1->SizeToFit();
 	rb1->SetGroupID(1);
 	rb1->SetState(NSButtonStateOn);
-	rb1->SetAction([check, rb1](NSControl*) {
+	rb1->SetAction([check, rb1](NSView*) {
 		check->SetEnabled(rb1->GetState());
 	});
 	
@@ -50,7 +50,7 @@ void Controller::DidFinishLaunching() {
 	rb2->SizeToFit();
 	rb2->SetGroupID(1);
 	rb2->SetState(NSButtonStateOff);
-	rb2->SetAction([check, rb1](NSControl*) {
+	rb2->SetAction([check, rb1](NSView*) {
 		check->SetEnabled(rb1->GetState());
 	});
 	window->GetContentView()->AddSubview(rb1);
@@ -63,20 +63,53 @@ void Controller::DidFinishLaunching() {
 	
 	NSSlider* slider = NSSlider::Create(NSRect(NSPoint(15, y_off_img + 120), NSSliderDefaultSize));
 	slider->SetIsContinuous(true);
+	slider->SetMinValue(0);
+	slider->SetMaxValue(100);
 	slider->SetAction([progress](NSSlider* s) {
 		NSColor<float> from = NSColor<float>::UITurquoiseColor();
 		NSColor<float> to = NSColor<float>::UIBlueColor();
-		progress->SetFillColor(s->GetValue() * (to - from) + from);
+		progress->SetFillColor((s->GetValue() / 100.0) * (to - from) + from);
 	});
 	//slider->SetNumberOfTickMarks(4, true);
 	window->GetContentView()->AddSubview(slider);
+	
+	NSTextField* textField = NSTextField::Create(NSRect(NSPoint(15, y_off_img + 155), NSTextFieldDefaultSize));
+	textField->SetPlaceholder("Enter text");
+	textField->SetAction([label, textField](NSView*) {
+		label->SetText(textField->GetText());
+		label->SizeToFit();
+	});
+	window->GetContentView()->AddSubview(textField);
+	
+	NSComboBox* combo = NSComboBox::Create(NSRect(NSPoint(30 + NSTextFieldDefaultSize.width,
+																y_off_img + 120), NSComboBoxDefaultSize));
+	combo->SetPlaceholder("Combo");
+	combo->GetMenu()->AddItem(new NSMenuItem("Item 1"));
+	combo->GetMenu()->AddItem(new NSMenuItem("Item 2"));
+	combo->GetMenu()->AddItem(new NSMenuItem("Item 3"));
+	combo->SetAction([label, combo](NSView*) {
+		label->SetText(combo->GetText());
+		label->SizeToFit();
+	});
+	window->GetContentView()->AddSubview(combo);
+	
+	NSPopupButton* popup = NSPopupButton::Create("Popup", NSRect(NSPoint(30 + NSTextFieldDefaultSize.width,
+																y_off_img + 155), NSPopupButtonDefaultSize));
+	popup->GetMenu()->AddItem(new NSMenuItem("Item 1"));
+	popup->GetMenu()->AddItem(new NSMenuItem("Item 2"));
+	popup->GetMenu()->AddItem(new NSMenuItem("Item 3"));
+	popup->SetAction([label, popup](NSView*) {
+		label->SetText(popup->GetText());
+		label->SizeToFit();
+	});
+	window->GetContentView()->AddSubview(popup);
 	
 	NSBox* box = NSBox::Create(NSRect(630, 15, 155, window->GetContentFrame().size.height - 30));
 	box->SetText("Box");
 	
 	// Label button
 	NSButton* button = NSButton::Create("Label", NSRect(15, 15, 125, NSButtonDefaultSize.height));
-	button->SetAction([label](NSControl*) {
+	button->SetAction([label](NSView*) {
 		static int clicked = 0;
 		clicked++;
 		label->SetText("Clicked " + std::to_string(clicked) + " times.");
@@ -86,13 +119,21 @@ void Controller::DidFinishLaunching() {
 	
 	// Progress button
 	NSButton* pbutton = NSButton::Create("Progress", NSRect(15, 60, 125, NSButtonDefaultSize.height));
-	pbutton->SetAction([progress](NSControl*) {
+	pbutton->SetAction([progress](NSView*) {
 		float value = progress->GetValue() + 20;
 		if (value > 100)
 			value -= 100;
 		progress->SetValue(value);
 	});
 	box->AddSubview(pbutton);
+	
+	// Textfield button
+	NSButton* tbutton = NSButton::Create("Text Field", NSRect(15, 105, 125, NSButtonDefaultSize.height));
+	tbutton->SetAction([label, textField](NSView*) {
+		label->SetText(textField->GetText());
+		label->SizeToFit();
+	});
+	box->AddSubview(tbutton);
 	
 	window->GetContentView()->AddSubview(box);
 	

@@ -23,25 +23,6 @@ namespace Boot {
 	volatile float current_percent = 0.0f;
 	NSTimer* timer;
 	
-	const float square[] = {
-		0, 0,
-		1, 0,
-		0, 1,
-		1, 1
-	};
-	const float color[] = {
-		0.7, 0.7, 0.7, 1,
-		0.7, 0.7, 0.7, 1,
-		0.7, 0.7, 0.7, 1,
-		0.7, 0.7, 0.7, 1,
-	};
-	const float white[] = {
-		1, 1, 1, 1,
-		1, 1, 1, 1,
-		1, 1, 1, 1,
-		1, 1, 1, 1,
-	};
-	
 	uint32_t square_vbo;
 	uint32_t color_vbo;
 	uint32_t white_vbo;
@@ -143,7 +124,7 @@ void Boot::Load(NSThread* main) {
 	// Create graphics context
 	float psf = Desktop::GetPixelScalingFactor();
 	NSApplication::SetPixelScalingFactor(psf);
-	context = graphics_context_create(graphics_info.resolution_x * psf, graphics_info.resolution_y * psf, 24, 16, 0);
+	context = graphics_context_create(graphics_info.resolution_x * psf, graphics_info.resolution_y * psf, 24, 15, 1);
 	
 	// Setup graphics state
 	NSMatrix perspective = NSMatrix::Ortho2D(0, graphics_info.resolution_x, graphics_info.resolution_y, 0);
@@ -156,38 +137,33 @@ void Boot::Load(NSThread* main) {
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_SRCBLEND, GRAPHICS_BLENDOP_SRCALPHA);
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_DSTBLEND, GRAPHICS_BLENDOP_INVSRCALPHA);
 	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_BLENDEQUATION, GRAPHICS_BLENDEQ_ADD);
-	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
-	//graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEMASK, 16);
+	graphics_renderstate_seti(&context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
 	
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
 	graphics_texturestate_seti(&context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
 	
 	// Upload graphics data
-	square_vbo = graphics_buffer_create(sizeof(square), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(square_vbo, square, sizeof(square));
-	color_vbo = graphics_buffer_create(sizeof(color), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(color_vbo, color, sizeof(color));
-	white_vbo = graphics_buffer_create(sizeof(white), GRAPHICS_BUFFER_STATIC);
-	graphics_buffer_data(white_vbo, white, sizeof(white));
+	square_vbo = graphics_buffer_create(sizeof(float) * 4 * 2, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferSquare(square_vbo);
+	color_vbo = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(color_vbo, NSColor<float>::LightGrayColor(), 4);
+	white_vbo = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_STATIC);
+	NSView::BufferColor(white_vbo, NSColor<float>::WhiteColor(), 4);
 	memset(grayvao, 0, sizeof(grayvao));
 	grayvao[0].bid = square_vbo;
-	grayvao[0].offset = 0;
 	grayvao[0].stride = 2 * sizeof(float);
 	grayvao[0].type = GRAPHICS_TYPE_FLOAT2;
 	grayvao[0].usage = GRAPHICS_USAGE_POSITION;
 	grayvao[1].bid = color_vbo;
-	grayvao[1].offset = 0;
 	grayvao[1].stride = 4 * sizeof(float);
 	grayvao[1].type = GRAPHICS_TYPE_FLOAT4;
 	grayvao[1].usage = GRAPHICS_USAGE_COLOR;
 	memset(vao, 0, sizeof(vao));
 	vao[0].bid = square_vbo;
-	vao[0].offset = 0;
 	vao[0].stride = 2 * sizeof(float);
 	vao[0].type = GRAPHICS_TYPE_FLOAT2;
 	vao[0].usage = GRAPHICS_USAGE_POSITION;
 	vao[1].bid = white_vbo;
-	vao[1].offset = 0;
 	vao[1].stride = 4 * sizeof(float);
 	vao[1].type = GRAPHICS_TYPE_FLOAT4;
 	vao[1].usage = GRAPHICS_USAGE_COLOR;

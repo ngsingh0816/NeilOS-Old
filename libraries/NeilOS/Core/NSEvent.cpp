@@ -11,10 +11,10 @@
 
 std::function<void()> NSEventInitResp::function;
 
-NSEvent* NSEvent::FromData(uint8_t* data, uint32_t length) {
+NSEvent* NSEvent::FromData(const uint8_t* data, uint32_t length) {
 	if (length < sizeof(uint32_t))
 		return NULL;
-	uint32_t* buffer = reinterpret_cast<uint32_t*>(data);
+	const uint32_t* buffer = reinterpret_cast<const uint32_t*>(data);
 	uint32_t code = buffer[0];
 	uint32_t sub_code = 0;
 	if (length >= sizeof(uint32_t) * 2)
@@ -34,6 +34,8 @@ NSEvent* NSEvent::FromData(uint8_t* data, uint32_t length) {
 					return NSEventWindowSetTitle::FromData(data, length);
 				case WINDOW_EVENT_SET_FRAME_ID:
 					return NSEventWindowSetFrame::FromData(data, length);
+				case WINDOW_EVENT_SET_BUTTON_MASK_ID:
+					return NSEventWindowSetButtonMask::FromData(data, length);
 				case WINDOW_EVENT_DRAW_ID:
 					return NSEventWindowDraw::FromData(data, length);
 			}
@@ -54,12 +56,18 @@ NSEvent* NSEvent::FromData(uint8_t* data, uint32_t length) {
 			switch (sub_code) {
 				case APPLICATION_EVENT_QUIT:
 					return NSEventApplicationQuit::FromData(data, length);
+				case APPLICATION_EVENT_SET_MENU:
+					return NSEventApplicationSetMenu::FromData(data, length);
 				case APPLICATION_EVENT_MENU_EVENT:
 					return NSEventApplicationMenuEvent::FromData(data, length);
 				case APPLICATION_EVENT_FOCUS:
 					return NSEventApplicationFocus::FromData(data, length);
 				case APPLICATION_EVENT_OPEN_FILE:
 					return NSEventApplicationOpenFile::FromData(data, length);
+				case APPLICATION_EVENT_SET_CURSOR:
+					return NSEventApplicationSetCursor::FromData(data, length);
+				case APPLICATION_EVENT_CONTEXT_MENU:
+					return NSEventApplicationContextMenu::FromData(data, length);
 			}
 			break;
 		default:
@@ -77,8 +85,17 @@ NSEventFunction::NSEventFunction(const std::function<void()>& func, uint32_t pri
 	SetPriority(priority);
 }
 
+void NSEventFunction::Cancel() {
+	canceled = true;
+}
+
+bool NSEventFunction::IsCanceled() const {
+	return canceled;
+}
+
 void NSEventFunction::Process() {
-	function();
+	if (!canceled)
+		function();
 }
 
 uint8_t* NSEventFunction::Serialize(uint32_t* length_out) const {

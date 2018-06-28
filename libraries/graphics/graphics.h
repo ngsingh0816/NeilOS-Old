@@ -47,7 +47,7 @@ bool graphics_fence_passed(uint32_t fence);
 
 // Creates a new context with the specified options (returns the context id or context.cid = 0 if error)
 graphics_context_t graphics_context_create(uint32_t width, uint32_t height, uint32_t color_bits, uint32_t depth_bits,
-										   uint32_t stencil_bits);
+										   uint32_t stencil_bits, uint32_t msaa = 0);
 // Resize a graphics context
 void graphics_context_resize(graphics_context_t* context, uint32_t width, uint32_t height);
 // Destroys a context

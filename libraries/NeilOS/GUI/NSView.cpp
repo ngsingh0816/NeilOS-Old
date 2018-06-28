@@ -13,6 +13,8 @@
 #include "../Core/NSTimer.h"
 #include "NSScrollView.h"
 #include "NSWindow.h"
+#include "../NeilOS.h"
+#include "NSViewTypes.hpp"
 
 #include <math.h>
 #include <string.h>
@@ -26,7 +28,6 @@
 
 NSView* NSView::Create() {
 	NSView* ret = new NSView();
-	ret->SetFrame(NSRect());
 	return ret;
 }
 
@@ -53,19 +54,183 @@ NSView::NSView() {
 	vao[1].usage = GRAPHICS_USAGE_COLOR;
 }
 
+NSView* NSView::Clone() {
+	NSView* ret = new NSView;
+	*ret = *this;
+	return ret;
+}
+
+NSView& NSView::operator =(const NSView& v) {
+	if (this == &v)
+		return *this;
+	
+	for (auto& s : subviews)
+		delete s;
+	subviews.clear();
+	
+	SetFrame(v.frame);
+	for (uint32_t z = 0; z < v.subviews.size(); z++)
+		AddSubview(v.subviews[z]->Clone());
+	visible = v.visible;
+	resizing_mask = v.resizing_mask;
+	cursor_regions = v.cursor_regions;
+	action = v.action;
+	
+	return *this;
+}
+
+NSView* NSView::FromData(const uint8_t* data, uint32_t length, uint32_t* length_used) {
+#define copy(x, l)			{ memcpy(x, &data[pos], (l)); pos += (l); }
+	
+	if (length < sizeof(uint32_t))
+		return NULL;
+	
+	const uint32_t* buffer = reinterpret_cast<const uint32_t*>(data);
+	uint32_t type = buffer[0];
+	if (type != NSVIEW_TYPES_VIEW) {
+		NSView* ret = NSViewTypes::func[type](&data[sizeof(uint32_t)], length - sizeof(uint32_t), length_used);
+		if (length_used)
+			*length_used += sizeof(uint32_t);
+		return ret;
+	}
+	
+	if (length < sizeof(uint32_t) * 4 + sizeof(float) * 4 + sizeof(bool))
+		return NULL;
+	
+	uint32_t pos = sizeof(uint32_t);
+	NSRect frame = NSRect::FromData(&data[pos], sizeof(float) * 4);
+	pos += sizeof(float) * 4;
+	bool visible;
+	NSAutoResizingMask resizing_mask;
+	uint32_t num_cursor_regions, num_subviews;
+	copy(&visible, sizeof(bool));
+	copy(&resizing_mask, sizeof(uint32_t));
+	copy(&num_cursor_regions, sizeof(uint32_t));
+	
+	std::vector<NSCursorRegion> cursor_regions;
+	cursor_regions.reserve(num_cursor_regions);
+	for (unsigned int z = 0; z < num_cursor_regions; z++) {
+		uint32_t lu;
+		NSCursorRegion* r = NSCursorRegion::FromData(&data[pos], length - pos, &lu);
+		if (!r)
+			return NULL;
+		pos += lu;
+		cursor_regions.emplace_back(*r);
+		delete r;
+	}
+	
+	copy(&num_subviews, sizeof(uint32_t));
+	std::vector<NSView*> subviews;
+	subviews.reserve(num_subviews);
+	for (unsigned int z = 0; z < num_subviews; z++) {
+		uint32_t lu;
+		NSView* s = NSView::FromData(&data[pos], length - pos, &lu);
+		if (!s)
+			return NULL;
+		pos += lu;
+		subviews.emplace_back(s);
+	}
+	
+#undef copy
+	
+	NSView* view = new NSView();
+	view->SetFrame(frame);
+	view->SetVisible(visible);
+	view->SetResizingMask(resizing_mask);
+	view->cursor_regions = cursor_regions;
+	view->SetSubviews(subviews);
+	
+	if (length_used)
+		*length_used = pos;
+	
+	return view;
+}
+
+uint8_t* NSView::Serialize(uint32_t* length_out) const {
+#define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
+#define copy_rect(x) { uint8_t* temp = x.Serialize(NULL); memcpy(&buffer[pos], temp, sizeof(float)*4);\
+						pos += sizeof(float) * 4; delete[] temp; }
+	
+	uint32_t total_length = sizeof(uint32_t);		// view type
+	total_length += sizeof(float) * 4;				// frame
+	total_length += sizeof(bool);					// visible
+	total_length += sizeof(uint32_t);				// resizing mask
+	total_length += sizeof(uint32_t);				// cursor_regions.size
+	total_length += sizeof(uint32_t);				// subviews.size
+	
+	std::vector<std::pair<uint8_t*, uint32_t>> crs;
+	crs.reserve(cursor_regions.size());
+	for (auto& cr : cursor_regions) {
+		uint32_t len;
+		uint8_t* buf = cr.Serialize(&len);
+		if (!buf) {
+			for (auto& c : crs)
+				delete[] c.first;
+			return NULL;
+		}
+		total_length += len;
+		crs.emplace_back(std::make_pair(buf, len));
+	}
+	
+	std::vector<std::pair<uint8_t*, uint32_t>> svs;
+	svs.reserve(subviews.size());
+	for (auto& sv : subviews) {
+		uint32_t len;
+		uint8_t* buf = sv->Serialize(&len);
+		if (!buf) {
+			for (auto& c : crs)
+				delete[] c.first;
+			for (auto& s : svs)
+				delete[] s.first;
+			return NULL;
+		}
+		total_length += len;
+		svs.emplace_back(std::make_pair(buf, len));
+	}
+	
+	uint8_t* buffer = new uint8_t[total_length];
+	uint32_t pos = 0;
+	
+	uint32_t view_code = NSVIEW_TYPES_VIEW;
+	copy(&view_code, sizeof(uint32_t));
+	copy_rect(frame);
+	copy(&visible, sizeof(bool));
+	copy(&resizing_mask, sizeof(uint32_t));
+	uint32_t crs_size = crs.size(), svs_size = svs.size();
+	copy(&crs_size, sizeof(uint32_t));
+	for (auto& cr : crs) {
+		copy(cr.first, cr.second);
+		delete[] cr.first;
+	}
+	copy(&svs_size, sizeof(uint32_t));
+	for (auto& sv : svs) {
+		copy(sv.first, sv.second);
+		delete[] sv.first;
+	}
+	
+#undef copy
+#undef copy_rect
+	
+	if (length_out)
+		*length_out = total_length;
+	return buffer;
+}
+
 NSView::~NSView() {
-	
-	for (uint32_t z = 0; z < subviews.size(); z++)
-		delete subviews[z];
-	
 	if (vertex_vbo)
 		graphics_buffer_destroy(vertex_vbo);
 	if (color_vbo)
 		graphics_buffer_destroy(color_vbo);
 	
-	for (unsigned int z = 0; z < animations.size(); z++) {
-		animations[z]->Cancel();
-		delete animations[z];
+	for (uint32_t z = 0; z < subviews.size(); z++)
+		delete subviews[z];
+	
+	while (animations.size() != 0)
+		animations[0]->Cancel();
+	
+	if (display_handler) {
+		display_handler->Cancel();
+		delete display_handler;
 	}
 }
 
@@ -78,27 +243,29 @@ NSRect NSView::GetBounds() const {
 }
 
 void NSView::SetFrame(const NSRect& f) {
+	if (frame == f)
+		return;
+	
 	NSRect old_frame = frame;
 	frame = f;
 	
 	if (old_frame.size != frame.size) {
 		UpdateVBO();
 		for (unsigned int z = 0; z < subviews.size(); z++)
-			Resize(subviews[z], old_frame.size, frame.size);
+			subviews[z]->Resize(old_frame.size, frame.size);
 	}
 	
 	for (auto& observer : observers)
 		observer->FrameUpdated();
 	
-	if (superview) {
-		superview->DrawRect(old_frame);
-		superview->DrawRect(frame);
-	} else
-		DrawRect(GetBounds());
+	if (superview)
+		superview->SetNeedsDisplay({ old_frame, frame });
+	else
+		SetNeedsDisplay();
 }
 
-void NSView::Resize(NSView* view, NSSize old_sv_size, NSSize sv_size) {
-	NSAutoResizingMask mask = view->resizing_mask;
+void NSView::Resize(NSSize old_sv_size, NSSize sv_size) {
+	NSAutoResizingMask mask = resizing_mask;
 	if (mask == NSViewNotResizable)
 		return;
 	
@@ -106,34 +273,34 @@ void NSView::Resize(NSView* view, NSSize old_sv_size, NSSize sv_size) {
 	bool x_min = (mask & NSViewMinXMargin) != 0, x_max = (mask & NSViewMaxXMargin) != 0;
 	bool y_min = (mask & NSViewMinYMargin) != 0, y_max = (mask & NSViewMaxYMargin) != 0;
 	
-	NSRect frame = view->frame;
-	NSRect old_frame = view->frame;
+	NSRect new_frame = frame;
+	NSRect old_frame = frame;
 	if (width)
-		frame.size.width = (frame.size.width / old_sv_size.width) * sv_size.width;
+		new_frame.size.width = (new_frame.size.width / old_sv_size.width) * sv_size.width;
 	if (mask & NSViewHeightSizable)
-		frame.size.height = (frame.size.height / old_sv_size.height) * sv_size.height;
+		new_frame.size.height = (new_frame.size.height / old_sv_size.height) * sv_size.height;
 	
 	if (x_min && x_max && width) {
 		float dist = old_sv_size.width - (old_frame.origin.x + old_frame.size.width);
-		frame.size.width = sv_size.width - dist - frame.origin.x;
+		new_frame.size.width = sv_size.width - dist - frame.origin.x;
 	} else if (x_min) {
 		// Do nothing (implicit)
 	} else if (x_max) {
 		float dist = old_sv_size.width - (old_frame.origin.x + old_frame.size.width);
-		frame.origin.x = sv_size.width - frame.size.width - dist;
+		new_frame.origin.x = sv_size.width - new_frame.size.width - dist;
 	}
 	
 	if (y_min && y_max && height) {
 		float dist = old_sv_size.height - (old_frame.origin.y + old_frame.size.height);
-		frame.size.height = sv_size.height - dist - frame.origin.y;
+		new_frame.size.height = sv_size.height - dist - new_frame.origin.y;
 	} else if (y_min) {
 		// Do nothing (implicit)
 	} else if (y_max) {
 		float dist = old_sv_size.height - (old_frame.origin.y + old_frame.size.height);
-		frame.origin.y = sv_size.height - frame.size.height - dist;
+		new_frame.origin.y = sv_size.height - new_frame.size.height - dist;
 	}
 	
-	view->SetFrame(frame);
+	SetFrame(new_frame);
 }
 
 void NSView::SetFrameOrigin(const NSPoint& p) {
@@ -150,16 +317,18 @@ NSRect NSView::GetAbsoluteFrame() const {
 
 NSRect NSView::GetAbsoluteRect(const NSRect& rect) const {
 	if (!superview)
-		return rect;
+		return rect + NSRect(frame.origin, NSSize());
 	return NSRect(rect.origin + superview->GetAbsoluteFrame().origin + frame.origin, rect.size);
 }
 
-void NSView::AddSubview(NSView* view) {
-	view->SetWindow(window);
-	view->SetContext(context);
+void NSView::SetSubview(NSView* view) {
 	view->superview = this;
-	view->WindowWasSet();
+	view->SetViewContainer(container);
+}
 
+void NSView::AddSubview(NSView* view) {
+	SetSubview(view);
+	
 	subviews.push_back(view);
 	
 	for (auto& observer : observers)
@@ -168,46 +337,50 @@ void NSView::AddSubview(NSView* view) {
 	DrawSubview(view, view->frame);
 }
 
-void NSView::SetWindow(NSWindow* w) {
-	window = w;
-	context = window ? w->GetContext() : NULL;
-	for (auto& s : subviews)
-		s->SetWindow(w);
+void NSView::SetSubviews(const std::vector<NSView*>& views) {
+	for (uint32_t z = 0; z < subviews.size(); z++)
+		delete subviews[z];
+	subviews = views;
+	for (unsigned int z = 0; z < subviews.size(); z++)
+		SetSubview(subviews[z]);
+	
+	for (auto& observer : observers)
+		observer->SubviewsUpdated();
+	
+	SetNeedsDisplay();
 }
 
-void NSView::SetContext(graphics_context_t* c) {
-	context = c;
-	for (auto& s : subviews)
-		s->SetContext(c);
+unsigned int NSView::GetNumberOfSubviews() const {
+	return subviews.size();
 }
 
-void NSView::SetOwner(NSView* o) {
-	owner = o;
-	for (auto& s : subviews)
-		s->SetOwner(o);
+unsigned int NSView::GetIndexOfSubview(NSView* view) const {
+	for (unsigned int z = 0; z < subviews.size(); z++) {
+		if (subviews[z] == view)
+			return z;
+	}
+	return -1;
 }
 
-void NSView::RemoveFromWindow(NSView* view) {
-	if (view == window->down_view)
-		window->down_view = NULL;
-	if (view == window->content_view)
-		window->content_view = NULL;
-	if (view == window->first_responder)
-		window->MakeFirstResponder(window->content_view);
+void NSView::SetViewContainer(NSViewContainer* c) {
+	container = c;
+	if (container)
+		container->ViewAdded(this);
+	for (auto& s : subviews)
+		s->SetViewContainer(c);
 }
 
 bool NSView::RemoveSubview(NSView* view) {
 	for (uint32_t z = 0; z < subviews.size(); z++) {
 		if (subviews[z] == view) {
 			NSRect rect = view->frame;
-			RemoveFromWindow(view);
 			delete subviews[z];
 			subviews.erase(subviews.begin() + z);
 			
 			for (auto& observer : observers)
 				observer->SubviewsUpdated();
 			
-			DrawRect(rect);
+			SetNeedsDisplay(rect);
 			return true;
 		}
 	}
@@ -216,14 +389,13 @@ bool NSView::RemoveSubview(NSView* view) {
 
 void NSView::RemoveSubviewAtIndex(unsigned int index) {
 	NSRect rect = subviews[index]->frame;
-	RemoveFromWindow(subviews[index]);
 	delete subviews[index];
 	subviews.erase(subviews.begin() + index);
 	
 	for (auto& observer : observers)
 		observer->SubviewsUpdated();
 	
-	DrawRect(rect);
+	SetNeedsDisplay(rect);
 }
 
 NSView* NSView::GetSubviewAtIndex(unsigned int index) const {
@@ -250,19 +422,24 @@ bool NSView::ContainsPoint(const NSPoint& p) const {
 	return GetBounds().ContainsPoint(p);
 }
 
-NSWindow* NSView::GetWindow() const {
-	return window;
-}
-
-void NSView::WindowWasSet() {
-}
-
 NSView* NSView::GetSuperview() const {
 	return superview;
 }
 
+NSViewContainer* NSView::GetViewContainer() const {
+	return container;
+}
+
 NSScrollView* NSView::GetEnclosingScrollView() const {
-	return dynamic_cast<NSScrollView*>(owner);
+	return dynamic_cast<NSScrollView*>(container);
+}
+
+const std::function<void(NSView*)>& NSView::GetAction() const {
+	return action;
+}
+
+void NSView::SetAction(const std::function<void(NSView*)>& a) {
+	action = a;
 }
 
 bool NSView::IsVisible() const {
@@ -275,9 +452,9 @@ void NSView::SetVisible(bool is) {
 	
 	visible = is;
 	if (!visible && superview)
-		superview->DrawRect(frame);
+		superview->SetNeedsDisplay(frame);
 	else
-		DrawRect(GetBounds());
+		SetNeedsDisplay();
 }
 
 NSAutoResizingMask NSView::GetResizingMask() const {
@@ -289,18 +466,20 @@ void NSView::SetResizingMask(NSAutoResizingMask mask) {
 }
 
 void NSView::DrawRect(const NSRect& rect) {
-	if (!context || !visible)
+	if (!container || !visible)
 		return;
 	
-	needs_display = false;
+	graphics_context_t* context = container->GetContext();
+	if (!context)
+		return;
 	
-	PrepareDraw(rect);
-	Draw(rect);
-	FinishDraw();
+	NSRect r = PrepareDraw(context, rect);
+	Draw(context, r);
+	FinishDraw(context, r);
 	
 	// Draw subviews
 	for (unsigned int z = 0; z < subviews.size(); z++)
-		DrawSubview(subviews[z], rect);
+		DrawSubview(subviews[z], r);
 }
 
 void NSView::DrawSubview(NSView* subview, NSRect rect) {
@@ -311,12 +490,15 @@ void NSView::DrawSubview(NSView* subview, NSRect rect) {
 	}
 }
 
-void NSView::PrepareDraw(const NSRect& rect) {
-	float bsf = window ? window->GetBackingScaleFactor() : 1;
+NSRect NSView::PrepareDraw(graphics_context_t* context, const NSRect& r) {
+	NSRect rect = container->PrepareDraw(this, r);
+	
 	NSRect total = GetAbsoluteRect(rect);
+	NSPoint offset = container->GetScissorOffset(total);
+	float bsf = container->GetBackingScaleFactor();
 	if (superview)
 		total = total.Intersection(superview->GetAbsoluteFrame());
-	NSRect scissor = (total * bsf).IntegerRect();
+	NSRect scissor = ((total + NSRect(offset, NSSize())) * bsf).IntegerRect();
 	graphics_scissor_rect_set(context, scissor.origin.x, scissor.origin.y,
 							  scissor.size.width, scissor.size.height);
 	
@@ -324,14 +506,19 @@ void NSView::PrepareDraw(const NSRect& rect) {
 	NSRect trans = GetAbsoluteFrame();
 	m.Translate(trans.origin.x, trans.origin.y, 0);
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, m);
+	
+	return rect;
 }
 
-void NSView::FinishDraw() {
+void NSView::FinishDraw(graphics_context_t* context, const NSRect& rect) {
 	// Reset some things
 	NSMatrix m = NSMatrix::Identity();
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_WORLD, m);
 	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, m);
 	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_BIND_TEXTURE, -1);
+	
+	if (container)
+		container->FinishDraw(this, rect);
 }
 
 // Called when buffers need updating (frame resizing)
@@ -345,14 +532,13 @@ void NSView::UpdateVAO() {
 	vao[1].bid = color_vbo;
 }
 
-void NSView::Draw(const NSRect& rect) {
-	if (!context)
+void NSView::Draw(graphics_context_t* context, const NSRect& rect) {
+	if (!container)
 		return;
 	
 	NSMatrix matrix = NSMatrix::Identity();
-	matrix.Translate(frame.origin.x, frame.origin.y, 0);
 	matrix.Scale(frame.size.width, frame.size.height, 1);
-	graphics_transform_set(context, GRAPHICS_TRANSFORM_VIEW, matrix);
+	graphics_transform_set(context, GRAPHICS_TRANSFORM_WORLD, matrix);
 	graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, 2, vao, 2);
 	
 	RequestUpdate(rect);
@@ -369,14 +555,25 @@ void NSView::SetNeedsDisplay(const NSRect& rect) {
 }
 
 void NSView::SetNeedsDisplay(const std::vector<NSRect>& rects) {
-	if (!needs_display) {
-		needs_display = true;
-		NSHandler([this, rects](NSThread*) {
+	if (!visible || !container || !requests_updates)
+		return;
+	
+	dirty_rects.insert(dirty_rects.end(), rects.begin(), rects.end());
+	if (!display_handler) {
+		display_handler = new NSHandler([this, rects](NSThread*) {
+			delete display_handler;
+			display_handler = NULL;
+			
 			NSView* view = superview ? superview : this;
 			NSPoint offset = superview ? frame.origin : NSPoint();
-			for (auto& r : rects)
+			
+			std::vector<NSRect> rs = dirty_rects;
+			dirty_rects.clear();
+			rs = NSRectConsolidate(rs);
+			for (const auto& r : rs)
 				view->DrawRect(NSRect(offset + r.origin, r.size));
-		}).Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
+		});
+		display_handler->Post(NSThread::MainThread(), NSHandlerDefaultPriortiy);
 	}
 }
 
@@ -386,21 +583,19 @@ void NSView::RequestUpdate(const NSRect& rect) {
 }
 
 void NSView::RequestUpdates(const std::vector<NSRect>& r) {
+	if (!requests_updates)
+		return;
+	
 	std::vector<NSRect> rects = r;
-	NSPoint offset = frame.origin;
+	NSPoint offset = GetAbsoluteFrame().origin;
 	for (unsigned int z = 0; z < rects.size(); z++)
 		rects[z].origin += offset;
 	
 	for (auto& o : observers)
 		o->UpdateRequested(r);
 	
-	if (superview) {
-		superview->RequestUpdates(rects);
-		return;
-	}
-	
-	if (window && window->content_view == this)
-		window->AddUpdateRects(rects);
+	if (container)
+		container->AddUpdateRects(rects);
 }
 
 bool NSView::AcceptsFirstResponder() const {
@@ -419,6 +614,9 @@ bool NSView::IsFirstResponder() const {
 }
 
 void NSView::ResignFirstResponder() {
+	if (!is_first_responder)
+		return;
+	
 	is_first_responder = false;
 	
 	for (auto& observer : observers)
@@ -522,6 +720,7 @@ void NSView::MouseDown(NSEventMouse* event) {
 	if (!visible || !ContainsPoint(p))
 		return;
 	
+	mouse_is_down = true;
 	for (auto& s : subviews) {
 		if (s->visible)
 			s->MouseDown(event);
@@ -538,8 +737,7 @@ void NSView::MouseMoved(NSEventMouse* event) {
 }
 
 void NSView::MouseDragged(NSEventMouse* event) {
-	NSPoint p = event->GetPosition() - GetAbsoluteFrame().origin;
-	if (!visible || !ContainsPoint(p))
+	if (!visible || !mouse_is_down)
 		return;
 	
 	for (auto& s : subviews) {
@@ -549,8 +747,10 @@ void NSView::MouseDragged(NSEventMouse* event) {
 }
 
 void NSView::MouseUp(NSEventMouse* event) {
+	mouse_is_down = false;
 	if (!visible)
 		return;
+	
 	for (auto& s : subviews) {
 		if (s->visible)
 			s->MouseUp(event);
@@ -562,9 +762,8 @@ void NSView::MouseScrolled(NSEventMouse* event) {
 	if (!visible || !ContainsPoint(p))
 		return;
 	
-	p -= frame.origin;
 	for (auto& s : subviews) {
-		if (s->visible && s->ContainsPoint(p))
+		if (s->visible)
 			s->MouseScrolled(event);
 	}
 }
@@ -580,7 +779,7 @@ void NSView::KeyUp(NSEventKey* event)  {
 }
 
 void NSView::BufferSquare(uint32_t bid) {
-	const float square[] = {
+	static const float square[] = {
 		0, 0,
 		1, 0,
 		0, 1,
@@ -666,8 +865,8 @@ void NSView::BufferRoundedRect(uint32_t bid, const NSSize& size, float borders[4
 			float start_angle = 180 - (z * 90);
 			float start_x = (z == 0 || z == 3) ? borders[z] : -borders[z];
 			float start_y = (z >= 2) ? -borders[z] : borders[z];
-			for (int z = 0; z < num; z++) {
-				float angle = (start_angle - (float(z) / (num - 1)) * 90.0f) / 180.0f * M_PI;
+			for (int q = 0; q < num; q++) {
+				float angle = (start_angle - (float(q) / (num - 1)) * 90.0f) / 180.0f * M_PI;
 				float x = cosf(angle) * borders[z] + x_pos + start_x;
 				float y = -sinf(angle) * borders[z] + y_pos + start_y;
 				vertices[pos++] = x;
@@ -790,6 +989,7 @@ void NSView::SetupContext(graphics_context_t* context, NSSize size) {
 	graphics_renderstate_seti(context, GRAPHICS_RENDERSTATE_BLENDEQUATION, GRAPHICS_BLENDEQ_ADD);
 	graphics_renderstate_seti(context, GRAPHICS_RENDERSTATE_SCISSORTESTENABLE, true);
 	//graphics_renderstate_seti(context, GRAPHICS_RENDERSTATE_MULTISAMPLEANTIALIAS, true);
-	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
-	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_LINEAR);
+	// No need to filter as the window server filters the whole window when drawing it
+	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_MINFILTER, GRAPHICS_TEXTURE_FILTER_NONE);
+	graphics_texturestate_seti(context, 0, GRAPHICS_TEXTURESTATE_MAGFILTER, GRAPHICS_TEXTURE_FILTER_NONE);
 }

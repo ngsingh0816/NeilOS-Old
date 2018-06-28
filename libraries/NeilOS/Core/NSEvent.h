@@ -13,7 +13,7 @@
 
 class NSEvent {
 public:
-	static NSEvent* FromData(uint8_t* data, uint32_t length);
+	static NSEvent* FromData(const uint8_t* data, uint32_t length);
 	
 	virtual ~NSEvent() {};
 		
@@ -38,11 +38,15 @@ class NSEventFunction : public NSEvent {
 public:
 	static NSEventFunction* Create(const std::function<void()>& function, uint32_t priority=0);
 	
+	void Cancel();
+	bool IsCanceled() const;
+	
 	void Process() override;
 	uint8_t* Serialize(uint32_t* length_out) const override;
 private:
 	NSEventFunction(const std::function<void()>& function, uint32_t priority);
 	std::function<void()> function;
+	bool canceled = false;
 };
 
 #endif /* NSEVENT_H */

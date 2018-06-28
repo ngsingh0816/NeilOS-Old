@@ -215,6 +215,7 @@ bool fopen(const char* filename, uint32_t mode, file_descriptor_t* desc) {
 		desc->read = filesystem_read_file;
 		desc->write = filesystem_write_file;
 		desc->llseek = filesystem_llseek_file;
+		desc->can_read = filesystem_can_read_file;
 		desc->truncate = filesystem_truncate;
 		desc->mode = desc->mode & ~FILE_TYPE_ALL;
 		if (inode.info.mode & EXT2_INODE_MODE_FIFO)
@@ -622,6 +623,18 @@ file_descriptor_t* filesystem_open(const char* filename, uint32_t mode) {
 	}
 	
 	return d;
+}
+
+// Able to read file
+bool filesystem_can_read_file(file_descriptor_t* f) {
+	if (!(f->mode & FILE_MODE_READ))
+		return false;
+	
+	file_info_t* file = f->info;
+	file->inode.info = ext2_get_inode_info(file->inode.inode);
+	
+	uint64_t file_size = uint64_make(file->inode.info.size_high, file->inode.info.size);
+	return uint64_less(file->offset, file_size);
 }
 
 // Read from a file and return the number of bytes read

@@ -358,7 +358,7 @@ void setup_pages() {
 	p_page_directory[0] = (uint32_t)p_page_table | KERNEL_PAGE_TABLE_ENTRY;
 	p_page_table_mappings[0] = ((uint32_t)page_table) / FOUR_MB_SIZE;
 	p_page_directory[VM_KERNEL_ADDRESS / FOUR_MB_SIZE] = (uint32_t)p_page_table | KERNEL_PAGE_TABLE_ENTRY;
-	// Reserve spacefor the kernel (mapped from 4MB in physical memory)
+	// Reserve space for the kernel (mapped from 4MB in physical memory)
 	// We must keeped this mapped from 4MB in virtual memory until we jump to the higher address space.
 	p_vm_bitmap[0] |= (1 << pages_needed) - 1;
 	p_vm_bitmap[VM_KERNEL_START] |= (1 << pages_needed) - 1;

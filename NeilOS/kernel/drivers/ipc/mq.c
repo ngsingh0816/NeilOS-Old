@@ -190,6 +190,7 @@ uint32_t mq_send(file_descriptor_t* f, const void* buf, uint32_t bytes, uint32_t
 	down(&info->lock);
 	while (!(f->mode & FILE_MODE_NONBLOCKING) && !(current_pcb && current_pcb->should_terminate) && !f->closed) {
 		if (signal_occurring(current_pcb)) {
+			up(&info->lock);
 			kfree(msg->buffer);
 			kfree(msg);
 			return -EINTR;
@@ -248,8 +249,10 @@ uint32_t mq_receive(file_descriptor_t* f, void* buf, uint32_t bytes, uint32_t* p
 	down(&info->lock);
 	// Block until there is a message
 	while (!(f->mode & FILE_MODE_NONBLOCKING) && !(current_pcb && current_pcb->should_terminate) && !f->closed) {
-		if (signal_occurring(current_pcb))
+		if (signal_occurring(current_pcb)) {
+			up(&info->lock);
 			return -EINTR;
+		}
 		if (info->attr.mq_curmsgs != 0)
 			break;
 		up(&info->lock);

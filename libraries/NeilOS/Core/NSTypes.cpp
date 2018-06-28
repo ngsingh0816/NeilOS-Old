@@ -9,8 +9,9 @@
 #include "NSTypes.h"
 
 #include <string.h>
-
 #include <algorithm>
+
+#include <math.h>
 
 NSPoint::NSPoint() {
 	x = 0;
@@ -371,8 +372,16 @@ NSRect NSRectCorrected(const NSRect& r) {
 
 namespace {
 	bool OverlapsRectNonInclusive(const NSRect& s, const NSRect& r) {
-		return (s.origin.x < r.origin.x + r.size.width && s.origin.x + s.size.width > r.origin.x &&
-				s.origin.y < r.origin.y + r.size.height && s.origin.y + s.size.height > r.origin.y);
+		int sx = lroundf(s.origin.x);
+		int sy = lroundf(s.origin.y);
+		int sw = lroundf(s.origin.x + s.size.width);
+		int sh = lroundf(s.origin.y + s.size.height);
+		int rx = lroundf(r.origin.x);
+		int ry = lroundf(r.origin.y);
+		int rw = lroundf(r.origin.x + r.size.width);
+		int rh = lroundf(r.origin.y + r.size.height);
+		
+		return (sx < rw && sw > rx && sy < rh && sh > ry);
 	}
 	
 	std::vector<NSRect> FindIndependentOverlap(const NSRect& from, const NSRect& value,
@@ -474,12 +483,19 @@ namespace {
 		 */
 		
 		// Find the number of overlaps and which ones
-		bool overlaps_top = (value.origin.y < from.origin.y) && (value.origin.y + value.size.height > from.origin.y);
-		bool overlaps_bottom = (value.origin.y < from.origin.y + from.size.height) &&
-								(value.origin.y + value.size.height > from.origin.y + from.size.height);
-		bool overlaps_left = (value.origin.x < from.origin.x) && (value.origin.x + value.size.width > from.origin.x);
-		bool overlaps_right = (value.origin.x < from.origin.x + from.size.width) &&
-								(value.origin.x + value.size.width > from.origin.x + from.size.width);
+		int vx = lroundf(value.origin.x);
+		int vy = lroundf(value.origin.y);
+		int vw = lroundf(value.origin.x + value.size.width);
+		int vh = lroundf(value.origin.y + value.size.height);
+		int fx = lroundf(from.origin.x);
+		int fy = lroundf(from.origin.y);
+		int fw = lroundf(from.origin.x + from.size.width);
+		int fh = lroundf(from.origin.y + from.size.height);
+		
+		bool overlaps_top = (vy < fy) && (vh > fy);
+		bool overlaps_bottom = (vy < fh) && (vh > fh);
+		bool overlaps_left = (vx < fx) && (vw > fx);
+		bool overlaps_right = (vx < fw) && (vw > fw);
 		
 		int num_overlaps = 0;
 		if (overlaps_top)
@@ -557,9 +573,15 @@ std::vector<NSRect> NSRectConsolidate(const std::vector<NSRect>& rects) {
 	// 3) If it does cut up the single rectangle and get multiple non overlapping rectangles
 	// 4) Add ^those rectangles one at a time (recursively)
 	
+	// Reorder in terms of largest area
+	std::vector<NSRect> sorted = rects;
+	std::sort(sorted.begin(), sorted.end(), [](NSRect const& a, NSRect const& b) {
+		return (a.size.width * a.size.height) > (b.size.width * b.size.height);
+	});
+	
 	std::vector<NSRect> output;
-	for (unsigned int z = 0; z < rects.size(); z++)
-		AddRectangle(output, rects[z]);
+	for (unsigned int z = 0; z < sorted.size(); z++)
+		AddRectangle(output, sorted[z]);
 	
 	return output;
 }
@@ -567,4 +589,56 @@ std::vector<NSRect> NSRectConsolidate(const std::vector<NSRect>& rects) {
 // For adding one at a time
 void NSRectAddConsolidated(std::vector<NSRect>& rects, const NSRect& rect) {
 	AddRectangle(rects, rect);
+}
+
+NSRange::NSRange() {
+	position = 0;
+	length = 0;
+}
+
+NSRange::NSRange(unsigned int pos, unsigned int l) {
+	position = pos;
+	length = l;
+}
+
+unsigned int NSRange::End() const {
+	return position + length;
+}
+
+NSRange NSRange::Intersection(const NSRange& r) const {
+	if (!Overlaps(r))
+		return NSRange();
+	
+	unsigned int x1 = std::max(position, r.position);
+	unsigned int x2 = std::min(position + length, r.position + r.length);
+	
+	return NSRange(x1, x2 - x1);
+}
+
+bool NSRange::Overlaps(const NSRange& r) const {
+	return (position <= r.position + r.length && (position + length) >= r.position);
+}
+
+bool NSRange::Contains(const NSRange& r) const {
+	return (position <= r.position && (position + length) >= r.position + r.length);
+}
+
+bool NSRange::operator ==(const NSRange& r) const {
+	return (position == r.position && length == r.length);
+}
+
+bool NSRange::operator !=(const NSRange& r) const {
+	return (position != r.position || length != r.length);
+}
+
+// Correct negative dimensions
+NSRange NSRangeCorrected(const NSRange& range) {
+	NSRange r = range;
+	if (r.length < 0) {
+		r.position += r.length;
+		if (r.position > range.position)
+			r.position = 0;
+		r.length = -r.length;
+	}
+	return r;
 }

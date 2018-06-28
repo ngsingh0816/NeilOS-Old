@@ -233,8 +233,9 @@ uint32_t rtc_read(file_descriptor_t* f, void* buf, uint32_t bytes) {
 	info->counter = 0;
 	if (!(f->mode & FILE_MODE_NONBLOCKING)) {
 		while (info->counter < (MAX_FREQUENCY / info->target_freq)) {
-			if (signal_occurring(current_pcb))
+			if (signal_occurring(current_pcb)) {
 				return -EINTR;
+			}
 			// TODO: maybe not busy wait here?
 		}
 	}

@@ -116,4 +116,24 @@ std::vector<NSRect> NSRectConsolidate(const std::vector<NSRect>& rects);
 // For adding one at a time
 void NSRectAddConsolidated(std::vector<NSRect>& rects, const NSRect& rect);
 
+class NSRange {
+public:
+	NSRange();
+	NSRange(unsigned int pos, unsigned int length);
+	
+	unsigned int End() const;
+	NSRange Intersection(const NSRange& r) const;
+	bool Overlaps(const NSRange& r) const;
+	bool Contains(const NSRange& r) const;
+	
+	bool operator ==(const NSRange& r) const;
+	bool operator !=(const NSRange& r) const;
+
+	unsigned int position;
+	int length;
+};
+
+// Correct negative dimensions
+NSRange NSRangeCorrected(const NSRange& range);
+
 #endif /* NSTYPES_H */

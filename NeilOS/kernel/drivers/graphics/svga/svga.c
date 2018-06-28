@@ -148,12 +148,12 @@ bool svga_enable() {
 	svga_write(SVGA_REG_ENABLE, SVGA_REG_ENABLE_ENABLE);
 	enabled = true;
 	
-	if (fifo_base[SVGA_FIFO_3D_HWVERSION] == 0) {
+	/*if (fifo_base[SVGA_FIFO_3D_HWVERSION] == 0) {
 		svga_write(SVGA_REG_ENABLE, SVGA_REG_ENABLE_DISABLE);
 		enabled = false;
 		
 		return false;
-	}
+	}*/
 	return true;
 }
 

@@ -574,6 +574,9 @@ uint8_t* NSImage::CreateTIFF(unsigned int* length_out) const {
 }
 
 uint8_t* NSImage::RepresentationUsingType(NSImageType type, unsigned int* data_length) const {
+	if (int(size.width + 0.5) == 0 || int(size.height + 0.5) == 0)
+		return NULL;
+	
 	switch (type) {
 		case NSImageTypeBMP:
 			return CreateBMP(data_length);

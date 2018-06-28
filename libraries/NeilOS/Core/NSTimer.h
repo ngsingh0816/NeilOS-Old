@@ -29,7 +29,7 @@ public:
 	void SetRepeats(bool repeats);
 	bool GetRepeats() const;
 	void SetFunction(const std::function<void(NSTimer*)>& function);
-	std::function<void(NSTimer*)> GetFunction() const;
+	const std::function<void(NSTimer*)>& GetFunction() const;
 	
 	// Cancels a repeating timer
 	void Invalidate();

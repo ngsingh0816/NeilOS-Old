@@ -11,6 +11,7 @@
 
 #include "../Core/NSFont.h"
 #include "../Core/NSImage.h"
+#include "../Core/NSResponder.h"
 #include "../Core/NSTypes.h"
 #include "NSAnimation.h"
 #include "NSMenu.h"
@@ -24,16 +25,20 @@ typedef bool NSMenuItemState;
 
 class NSMenuItem {
 public:
-	static NSMenuItem* FromData(uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
-	uint8_t* Serialize(uint32_t* length_out);
+	static NSMenuItem* FromData(const uint8_t* data, uint32_t length, uint32_t* length_used=NULL);
+	virtual uint8_t* Serialize(uint32_t* length_out) const;
 
 	static NSMenuItem* SeparatorItem();
 	
 	NSMenuItem();
 	NSMenuItem(const NSMenuItem& item);
 	NSMenuItem(std::string title, std::string key_equivalent="", NSModifierFlags flags=0);
+	NSMenuItem(std::string title, const std::function<void(NSMenuItem*)>& action);
 	NSMenuItem(NSImage* image, bool chromatic=true, std::string key_equivalent="", NSModifierFlags flags=0);
-	~NSMenuItem();
+	NSMenuItem(NSImage* image, const std::function<void(NSMenuItem*)>& action, bool chromatic=true);
+	virtual ~NSMenuItem();
+	
+	virtual NSMenuItem* Clone();
 	
 	NSMenuItem& operator=(const NSMenuItem& item);
 	
@@ -62,7 +67,7 @@ public:
 	NSModifierFlags GetKeyModifierFlags() const;
 	void SetKeyEquivalent(std::string key, NSModifierFlags flags=0);
 	
-	std::function<void(NSMenuItem*)> GetAction() const;
+	const std::function<void(NSMenuItem*)>& GetAction() const;
 	void SetAction(const std::function<void(NSMenuItem*)>& action);
 	
 	bool GetIsEnabled() const;
@@ -74,18 +79,33 @@ public:
 	NSMenuItemState GetState() const;
 	void SetState(NSMenuItemState state);
 	
+	const std::function<void(NSCursorRegion* region)>& GetCursorEvent() const;
+	void SetCursorEvent(const std::function<void(NSCursorRegion* region)>&);
+	
 	void SetUserData(void* data);
 	void* GetUserData() const;
+	
+	virtual bool MouseDown(NSEventMouse* event);
+	virtual bool MouseDragged(NSEventMouse* event);
+	virtual bool MouseUp(NSEventMouse* event);
+	virtual bool MouseMoved(NSEventMouse* event);
+	virtual bool MouseScrolled(NSEventMouse* event);
+	virtual bool KeyDown(NSEventKey* event);
+	virtual bool KeyUp(NSEventKey* event);
+	
+protected:
+	virtual void SetMenu(NSMenu* menu);
+	virtual void Clear();
+	virtual void UpdateSize();
+	virtual void Draw(graphics_context_t* context, NSPoint point, NSSize size);
+	
 private:
 	friend class NSMenu;
+	friend class NSMenuViewItem;
 	
 	void Init();
-	
 	void Hover(bool over);
-	
-	void Draw(graphics_context_t* context, NSPoint point, NSSize size);
 	void Update(bool all=false);
-	void UpdateSize();
 	
 	NSMenu* submenu = NULL;
 	NSMenu* menu = NULL;
@@ -101,6 +121,7 @@ private:
 	NSMenuItemState state = NSMenuItemStateOff;
 	bool highlighted = false;
 	std::function<void(NSMenuItem*)> action;
+	std::function<void(NSCursorRegion*)> cursor_action;
 	bool enabled = true;
 	NSSize item_size;
 	void* user_data = NULL;
@@ -115,6 +136,7 @@ private:
 	NSSize key_size = NSSize();
 	NSSize img_size = NSSize();
 	float font_height = 0;
+	bool prevents_menu_clear = false;
 };
 
 #endif /* NSMENUITEM_H */

@@ -10,6 +10,7 @@
 
 #include "../Core/NSFont.h"
 #include "../Core/Events/NSEventResource.hpp"
+#include "NSMenuViewItem.h"
 
 #include "NSView.h"
 
@@ -33,6 +34,9 @@
 
 #define HOVER_DURATION				0.25
 
+#define MENU_ITEM_TYPE				0
+#define MENU_VIEW_TYPE				1
+
 using std::string;
 
 NSMenuItem* NSMenuItem::SeparatorItem() {
@@ -44,6 +48,7 @@ NSMenuItem* NSMenuItem::SeparatorItem() {
 void NSMenuItem::Init() {
 	border_height = 1.5 * MENU_OFFSET_Y;
 	hover_buffer = graphics_buffer_create(sizeof(float) * 4 * 4, GRAPHICS_BUFFER_DYNAMIC);
+	font_height = font.GetLineHeight();
 }
 
 NSMenuItem::NSMenuItem() {
@@ -80,12 +85,32 @@ NSMenuItem::NSMenuItem(std::string t, string key, NSModifierFlags f) {
 	flags = f;
 }
 
+NSMenuItem::NSMenuItem(string title, const std::function<void(NSMenuItem*)>& a) {
+	Init();
+	
+	SetTitle(title);
+	action = a;
+}
+
 NSMenuItem::NSMenuItem(NSImage* i, bool chr, string key, NSModifierFlags f) {
 	Init();
 
 	SetImage(i, chr);
 	key_equivalent = key;
 	flags = f;
+}
+
+NSMenuItem::NSMenuItem(NSImage* i, const std::function<void(NSMenuItem*)>& a, bool chr) {
+	Init();
+	
+	SetImage(i, chr);
+	action = a;
+}
+
+NSMenuItem* NSMenuItem::Clone() {
+	NSMenuItem* ret = new NSMenuItem;
+	*ret = *this;
+	return ret;
 }
 
 NSMenuItem& NSMenuItem::operator=(const NSMenuItem& item) {
@@ -118,17 +143,26 @@ NSMenuItem& NSMenuItem::operator=(const NSMenuItem& item) {
 	return *this;
 }
 
-NSMenuItem* NSMenuItem::FromData(uint8_t* data, uint32_t length, uint32_t* length_used) {
+NSMenuItem* NSMenuItem::FromData(const uint8_t* data, uint32_t length, uint32_t* length_used) {
 #define copy(x, len) { if (pos >= length) { return NULL; }; memcpy(x, &data[pos], (len)); pos += (len); }
-	if (length < sizeof(uint32_t) * 2 + sizeof(bool) * 5 + sizeof(float) * 4)
+	if (length < sizeof(uint32_t))
 		return NULL;
 	
-	uint32_t pos = 0;
-	NSFont* font_ptr = NSFont::FromData(data, length, &pos);
+	uint32_t type = reinterpret_cast<const uint32_t*>(data)[0];
+	if (type == MENU_VIEW_TYPE)
+		return NSMenuViewItem::FromData(data, length, length_used);
+	
+	if (length < sizeof(uint32_t) * 3 + sizeof(bool) * 5 + sizeof(float) * 4)
+		return NULL;
+	
+	uint32_t pos = sizeof(uint32_t);
+	uint32_t add = 0;
+	NSFont* font_ptr = NSFont::FromData(&data[pos], length, &add);
 	if (!font_ptr)
 		return NULL;
 	NSFont font = *font_ptr;
 	delete font_ptr;
+	pos += add;
 	
 	uint32_t title_len;
 	copy(&title_len, sizeof(uint32_t));
@@ -174,10 +208,11 @@ NSMenuItem* NSMenuItem::FromData(uint8_t* data, uint32_t length, uint32_t* lengt
 	
 	float border_height;
 	copy(&border_height, sizeof(float));
-	bool is_separator, highlighted, enabled, chromatic;
+	bool is_separator, highlighted, enabled, chromatic, has_action;
 	copy(&is_separator, sizeof(bool));
 	copy(&highlighted, sizeof(bool));
 	copy(&enabled, sizeof(bool));
+	copy(&has_action, sizeof(bool));
 	copy(&chromatic, sizeof(bool));
 	
 	if (pos + sizeof(float) * 2 >= length)
@@ -201,7 +236,7 @@ NSMenuItem* NSMenuItem::FromData(uint8_t* data, uint32_t length, uint32_t* lengt
 	ret->border_height = border_height;
 	ret->is_separator = is_separator;
 	ret->highlighted = highlighted;
-	ret->enabled = enabled;
+	ret->enabled = enabled && (has_action || submenu);
 	ret->item_size = item_size;
 	ret->font_height = font_height;
 	
@@ -212,9 +247,8 @@ NSMenuItem* NSMenuItem::FromData(uint8_t* data, uint32_t length, uint32_t* lengt
 #undef copy
 }
 
-uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
+uint8_t* NSMenuItem::Serialize(uint32_t* length_out) const {
 #define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
-	// TODO: include image
 	uint32_t total_length = 0;
 	uint32_t font_length = 0;
 	uint8_t* font_buf = font.Serialize(&font_length);
@@ -232,6 +266,7 @@ uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
 			delete[] data;
 		}
 	}
+	total_length += sizeof(uint32_t);	// item type
 	total_length += font_length;
 	total_length += sizeof(uint32_t);	// title length
 	total_length += title.length();
@@ -247,6 +282,7 @@ uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
 	total_length += sizeof(bool);		// is_separator
 	total_length += sizeof(bool);		// highlighted
 	total_length += sizeof(bool);		// enabled
+	total_length += sizeof(bool);		// has_action
 	total_length += sizeof(bool);		// chromatic
 	total_length += sizeof(float) * 2;	// item_size
 	total_length += sizeof(float);		// font_height
@@ -254,6 +290,8 @@ uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
 	uint8_t* buffer = new uint8_t[total_length];
 	uint32_t pos = 0;
 	
+	uint32_t type = MENU_ITEM_TYPE;
+	copy(&type, sizeof(uint32_t));
 	copy(font_buf, font_length);
 	delete[] font_buf;
 	uint32_t title_length = title.length(), key_length = key_equivalent.length(),
@@ -276,6 +314,8 @@ uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
 	copy(&is_separator, sizeof(bool));
 	copy(&highlighted, sizeof(bool));
 	copy(&enabled, sizeof(bool));
+	bool has_action = !!action;
+	copy(&has_action, sizeof(bool));
 	copy(&chromatic, sizeof(bool));
 	uint8_t* buf = item_size.Serialize(NULL);
 	copy(buf, sizeof(float) * 2);
@@ -286,6 +326,14 @@ uint8_t* NSMenuItem::Serialize(uint32_t* length_out) {
 		*length_out = total_length;
 	return buffer;
 #undef copy
+}
+
+void NSMenuItem::SetMenu(NSMenu* m) {
+	menu = m;
+}
+
+void NSMenuItem::Clear() {
+	
 }
 
 NSMenu* NSMenuItem::GetSubmenu() {
@@ -326,17 +374,16 @@ void NSMenuItem::SetTitle(string t) {
 	NSImage* text = font.GetImage(title, NSColor<float>::WhiteColor());
 	if (!text) {
 		text_buffer = 0;
-		SetTitle(" ");
+		SetTitle("");
 		return;
 	}
 	text_size = text->GetScaledSize();
-	font_height = font.GetLineHeight();
 	int w = int(text->GetSize().width + 0.5);
 	int h = int(text->GetSize().height + 0.5);
 	if (w == 0 || h == 0) {
 		delete text;
 		text_buffer = 0;
-		SetTitle(" ");
+		SetTitle("");
 		return;
 	}
 	text_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
@@ -353,6 +400,7 @@ NSFont NSMenuItem::GetFont() const {
 
 void NSMenuItem::SetFont(NSFont f) {
 	font = f;
+	font_height = font.GetLineHeight();
 	SetTitle(title);
 }
 
@@ -392,11 +440,7 @@ void NSMenuItem::SetImage(const NSImage* i, bool chr) {
 		}
 	}
 	
-	int w = int(image->GetSize().width + 0.5);
-	int h = int(image->GetSize().height + 0.5);
-	img_size = image->GetScaledSize();
-	img_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
-	graphics_buffer_data(img_buffer, image->GetPixelData(), w, h, w * h * 4);
+	img_buffer = NSView::CreateImageBuffer(image, &img_size);
 	
 	UpdateSize();
 	Update(menu && !menu->is_context_menu);
@@ -454,13 +498,17 @@ void NSMenuItem::SetKeyEquivalent(string key, NSModifierFlags f) {
 	
 	NSFont default_font;
 	NSImage* text = default_font.GetImage(t, NSColor<float>::WhiteColor());
-	key_size = text->GetScaledSize();
-	font_height = font.GetLineHeight();
-	int w = int(text->GetSize().width + 0.5);
-	int h = int(text->GetSize().height + 0.5);
-	key_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
-	graphics_buffer_data(key_buffer, text->GetPixelData(), w, h, w * h * 4);
-	delete text;
+	if (text) {
+		key_size = text->GetScaledSize();
+		int w = int(text->GetSize().width + 0.5);
+		int h = int(text->GetSize().height + 0.5);
+		key_buffer = graphics_buffer_create(w, h, GRAPHICS_BUFFER_STATIC, GRAPHICS_FORMAT_A8R8G8B8);
+		graphics_buffer_data(key_buffer, text->GetPixelData(), w, h, w * h * 4);
+		delete text;
+	} else {
+		key_buffer = 0;
+		key_size = NSSize();
+	}
 	
 	UpdateSize();
 	Update(menu && !menu->is_context_menu);
@@ -487,7 +535,7 @@ void NSMenuItem::UpdateSize() {
 			item_size = NSSize(2 * MENU_OFFSET_X + 2 * SEPARATOR_VERTICAL_WIDTH, 15);
 		return;
 	}
-	float x_pad = menu->is_context_menu ? MENU_OFFSET_X : 2 * MENU_OFFSET_X;
+	float x_pad = menu->is_context_menu ? (4 * MENU_OFFSET_X) : (2 * MENU_OFFSET_X);
 	if (submenu && menu->is_context_menu)
 		x_pad += font_height;	// for triangle
 	else if (!submenu && menu->is_context_menu)
@@ -501,12 +549,20 @@ void NSMenuItem::UpdateSize() {
 	item_size = NSSize(img_size.width + text_size.width, height) + NSSize(x_pad, 2 * border_height);
 }
 
-std::function<void(NSMenuItem*)> NSMenuItem::GetAction() const {
+const std::function<void(NSMenuItem*)>& NSMenuItem::GetAction() const {
 	return action;
 }
 
 void NSMenuItem::SetAction(const std::function<void(NSMenuItem*)>& a) {
 	action = a;
+}
+
+const std::function<void(NSCursorRegion* region)>& NSMenuItem::GetCursorEvent() const {
+	return cursor_action;
+}
+
+void NSMenuItem::SetCursorEvent(const std::function<void(NSCursorRegion* region)>& a) {
+	cursor_action = a;
 }
 
 bool NSMenuItem::GetIsEnabled() const {
@@ -714,4 +770,31 @@ void NSMenuItem::Draw(graphics_context_t* context, NSPoint point, NSSize size) {
 		graphics_draw(context, GRAPHICS_PRIMITIVE_TRIANGLESTRIP, NSVIEW_CHECKMARK_VERTICES - 2, menu->square_vao, 3);
 		menu->square_vao[0].bid = menu->square_vbo;
 	}
+}
+
+bool NSMenuItem::MouseDown(NSEventMouse* event) {
+	return false;
+}
+
+bool NSMenuItem::MouseDragged(NSEventMouse* event) {
+	return false;
+}
+
+bool NSMenuItem::MouseUp(NSEventMouse* event) {
+	return false;
+}
+
+bool NSMenuItem::MouseMoved(NSEventMouse* event) {
+	return false;
+}
+bool NSMenuItem::MouseScrolled(NSEventMouse* event) {
+	return false;
+}
+
+bool NSMenuItem::KeyDown(NSEventKey* event) {
+	return false;
+}
+
+bool NSMenuItem::KeyUp(NSEventKey* event) {
+	return false;
 }

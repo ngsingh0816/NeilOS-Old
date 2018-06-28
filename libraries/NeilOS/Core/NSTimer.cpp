@@ -57,7 +57,7 @@ void NSTimer::SetFunction(const std::function<void(NSTimer*)>& func) {
 	function = func;
 }
 
-std::function<void(NSTimer*)> NSTimer::GetFunction() const {
+const std::function<void(NSTimer*)>& NSTimer::GetFunction() const {
 	return function;
 }
 

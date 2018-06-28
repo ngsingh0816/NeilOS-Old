@@ -18,10 +18,19 @@
 #define DEBUG_LOG	0
 #endif
 
+// Change this to enable / disable output logging
+#define OUTPUT_LOG		1
+
 #if DEBUG_LOG
-#define LOG_DEBUG(x, ...) log(x, __VA_ARGS__)
+#define LOG_DEBUG(...) 	log(__VA_ARGS__)
 #else
-#define LOG_DEBUG(x, ...)
+#define LOG_DEBUG(...)
+#endif
+
+#if OUTPUT_LOG
+#define LOG_OUTPUT_DEBUG(...) 	log_output(__VA_ARGS__)
+#else
+#define LOG_OUTPUT_DEBUG(...)
 #endif
 
 #define LOG_DEBUG_INFO() \
@@ -34,5 +43,8 @@ void log(int8_t* fmt, ...);
 
 // Log a message to /var/log/syslog without formatting
 void quick_log(int8_t* fmt, ...);
+
+// Log a message to /var/log/output.log
+void log_output(int8_t* fmt, ...);
 
 #endif /* LOG_H */

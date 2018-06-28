@@ -1,7 +1,8 @@
 make distclean
 ../configure --prefix=/usr --target=i686-neilos CFLAGS_FOR_TARGET="-fpic"
 make all
-make DESTDIR=$SYSROOT install
+make DESTDIR=$SYSROOT/usr/tmp install
+// Move files into place ^
 mv i386-neilos/* ./
 // Make shared library
 i386-neilos-ar -x libc.a ( extract all the object files)

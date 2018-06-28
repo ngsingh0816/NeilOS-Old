@@ -21,10 +21,34 @@
 
 #define WINDOW_TITLE_BAR_HEIGHT		22
 
+#define NSWINDOW_BUTTON_MASK_CLOSE		(1 << 0)
+#define NSWINDOW_BUTTON_MASK_MIN		(1 << 1)
+#define NSWINDOW_BUTTON_MASK_MAX		(1 << 2)
+#define NSWINDOW_BUTTON_MASK_ALL		0x7
+
 class NSView;
 class NSWindowObserver;
 
-class NSWindow : public NSResponder {
+class NSViewContainer {
+public:
+	virtual ~NSViewContainer() {};
+	virtual NSView* FirstResponder() const { return first_responder; };
+	virtual void MakeFirstResponder(NSView* view);
+	virtual void AddUpdateRects(const std::vector<NSRect>& rects) = 0;
+	virtual graphics_context_t* GetContext() = 0;
+	virtual float GetBackingScaleFactor() const;
+	virtual void ViewAdded(NSView* view) {};
+	virtual NSPoint GetOffset() const { return NSPoint(); };
+	// Rect in view's coordinate system
+	virtual NSRect PrepareDraw(NSView* view, const NSRect& rect) { return rect; };
+	virtual void FinishDraw(NSView* view, const NSRect& rect) {};
+	// Absolute coordinates
+	virtual NSPoint GetScissorOffset(const NSRect&) const { return NSPoint(); };
+protected:
+	NSView* first_responder = NULL;
+};
+
+class NSWindow : public NSViewContainer, public NSResponder {
 public:
 	static NSWindow* Create(std::string title, const NSRect& frame);
 	~NSWindow();
@@ -32,8 +56,8 @@ public:
 	NSView* GetContentView();
 	void SetContentView(NSView* view);
 	
-	graphics_context_t* GetContext();
-	float GetBackingScaleFactor() const;
+	virtual graphics_context_t* GetContext() override;
+	virtual float GetBackingScaleFactor() const override;
 	
 	std::string GetTitle() const;
 	void SetTitle(std::string title);
@@ -44,11 +68,15 @@ public:
 	void SetFrame(const NSRect& rect);
 	void SetFrameOrigin(const NSPoint& p);
 	void SetFrameSize(const NSSize& size);
+	virtual NSPoint GetOffset() const override;
+	
+	uint32_t GetButtonMask() const;
+	void SetButtonMask(uint32_t mask);
 	
 	void SetDeallocsWhenClose(bool close);
 	bool GetDeallocsWhenClose() const;
 	
-	void Show();
+	void Show(bool animates = true);
 	bool IsVisible();
 	void Close();
 	
@@ -56,9 +84,9 @@ public:
 	// Makes this window the key window and moves it to the front
 	void MakeKeyWindow();
 	void ResignKeyWindow();
-		
-	NSView* FirstResponder() const;
-	void MakeFirstResponder(NSView* view);
+	
+	virtual void MakeFirstResponder(NSView* view) override;
+	virtual void AddUpdateRects(const std::vector<NSRect>& rects) override;
 	
 	void MouseDown(NSEventMouse* event) override;
 	void MouseDragged(NSEventMouse* event) override;
@@ -73,14 +101,11 @@ public:
 	void RemoveObserver(NSWindowObserver* observer);
 	
 private:
-	friend class NSView;
 	friend class NSEventWindowSetFrame;
 	friend class NSEventWindowMakeKey;
 	
 	NSWindow(std::string title, const NSRect& frame);
 	
-	void AddUpdateRect(const NSRect& rect);
-	void AddUpdateRects(std::vector<NSRect> rects);
 	void PushUpdates();
 	
 	void SetFrameInternal(const NSRect& frame);
@@ -90,8 +115,8 @@ private:
 		
 	NSView* content_view = NULL;
 	NSView* first_responder = NULL;
-	NSView* down_view = NULL;
 	std::vector<NSWindowObserver*> observers;
+	uint32_t button_mask = NSWINDOW_BUTTON_MASK_ALL;
 	
 	std::string title;
 	NSRect frame;
@@ -113,11 +138,11 @@ private:
 
 class NSWindowObserver {
 public:
-	virtual void BecomeKeyWindow() {};
-	virtual void ResignKeyWindow() {};
-	virtual void Show() {};
-	virtual void Close() {};
-	virtual void SetFrame() {};
+	virtual void BecomeKeyWindow(NSWindow*) {};
+	virtual void ResignKeyWindow(NSWindow*) {};
+	virtual void Show(NSWindow*) {};
+	virtual void Close(NSWindow*) {};
+	virtual void SetFrame(NSWindow*) {};
 private:
 };
 

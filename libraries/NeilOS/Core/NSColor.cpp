@@ -340,17 +340,17 @@ NSColor<uint8_t> NSColor<uint8_t>::BlackColor() {
 }
 
 template<>
-NSColor<uint8_t> NSColor<uint8_t>::LightGreyColor() {
+NSColor<uint8_t> NSColor<uint8_t>::LightGrayColor() {
 	return NSColor<uint8_t>(192, 192, 192);
 }
 
 template<>
-NSColor<uint8_t> NSColor<uint8_t>::GreyColor() {
+NSColor<uint8_t> NSColor<uint8_t>::GrayColor() {
 	return NSColor<uint8_t>(128, 128, 128);
 }
 
 template<>
-NSColor<uint8_t> NSColor<uint8_t>::DarkGreyColor() {
+NSColor<uint8_t> NSColor<uint8_t>::DarkGrayColor() {
 	return NSColor<uint8_t>(64, 64, 64);
 }
 
@@ -460,17 +460,17 @@ NSColor<float> NSColor<float>::BlackColor() {
 }
 
 template<>
-NSColor<float> NSColor<float>::LightGreyColor() {
+NSColor<float> NSColor<float>::LightGrayColor() {
 	return NSColor<float>(192 / 255.0f, 192 / 255.0f, 192 / 255.0f);
 }
 
 template<>
-NSColor<float> NSColor<float>::GreyColor() {
+NSColor<float> NSColor<float>::GrayColor() {
 	return NSColor<float>(128 / 255.0f, 128 / 255.0f, 128 / 255.0f);
 }
 
 template<>
-NSColor<float> NSColor<float>::DarkGreyColor() {
+NSColor<float> NSColor<float>::DarkGrayColor() {
 	return NSColor<float>(64 / 255.0f, 64 / 255.0f, 64 / 255.0f);
 }
 
@@ -591,6 +591,11 @@ NSColor<uint8_t> NSColor<uint8_t>::UIDarkGreenColor() {
 }
 
 template<>
+NSColor<uint8_t> NSColor<uint8_t>::UILightBlueColor() {
+	return NSColor<uint8_t>(0xB3, 0xD8, 0xFD);
+}
+
+template<>
 NSColor<uint8_t> NSColor<uint8_t>::UIBlueColor() {
 	return NSColor<uint8_t>(0x34, 0x98, 0xDB);
 }
@@ -688,6 +693,11 @@ NSColor<float> NSColor<float>::UIGreenColor()  {
 template<>
 NSColor<float> NSColor<float>::UIDarkGreenColor() {
 	return NSColor<float>(0x27 / 255.0f, 0xAE / 255.0f, 0x60 / 255.0f);
+}
+
+template<>
+NSColor<float> NSColor<float>::UILightBlueColor() {
+	return NSColor<float>(0xB3 / 255.0f, 0xD8 / 255.0f, 0xFD / 255.0f);
 }
 
 template<>

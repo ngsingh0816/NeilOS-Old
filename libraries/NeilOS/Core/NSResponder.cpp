@@ -21,15 +21,15 @@ namespace NSApplication {
 #define copy(x, len) { memcpy(&buffer[pos], x, (len)); pos += (len); }
 
 NSEventMouse* NSEventMouse::Create(const NSPoint& position, NSMouseType type, NSMouseButton button,
-								   uint32_t window_id, uint32_t priority) {
-	return new NSEventMouse(position, type, button, window_id, priority);
+								   uint32_t click_count, uint32_t window_id, uint32_t priority) {
+	return new NSEventMouse(position, type, button, click_count, window_id, priority);
 }
 
-NSEventMouse* NSEventMouse::FromData(uint8_t* data, uint32_t length) {
-	if (length != sizeof(uint32_t) + sizeof(float) * 2 + sizeof(NSMouseType) + sizeof(NSMouseButton)
-		+ sizeof(uint32_t) + sizeof(float) * 2)
+NSEventMouse* NSEventMouse::FromData(const uint8_t* data, uint32_t length) {
+	if (length != sizeof(uint32_t) * 3 + sizeof(float) * 2 + sizeof(NSMouseType) + sizeof(NSMouseButton)
+		+ sizeof(float) * 2)
 		return NULL;
-	uint32_t* buffer = reinterpret_cast<uint32_t*>(data);
+	const uint32_t* buffer = reinterpret_cast<const uint32_t*>(data);
 	if (buffer[0] != EVENT_MOUSE_ID)
 		return NULL;
 	
@@ -42,6 +42,9 @@ NSEventMouse* NSEventMouse::FromData(uint8_t* data, uint32_t length) {
 	NSMouseButton button;
 	memcpy(&button, &data[pos], sizeof(NSMouseButton));
 	pos += sizeof(NSMouseButton);
+	uint32_t click_count;
+	memcpy(&click_count, &data[pos], sizeof(uint32_t));
+	pos += sizeof(uint32_t);
 	uint32_t window_id;
 	memcpy(&window_id, &data[pos], sizeof(uint32_t));
 	pos += sizeof(uint32_t);
@@ -50,7 +53,7 @@ NSEventMouse* NSEventMouse::FromData(uint8_t* data, uint32_t length) {
 	pos += sizeof(float);
 	memcpy(&dy, &data[pos], sizeof(float));
 
-	NSEventMouse* ret = Create(position, type, button, window_id);
+	NSEventMouse* ret = Create(position, type, button, click_count, window_id);
 	ret->delta_x = dx;
 	ret->delta_y = dy;
 	
@@ -79,6 +82,14 @@ NSMouseButton NSEventMouse::GetButton() const {
 
 void NSEventMouse::SetButton(NSMouseButton b) {
 	button = b;
+}
+
+uint32_t NSEventMouse::GetClickCount() const {
+	return click_count;
+}
+
+void NSEventMouse::SetClickCount(uint32_t c) {
+	click_count = c;
 }
 
 uint32_t NSEventMouse::GetWindowID() const {
@@ -140,7 +151,8 @@ uint8_t* NSEventMouse::Serialize(uint32_t* length_out) const {
 	total_length += sizeof(float) * 2;
 	total_length += sizeof(NSMouseType);
 	total_length += sizeof(NSMouseButton);
-	total_length += sizeof(uint32_t);
+	total_length += sizeof(uint32_t);	// click_count
+	total_length += sizeof(uint32_t);	// window_id
 	total_length += sizeof(float) * 2;	// dx, dy
 	uint8_t* buffer = new uint8_t[total_length];
 	uint32_t pos = 0;
@@ -152,6 +164,7 @@ uint8_t* NSEventMouse::Serialize(uint32_t* length_out) const {
 	delete[] buf;
 	copy(&type, sizeof(NSMouseType));
 	copy(&button, sizeof(NSMouseButton));
+	copy(&click_count, sizeof(uint32_t));
 	copy(&window_id, sizeof(uint32_t));
 	copy(&delta_x, sizeof(float));
 	copy(&delta_y, sizeof(float));
@@ -161,10 +174,12 @@ uint8_t* NSEventMouse::Serialize(uint32_t* length_out) const {
 	return buffer;
 }
 
-NSEventMouse::NSEventMouse(const NSPoint& p, NSMouseType t, NSMouseButton b, uint32_t wid, uint32_t pr) {
+NSEventMouse::NSEventMouse(const NSPoint& p, NSMouseType t, NSMouseButton b,
+						   uint32_t cc, uint32_t wid, uint32_t pr) {
 	position = p;
 	type = t;
 	button = b;
+	click_count = cc;
 	window_id = wid;
 	SetPriority(pr);
 }
@@ -173,10 +188,10 @@ NSEventKey* NSEventKey::Create(unsigned char key, bool down, NSModifierFlags fla
 	return new NSEventKey(key, down, flags, window_id);
 }
 
-NSEventKey* NSEventKey::FromData(uint8_t* data, uint32_t length) {
+NSEventKey* NSEventKey::FromData(const uint8_t* data, uint32_t length) {
 	if (length != sizeof(uint32_t) + sizeof(unsigned char) + sizeof(bool) + sizeof(NSModifierFlags) + sizeof(uint32_t))
 		return NULL;
-	uint32_t* buffer = reinterpret_cast<uint32_t*>(data);
+	const uint32_t* buffer = reinterpret_cast<const uint32_t*>(data);
 	if (buffer[0] != EVENT_KEY_ID)
 		return NULL;
 	

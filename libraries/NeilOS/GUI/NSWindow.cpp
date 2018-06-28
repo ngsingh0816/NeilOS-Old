@@ -31,6 +31,22 @@ namespace NSApplication {
 	void DeregisterWindow(NSWindow* window);
 }
 
+void NSViewContainer::MakeFirstResponder(NSView* view) {
+	if (view && !view->AcceptsFirstResponder())
+		return;
+	
+	if (first_responder)
+		first_responder->ResignFirstResponder();
+	
+	first_responder = view;
+	if (first_responder)
+		first_responder->BecomeFirstResponder();
+}
+
+float NSViewContainer::GetBackingScaleFactor() const {
+	return NSApplication::GetPixelScalingFactor();
+}
+
 NSWindow* NSWindow::Create(string t, const NSRect& r) {
 	NSWindow* ret = new NSWindow(t, r);
 	
@@ -52,11 +68,11 @@ NSWindow::NSWindow(string t, const NSRect& f) {
 	float psf = NSApplication::GetPixelScalingFactor();
 	bsf = psf;
 	NSSize size = NSSize(f.size.width * psf, (f.size.height - WINDOW_TITLE_BAR_HEIGHT) * psf);
-	context = graphics_context_create(size.width, size.height, 24, 15, 1);
+	context = graphics_context_create(size.width, size.height, 24, 15, 1, 0);
 	NSView::SetupContext(&context, NSSize(f.size.width, (f.size.height - WINDOW_TITLE_BAR_HEIGHT)));
 	
 	content_view = NSView::Create(NSRect(0, 0, f.size.width, f.size.height - WINDOW_TITLE_BAR_HEIGHT));
-	content_view->SetWindow(this);
+	content_view->SetViewContainer(this);
 	MakeFirstResponder(content_view);
 }
 
@@ -79,8 +95,14 @@ void NSWindow::SetContentView(NSView* view) {
 	if (!view)
 		return;
 	
-	delete content_view;
+	first_responder = NULL;
+	if (content_view)
+		delete content_view;
 	content_view = view;
+	content_view->SetViewContainer(this);
+	content_view->SetFrame(NSRect(NSPoint(), GetContentFrame().size));
+	MakeFirstResponder(content_view);
+	content_view->SetNeedsDisplay();
 }
 
 graphics_context_t* NSWindow::GetContext() {
@@ -115,6 +137,10 @@ NSRect NSWindow::GetContentFrame() const {
 				  NSSize(frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
 }
 
+NSPoint NSWindow::GetOffset() const {
+	return GetContentFrame().origin;
+}
+
 void NSWindow::SetFrameInternal(const NSRect& rect) {
 	NSSize old_size = frame.size;
 	frame = rect;
@@ -126,11 +152,11 @@ void NSWindow::SetFrameInternal(const NSRect& rect) {
 		enable_updates = false;
 		content_view->SetFrame(NSRect(0, 0, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT));
 		enable_updates = true;
-		AddUpdateRect(content_view->GetFrame());
+		AddUpdateRects({ content_view->GetFrame() });
 	}
 	
 	for (auto& i : observers)
-		i->SetFrame();
+		i->SetFrame(this);
 }
 
 void NSWindow::SetFrame(const NSRect& rect) {
@@ -148,6 +174,17 @@ void NSWindow::SetFrameSize(const NSSize& size) {
 	SetFrame(NSRect(frame.origin, size));
 }
 
+uint32_t NSWindow::GetButtonMask() const {
+	return button_mask;
+}
+
+void NSWindow::SetButtonMask(uint32_t mask) {
+	button_mask = mask;
+	
+	auto event = NSEventWindowSetButtonMask(getpid(), window_id, mask);
+	NSApplication::SendEvent(&event);
+}
+
 void NSWindow::SetDeallocsWhenClose(bool close) {
 	dealloc = close;
 }
@@ -156,20 +193,21 @@ bool NSWindow::GetDeallocsWhenClose() const {
 	return dealloc;
 }
 
-void NSWindow::Show() {
+
+void NSWindow::Show(bool animates) {
 	if (visible)
 		return;
 	
 	visible = true;
 	is_key = true;
 	
-	content_view->DrawRect(NSRect(NSPoint(), content_view->frame.size));
+	content_view->SetNeedsDisplay();
 	
-	auto event = NSEventWindowShow(getpid(), window_id, true);
+	auto event = NSEventWindowShow(getpid(), window_id, true, animates);
 	NSApplication::SendEvent(&event);
 	
 	for (auto& i : observers)
-		i->Show();
+		i->Show(this);
 }
 
 bool NSWindow::IsVisible() {
@@ -177,13 +215,14 @@ bool NSWindow::IsVisible() {
 }
 
 void NSWindow::Close() {
-	auto event = NSEventWindowShow(getpid(), window_id, false);
+	auto event = NSEventWindowShow(getpid(), window_id, false, false);
 	NSApplication::SendEvent(&event);
 	
 	visible = false;
-	
+	is_key = false;
+		
 	for (auto& i : observers)
-		i->Close();
+		i->Close(this);
 	
 	if (dealloc)
 		delete this;
@@ -198,12 +237,12 @@ void NSWindow::MakeKeyInternal(bool key) {
 		is_key = true;
 		
 		for (auto& i : observers)
-			i->BecomeKeyWindow();
+			i->BecomeKeyWindow(this);
 	} else {
 		is_key = false;
 		
 		for (auto& i : observers)
-			i->ResignKeyWindow();
+			i->ResignKeyWindow(this);
 	}
 }
 
@@ -240,31 +279,22 @@ void NSWindow::CheckCursorRegions(const NSPoint& p) {
 	current_region = region;
 }
 
-NSView* NSWindow::FirstResponder() const {
-	return first_responder;
-}
-
 void NSWindow::MakeFirstResponder(NSView* view) {
-	if (!view->AcceptsFirstResponder())
+	if (view && !view->AcceptsFirstResponder())
 		return;
 	
 	if (first_responder)
 		first_responder->ResignFirstResponder();
 	
-	first_responder = view;
+	first_responder = view ? view : content_view;
 	view->BecomeFirstResponder();
 }
 
-void NSWindow::AddUpdateRect(const NSRect& rect) {
-	std::vector<NSRect> rects = { rect };
-	AddUpdateRects(rects);
-}
-
-void NSWindow::AddUpdateRects(std::vector<NSRect> rects) {
+void NSWindow::AddUpdateRects(const std::vector<NSRect>& rects) {
 	std::vector<NSRect> real;
 	real.reserve(rects.size());
 	for (unsigned int z = 0; z < rects.size(); z++) {
-		NSRect& rect = rects[z];
+		NSRect rect = rects[z];
 		if (!NSRectClamp(rect, NSRect(0, 0, frame.size.width, frame.size.height - WINDOW_TITLE_BAR_HEIGHT), &rect))
 			continue;
 		real.emplace_back(rect);
@@ -311,26 +341,18 @@ void NSWindow::MouseDown(NSEventMouse* event) {
 	if (!view)
 		return;
 	
-	down_view = view;
-	MakeFirstResponder(down_view);
+	MakeFirstResponder(view);
 	content_view->MouseDown(event);
 }
 
 void NSWindow::MouseDragged(NSEventMouse* event) {
-	if (!down_view)
-		return;
-	
 	CheckCursorRegions(event->GetPosition());
 	
 	content_view->MouseDragged(event);
 }
 
 void NSWindow::MouseUp(NSEventMouse* event) {
-	if (!down_view)
-		return;
-	
 	content_view->MouseUp(event);
-	down_view = NULL;
 }
 
 void NSWindow::MouseMoved(NSEventMouse* event) {

@@ -278,7 +278,8 @@ file_descriptor_t* es_open(const char* filename, uint32_t mode) {
 	d->duplicate = es_duplicate;
 	d->close = es_close;
 	
-	increment_dev_open();
+	if (mode & FILE_MODE_WRITE)
+		increment_dev_open();
 	
 	return d;
 }
@@ -369,7 +370,7 @@ uint32_t es_ioctl(file_descriptor_t* f, int request, uint32_t arg1, uint32_t arg
 		case ES_IOCTL_GET_MASTER_VOLUME: {
 			if (!arg1)
 				return -EINVAL;
-			*((float*)arg1) = master_volume;
+			*((double*)arg1) = master_volume;
 			break;
 		}
 	}
@@ -399,7 +400,8 @@ file_descriptor_t* es_duplicate(file_descriptor_t* f) {
 	memcpy(d->info, f->info, sizeof(es_info));
 	d->lock = MUTEX_UNLOCKED;
 	
-	increment_dev_open();
+	if (d->mode & FILE_MODE_WRITE)
+		increment_dev_open();
 	
 	return d;
 }
@@ -408,6 +410,7 @@ file_descriptor_t* es_duplicate(file_descriptor_t* f) {
 uint32_t es_close(file_descriptor_t* fd) {
 	kfree(fd->info);
 	kfree(fd->filename);
-	decrement_dev_open();
+	if (fd->mode & FILE_MODE_WRITE)
+		decrement_dev_open();
 	return 0;
 }
